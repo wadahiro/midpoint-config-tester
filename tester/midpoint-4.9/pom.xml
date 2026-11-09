@@ -16,6 +16,50 @@
 
     <properties>
         <tester.names.skip>false</tester.names.skip>
+        <tester.gui.skip>false</tester.gui.skip>
         <midpoint.version>${midpoint49.version}</midpoint.version>
     </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex), not on the classpath -->
+                        <id>gui-jars</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/gui</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.gui</groupId>
+                                    <artifactId>admin-gui</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.model</groupId>
+                                    <artifactId>authentication-impl</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <!-- the URL mappings (EndPointsUrlMapping) from 4.9 on -->
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.model</groupId>
+                                    <artifactId>authentication-api</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

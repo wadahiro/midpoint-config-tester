@@ -28,7 +28,8 @@ import net.bytebuddy.pool.TypePool;
  * Writes the index of the GUI's pages ({@code tester/gui-pages.tsv}, read by {@code GuiPages}) from the GUI's jars, at
  * build time: what {@code DescriptorLoader} reads from the {@code @PageDescriptor}s, read from the class files without
  * loading them (they need Wicket), and the URL mappings the GUI's authorization evaluator adds to them
- * ({@code PageUrlMapping} of 4.0 and 4.4, {@code EndPointsUrlMapping} of 4.8+), loaded from the jars.
+ * ({@code PageUrlMapping} of 4.0 and 4.4, {@code EndPointsUrlMapping} of 4.8, of authentication-api from 4.9 on),
+ * loaded from the jars.
  *
  * <p>{@code GuiPagesIndex <output file> <jar or directory of jars>...}. A row is
  * {@code kind TAB pattern TAB actions TAB source}: kind
@@ -41,7 +42,8 @@ public final class GuiPagesIndex {
     private static final String NO_ACCESS =
             "http://midpoint.evolveum.com/xml/ns/public/security/authorization-3#noAccess";
     private static final String[] MAPPINGS = {"com.evolveum.midpoint.web.security.PageUrlMapping",
-            "com.evolveum.midpoint.authentication.impl.util.EndPointsUrlMapping"};
+            "com.evolveum.midpoint.authentication.impl.util.EndPointsUrlMapping",
+            "com.evolveum.midpoint.authentication.api.authorization.EndPointsUrlMapping"};
 
     private GuiPagesIndex() {
     }
