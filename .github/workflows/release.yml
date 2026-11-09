@@ -28,6 +28,7 @@ jobs:
     env:
       # every mvn call of the release (versions:set as well as deploy) takes these: Maven 3.9 reads MAVEN_ARGS. All
       # lines, and where the deployment goes: Central (the profile release), or the checkout of the branch mvn-repo.
+      # (maven-semantic-release takes only "deploy" as its target and adds -DskipTests itself.)
       MAVEN_ARGS: >-
         -Pnon-lts
         ${{ vars.RELEASE_TO_CENTRAL == 'true'
