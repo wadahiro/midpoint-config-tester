@@ -34,16 +34,16 @@ jobs:
         && '-Prelease -DautoPublish=true -DwaitUntil=published'
         || format('-DaltDeploymentRepository=mvn-repo::file://{0}/_mvn-repo', github.workspace) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: vars.RELEASE_TO_CENTRAL != 'true'
         with:
           ref: mvn-repo
           path: _mvn-repo
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           # JDK 11 for the toolchain of 4.0 and 4.4; the last one runs Maven
