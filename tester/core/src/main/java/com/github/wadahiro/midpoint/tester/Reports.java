@@ -54,6 +54,13 @@ public interface Reports {
      */
     Import importFrom(String report, List<String> lines);
 
+    /**
+     * {@link #importFrom(String, List)} as the user (by name), as when the user imports in the GUI: logged in, the
+     * import task is theirs, so the import script's {@code actor} is the user and their authorizations apply (a
+     * reviewer's own decisions). Null: the administrator.
+     */
+    Import importFrom(String report, List<String> lines, String username);
+
     /** {@link #importFrom(String, List)} with the lines of a file (UTF-8). */
     Import importFrom(String report, File csv);
 

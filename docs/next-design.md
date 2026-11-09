@@ -1,5 +1,9 @@
 # midpoint-config-tester: zero-base redesign proposal
 
+> History. Written for the API then named `@MidPointScenarios` / `Scenario` (renamed here to `@MidPointConfigTest` /
+> `MidPointConfigTester`); `@MidPointTest` and golden results, which it keeps, were removed. The README describes the
+> current API.
+
 Scope: a design review of the PoC at `~/dev/src/github.com/wadahiro/midpoint-config-tester` (main `0db1f39`), written
 against the owner's three complaints: the API is too complex for its users; tests should be operation scenarios over a
 whole configuration, not per-expression checks; the configuration should be loaded as a deployment (a directory), not
@@ -49,10 +53,10 @@ are relative to the manifest; unknown keys fail the load. Reference (`internal/M
 | `config.properties` | `{{name}}` in the files is replaced; an unknown name fails the load with file and line. `${...}` is left alone: it is Groovy's GString syntax in `<code>` and Velocity's in templates, and midPoint itself expands nothing in objects at import (its own mechanism is `<const>` with config.xml constants, not supported yet). |
 | `config.overlays."<line>"` | `dirs` whose files replace or add files on that line (exact line, e.g. `"4.0"`; quote the key), `remove` for relative paths to drop. |
 | `config.schema` | Extension XSDs; must be known before midPoint starts (one schema per JVM). |
-| `targets.<resource>` | `connector: mirror` (default for every resource) / `csv` / `ldap`; `initialData` (`.csv` file content for csv, `.ldif` for ldap); `namingAttribute`, `identifier`, `referentialIntegrity`, `caseInsensitiveNames`, `computed` as the PoC's `ResourceOptions`. |
+| `targets.<resource>` | `connector: mirror` (default for every resource) / `csv` / `ldap`; `initialData` (`.csv` file content for csv, `.ldif` for ldap); `namingAttribute`, `identifier`, `referentialIntegrity`, `caseInsensitiveNames`, `computed`, `attributes`, `multiValued`, `keyedValues`, `store` as the PoC's `ResourceOptions`. |
 | `mail.redirect` | Default true: the mail servers of the system configuration go to the tester's SMTP server (`MailRedirect`). |
 | `files.map` | Directories scripts read and write, mapped to the tester's (`FileArea`). |
-| `tasks.recurring` | `held` (default): the regular Quartz runs of the loosely bound recurring tasks never fire; a scenario runs them with `s.task(name).run()` or `s.time().runDue()`, and a task that never ran counts as due (in production it would have run right after the deployment). `scheduled`: Quartz fires them on the real time as in production (their first run happens during the load) until a scenario moves the clock; not covered by a test yet. Tightly bound recurring tasks (4.0's default binding) are not held. |
+| `tasks.recurring` | `held` (default): the regular Quartz runs of the loosely bound recurring tasks never fire; a scenario runs them with `t.task(name).run()` or `t.clock().runDue()`, and a task that never ran counts as due (in production it would have run right after the deployment). `scheduled`: Quartz fires them on the real time as in production (their first run happens during the load) until a scenario moves the clock; not covered by a test yet. Tightly bound recurring tasks (4.0's default binding) are not held. |
 
 ### Load sequence (`internal/Deployment`, once per JVM and manifest)
 
@@ -70,7 +74,7 @@ are relative to the manifest; unknown keys fail the load. Reference (`internal/M
 5. Hold the regular runs of recurring tasks (`held`), release Quartz, wait for the background work, test the
    connection of every resource, wait again.
 6. Snapshot (database, target systems, mapped files, configuration index, the hold) and write `load-report.txt`
-   (import order, resources and their stand-ins, warnings). `ScenarioExtension` resets to this snapshot before every
+   (import order, resources and their stand-ins, warnings). `MidPointConfigTestExtension` resets to this snapshot before every
    test method (also after a PoC test class, which resets to the startup baseline).
 
 ### Post-initial import per line (`internal/PostInitialImport`, `LineDrivers`)
@@ -103,17 +107,17 @@ import (midPoint's scheduler is not running yet while its post-initial import ru
 Phase 1 started from the tester's small baseline instead of midPoint's initial objects; phase 2 imports the line's
 initial objects first (below, "Phase 2 as built").
 
-### Scenario API (`com.github.wadahiro.midpoint.configtester`)
+### MidPointConfigTester API (`com.github.wadahiro.midpoint.configtester`)
 
 | Type | Methods |
 |---|---|
-| `@MidPointScenarios("path" \| "classpath:path")` | the manifest (default: `tester.manifest`, else `midpoint-config-tester.yaml`); JUnit 5 extension `ScenarioExtension` injects `Scenario` |
-| `Scenario` | `line()`, `source(name)`, `target(name)`, `task(name)`, `reconcile(resource)`, `importAccounts(resource)`, `user(name)`, `time()`, `mails()`, `midpoint()` (the PoC API) |
+| `@MidPointConfigTest("path" \| "classpath:path")` | the manifest (default: `tester.manifest`, else `midpoint-config-tester.yaml`); JUnit 5 extension `MidPointConfigTestExtension` injects `MidPointConfigTester` |
+| `MidPointConfigTester` | `line()`, `source(name)`, `target(name)`, `task(name)`, `reconcile(resource)`, `importAccounts(resource)`, `user(name)`, `time()`, `mails()`, `midpoint()` (the PoC API) |
 | `Resource` | `add(id, attributes)`, `modify(id, attribute, values...)`, `delete(id)`, `account(id)`, `accounts()`, `system()` |
 | `Account` | `exists()`, `doesNotExist()`, `hasAttribute(name, values...)`, `hasNoAttribute(name)`, `memberOf(group)`, `notMemberOf(group)`, `isEnabled()`, `isDisabled()`; views `value(name)`, `values(name)`, `attributes()`, `groups()`, `status()` |
 | `User` | `exists()`, `doesNotExist()`, `hasFullName(v)`, `hasItem(path, values...)`, `hasRole(name)`, `hasNoRole(name)`, `hasAccountOn(resource)`, `hasNoAccountOn(resource)`, `isEnabled()`, `isDisabled()`, `assign(role)`, `unassign(role)`, `recompute()`; values `object()` (the `UserType`), `values(path)` |
-| `ScenarioTask` | `run()`, `name()` |
-| `ScenarioTime` | `now()`, `today()`, `advance("P30D")`, `advance(Duration)`, `advanceTo(Instant)`, `advanceTo(LocalDate)`, `runDue()` (validity scanner, trigger scanner, due recurring tasks), `runValidityScanner()`, `runTriggerScanner()` |
+| `Task` | `run()`, `name()` |
+| `TestClock` | `now()`, `today()`, `advance("P30D")`, `advance(Duration)`, `advanceTo(Instant)`, `advanceTo(LocalDate)`, `runDue()` (validity scanner, trigger scanner, due recurring tasks), `runValidityScanner()`, `runTriggerScanner()` |
 | `Mails` | `to(address)`, `withSubject(text)`, `list()`, `count()`, `subjects()`, `bodies()`, `exactly(n)`, `none()`, `single()` |
 | `DeploymentLoadException` | the load failed: file, midPoint's errors |
 
@@ -129,8 +133,8 @@ anew by every call), the bean the configuration's scripts see, rather than teste
 to intercept would silently read an empty bean). Accounts, mails and work items keep their values (they are not
 midPoint objects). The library-neutral parts are in the core: `Describe` (midPoint's values as text), `Refs` (a
 reference against a typed name: by OID when the name has one, else by type and name), and the explanations of a
-failure. `configtester.assertj` adapts them: `MidPointRepresentation` (registered by `ScenarioExtension` for each test)
-and `MidPointConditions` (`targeting`, `refTo`); a Kotest layer would adapt the same. `ScenarioExtension`, a
+failure. `configtester.assertj` adapts them: `MidPointRepresentation` (registered by `MidPointConfigTestExtension` for each test)
+and `MidPointConditions` (`targeting`, `refTo`); a Kotest layer would adapt the same. `MidPointConfigTestExtension`, a
 `TestExecutionExceptionHandler`, appends to a failed test's `AssertionError` the mappings behind the account values it
 read, and, labelled possibly related, the mappings of the test that set an item of a user whose object it read whose
 current value appears (as a word, ignoring case) in the failure's actual value, else its message (the last 8 reads,
@@ -204,7 +208,7 @@ Stand-ins and deviations:
 - A failing initial object is noted in `load-report.txt` and the import goes on, as in midPoint (these are the line's
   files, not the user's); `DeploymentLoadTest.theLinesInitialObjectsAreImportedFirst` pins that none fails.
 - With `tasks.recurring: held` the initial cleanup, validity and trigger tasks are held like the deployment's: they
-  are due (never run) and `s.time().runDue()` runs them. With `scheduled` they are released after the load.
+  are due (never run) and `t.clock().runDue()` runs them. With `scheduled` they are released after the load.
 
 The 4.4 jar was not in the local Maven repository: `admin-gui-4.4.11-classes.jar` was fetched once from Evolveum's
 Nexus (`mvn dependency:get`); the build itself runs offline. The 4.0.3 one was already there.
@@ -215,7 +219,7 @@ Names only; the PoC drivers (`ApprovalsImpl`, `CertificationImpl`, `ReportsImpl`
 
 | Type | Methods |
 |---|---|
-| `Scenario` | `as(user)`, `workItems()`, `cases()`, `certification(definition)`, `report(name)`, `expectFailure(() -> ...)` |
+| `MidPointConfigTester` | `as(user)`, `workItems()`, `cases()`, `certification(definition)`, `report(name)`, `expectFailure(() -> ...)` |
 | `Actor` | `request()` (for themself), `request(forUser)`, `name()` |
 | `Request` | `assign(role)`, `unassign(role)`: submitted as the actor (the GUI's "Request access"); a role with an approval policy waits in a case |
 | `WorkItems` | filters `assignedTo(user)`, `forUser(user)`, `forRole(role)`, `inStage(n)`; `list()`, `count()`, `exactly(n)`, `none()`, `single()`, `approve(actor)`, `reject(actor)` |
@@ -229,29 +233,29 @@ Names only; the PoC drivers (`ApprovalsImpl`, `CertificationImpl`, `ReportsImpl`
 | `User` | also `setPassword(value)` (checked by the security policy's password policy) |
 
 ```java
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class AccessRequestScenarioTest {
     @Test
-    void privilegedAccessNeedsTheOwnerThenASecurityOfficer(Scenario s) {
-        s.as("jack").request().assign("Privileged Access");
-        s.user("jack").hasNoRole("Privileged Access");
-        Case request = s.cases().forUser("jack").forRole("Privileged Access").single();
+    void privilegedAccessNeedsTheOwnerThenASecurityOfficer(MidPointConfigTester t) {
+        t.as("jack").request().assign("Privileged Access");
+        t.user("jack").hasNoRole("Privileged Access");
+        Case request = t.cases().forUser("jack").forRole("Privileged Access").single();
         request.isOpen().atStage(1);
-        s.workItems().assignedTo("role-owner").single().approve(s.as("role-owner"), "ok for jack");
+        t.workItems().assignedTo("role-owner").single().approve(t.as("role-owner"), "ok for jack");
 
         request.atStage(2);                                  // a work item per Security officer
-        WorkItem analyst = s.workItems().assignedTo("sec-analyst").single();
-        s.workItems().assignedTo("sec-officer").single().approve(s.as("sec-officer"));
+        WorkItem analyst = t.workItems().assignedTo("sec-analyst").single();
+        t.workItems().assignedTo("sec-officer").single().approve(t.as("sec-officer"));
         analyst.isCancelled();                               // firstDecides
         request.isApproved();
-        s.user("jack").hasRole("Privileged Access");
+        t.user("jack").hasRole("Privileged Access");
     }
 
     @Test
-    void theSegregationOfDutiesRuleRefusesAuditorToAnAccountant(Scenario s) {
-        Failure failure = s.expectFailure(() -> s.user("ann").assign("Auditor"));
+    void theSegregationOfDutiesRuleRefusesAuditorToAnAccountant(MidPointConfigTester t) {
+        Failure failure = t.expectFailure(() -> t.user("ann").assign("Auditor"));
         assertThat(failure.isPolicyViolation()).isTrue();
-        s.user("ann").hasNoRole("Auditor");
+        t.user("ann").hasNoRole("Auditor");
     }
 }
 ```
@@ -271,7 +275,7 @@ at the end of the import (4.0's post-initial import is raw: without it the templ
 
 ### `why()`
 
-`s.user("e1001").why("fullName")` and `s.target("LDAP").account(dn).why("cn")` return a `Why`: the mapping
+`t.user("e1001").why("fullName")` and `t.target("LDAP").account(dn).why("cn")` return a `Why`: the mapping
 evaluations of this test whose target is the item (for the user; for an account, for the user its shadow is linked
 to), oldest first. `steps()`, `last()`, `isEmpty()`, `print()`, `toString()`; a `Why.Step` has `mapping()`,
 `owner()`, `focus()`, `sources()` (`[old] -> [new]` per source), `condition()`, `output()`, `task()`, `channel()`,
@@ -319,7 +323,7 @@ A change runs a mapping several times (later evaluations of the same operation s
 3. Logging of system configurations is switched off with midPoint's `avoidLoggingChange`, not by editing the files.
 4. A failing initial object is a warning in the load report, pinned to none by the tester's test; 4.0's Jasper reports
    are skipped with a reason.
-5. Actors are `Actor` objects (`approve(s.as("x"))`), not strings, to keep decisions readable and free of
+5. Actors are `Actor` objects (`approve(t.as("x"))`), not strings, to keep decisions readable and free of
    two-string overloads. Per-line mechanics (work item claims, the report footer, certification stage tasks) stay in
    the drivers and the outcome objects.
 6. `expectFailure` catches only what midPoint refused (`OperationFailed`), never an assertion of the scenario API.
@@ -371,7 +375,7 @@ the cached deployment (opt-in).
   `extension/<name>` of the `config.schema` types that extend `UserType`), `Names.all()`. Constants: `Dept Sales` ->
   `DEPT_SALES`, `firstName` -> `FIRST_NAME`; a collision fails the generation. Non-ASCII is written as unicode escapes.
   A file is written only when its content changes; stale generated files are deleted.
-- **API**: overloads next to the string ones: `Scenario.source/target/reconcile/importAccounts(ResourceRef)`,
+- **API**: overloads next to the string ones: `MidPointConfigTester.source/target/reconcile/importAccounts(ResourceRef)`,
   `task(TaskRef)`, `user/as(UserRef)`, `certification(CertificationDefinitionRef)`, `report(ReportRef)`;
   `User.hasRole/hasNoRole/assign/unassign(AssignableRef)`, `hasAccountOn/hasNoAccountOn(ResourceRef)`,
   `hasItem/values/why(ItemRef)`; `Resource.modify(id, AttributeRef, ...)`, `add(id, row -> row.set(attr, v))`,
@@ -491,7 +495,7 @@ passing when run again. The 4.8 module with `-Dtester.forks=2`: 458 tests pass.
 ## Phase 4 as built
 
 The owner's goals for phase 4: a fast suite (the scenario tests are the product's tests, the PoC API stays only as
-`s.midpoint()` and as the engine), a parent POM for config repositories, typed names of midPoint's own objects and
+`t.midpoint()` and as the engine), a parent POM for config repositories, typed names of midPoint's own objects and
 items.
 
 ### A fast suite
@@ -510,7 +514,7 @@ it real-time waits; every other class 0.1-2.2 s). The other lines alike: 4.0 80.
 
 **Reached** (full build, same machine and cache; surefire's class time, midPoint's start in brackets):
 
-| Line | Before: tests, time | After: tests, time | After without the start | Scenario classes | Engine tests (with the start) |
+| Line | Before: tests, time | After: tests, time | After without the start | MidPointConfigTester classes | Engine tests (with the start) |
 |---|---|---|---|---|---|
 | 4.0 | 458 (78 skipped), 80.0 s | 117 (3 skipped), 31.4 s (7.0 s) | 24.4 s | 12.5 s | 18.9 s |
 | 4.4 | 458 (33 skipped), 78.1 s | 117, 33.4 s (6.6 s) | 26.8 s | 16.1 s | 17.3 s |
@@ -536,7 +540,7 @@ before, 226 s after.
   self-test.
 - `StaticCheckTest.testerFixtures` (the static checks over the PoC fixtures): the static module keeps its own fixtures.
 
-The README describes the PoC API under "The PoC API (`s.midpoint()`)"; the line notes and `docs/line-anatomy.md`
+The README describes the PoC API under "The PoC API (`t.midpoint()`)"; the line notes and `docs/line-anatomy.md`
 keep the differences the deleted tests found, with the commit that has the tests.
 
 ### Parent POMs for config repositories (`parent/`)
@@ -554,7 +558,7 @@ keep the differences the deleted tests found, with the commit that has the tests
   it in `pluginManagement`, the per-line parents declare it: the common parent has no tester on its class path, and a
   parent POM built in this reactor runs it on a manifest it does not have (the generator says so and writes nothing);
 - Surefire: `forkCount ${tester.forks}`, `reuseForks`, the manifest as `tester.manifest` (the default of
-  `@MidPointScenarios`), the argLine of the line (4.8+: the agent of the file redirection through
+  `@MidPointConfigTest`), the argLine of the line (4.8+: the agent of the file redirection through
   `dependency:properties`; 4.0 and 4.4: `-Xshare:off`, the JDK 11 toolchain, `maven.compiler.release` 11);
 - from the root POM: Evolveum's repository, plugin versions, the pgmem classifier profiles.
 
@@ -574,7 +578,7 @@ resolved from the reactor). The other parents were checked once with throwaway m
 - `InitialUsers`, `InitialRoles`, `InitialArchetypes`, `InitialOrgs`, `InitialServices`, `InitialTasks`,
   `InitialReports` (existing ref types, so every verb takes them), `InitialCollections`, `InitialDashboards`,
   `InitialPolicies` (security, value and 4.9+ policy objects), `InitialMarks` (4.8+), `InitialTemplates`
-  (`MidPointObjectRef`: name, OID, type, for `s.midpoint().object(...)`), 171 names; `UserItems`, 33 items of
+  (`MidPointObjectRef`: name, OID, type, for `t.midpoint().object(...)`), 171 names; `UserItems`, 33 items of
   midPoint's user schema (`ItemRef` without namespace) for `hasItem/values/why`.
 - **Where they live**: shipped in the tester, line-independent, each name with its `Lines`; not generated downstream
   (the generator runs against one configuration and cannot know other lines' initial objects), not generated at the
@@ -626,7 +630,7 @@ Full build (`verify`, offline, all lines, forks 1): 226 s (469 s before), every 
   live sync tasks and `files.map` have no scenario test.
 - The parents of 4.0, 4.4, 4.9 and 4.10 are not built with an example in this repository's build (checked once by
   hand); the example could get one module per line, at about 15 s of build time each.
-- The PoC API's README sections still describe the deleted tests' examples; a shorter reference of `s.midpoint()`
+- The PoC API's README sections still describe the deleted tests' examples; a shorter reference of `t.midpoint()`
   would read better.
 - From phase 3: outcome snapshots and the cross-line upgrade check, compile-time resource types, forks on a CI
   machine, `tasks.recurring: scheduled` with the cache, initial data of mirrors, `<const>`, one schema per manifest.
@@ -720,7 +724,7 @@ Full build (`verify`, offline, all lines): 220 s, 129 tests per line, all pass.
 
 Not covered yet: the execution phase on its own (an operation allowed in the request phase and refused in the
 execution one), the GUI authorizations (`#gui` URLs, decided by the GUI), the REST ones, and the visibility of
-objects (`s.midpoint().as(user).search(...)` of the PoC API, not in the scenario API).
+objects (`t.midpoint().as(user).search(...)` of the PoC API, not in the scenario API).
 
 ## What the GUI shows a user
 
@@ -838,7 +842,7 @@ What it found in midPoint's initial roles is in the README ("An authorization ma
 The recorder's three mapping wrappers (4.0: the `MappingEvaluator` bean; 4.4 and 4.8: `RecordingMappingImpl`) time
 midPoint's evaluation with `System.nanoTime()` around the call (the recorder's own work before and after excluded;
 its recording of the expressions inside a mapping included) and pass it to the listener; `Evaluation.duration()`
-gives it. In `Why`, the same evaluation repeated in a row is one line with its count. `Scenario.mappingStats()` groups
+gives it. In `Why`, the same evaluation repeated in a row is one line with its count. `MidPointConfigTester.mappingStats()` groups
 the evaluations of the test by mapping (name and owner): count, median, the total after the first, the first apart
 (it is far slower: in the HR sample's first evaluations 2-300 ms against medians of 0.1-2 ms, the script's
 compilation and the first search of LDAP), sorted by the total after the first. The projector evaluates a mapping 3
@@ -930,7 +934,7 @@ users do not need the lens.
 
 The scenario types an IGA configuration needs, and the outcomes each asserts:
 
-| Scenario | Drives | Asserts |
+| MidPointConfigTester | Drives | Asserts |
 |---|---|---|
 | Joiner from HR | add an HR row, run the deployed HR task (reconcile / live sync / import) | user exists with computed items, archetype, auto-assigned roles; accounts on targets with attributes, group memberships, enabled; welcome mail |
 | Mover | change HR row (department, manager, name), run task | role changes, account attribute changes, old group left, new joined; manager notified |
@@ -988,7 +992,7 @@ targets:                                  # per resource name; default is mirror
   AD:    { connector: mirror }            # no real AD connector: mirror from its stored schema
 
 mail:  { redirect: true }                 # GreenMail; false = leave transports (they fail), dummy transports always recorded
-files: { map: ["/opt/midpoint/var"] }     # redirected directories (needs the agent)
+files: { map: ["/opt/midpoint/var"], initial: { /var/lib/midpoint: files/var } }   # redirected directories, initial trees
 tasks: { autorun: false }                 # imported recurring tasks do not fire until a scenario runs them
 initialData:                              # objects imported after the config, part of the baseline
   - initial-data/users-and-orgs.xml
@@ -999,7 +1003,7 @@ actors:                                   # named users with roles, for "as(...)
 **Lifecycle.** The JUnit extension starts the line's midPoint once per JVM, loads the manifest, imports everything,
 loads the initial data, lets startup tasks settle, takes **the baseline snapshot**, and **resets to it before every test**.
 `ResetMode.PER_CLASS` goes away: there is one state, the deployment, and a test method is a scenario from that state.
-Scenario-local setup (a few users, a row in HR) is written in the test, which is right: it is the scenario's data.
+MidPointConfigTester-local setup (a few users, a row in HR) is written in the test, which is right: it is the scenario's data.
 Projects that want heavier shared initial data put it in `initialData:`.
 
 **Import order.** Before midPoint starts: the extension schemas (`*.xsd`, one set per JVM, as today). Then, type-ordered
@@ -1050,22 +1054,22 @@ Principles: names, not OIDs or `Class<?>`; verbs that an integrator says out lou
 assertion helpers; the recorder is reachable but not returned.
 
 ```java
-@MidPointScenarios                                   // one annotation; manifest found by convention or by attribute
+@MidPointConfigTest                                   // one annotation; manifest found by convention or by attribute
 class JoinerMoverLeaverTest {
 
-    @Test void joinerGetsDirectoryAccount(Scenario s) {
-        s.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
-        s.task("Reconcile HR").run();                // the deployed task; or s.resource("HR").reconcile() without one
+    @Test void joinerGetsDirectoryAccount(MidPointConfigTester t) {
+        t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
+        t.task("Reconcile HR").run();                // the deployed task; or t.resource("HR").reconcile() without one
 
-        s.user("e1001")
+        t.user("e1001")
             .hasFullName("John Doe")
             .hasRole("Dept Sales")
             .isEnabled();
-        s.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com")
+        t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com")
             .hasAttribute("cn", "John Doe")
             .memberOf("cn=sales,ou=groups,dc=example,dc=com")
             .isEnabled();
-        s.mails().to("manager@example.com").withSubject(containing("New employee")).exactly(1);
+        t.mails().to("manager@example.com").withSubject(containing("New employee")).exactly(1);
     }
 }
 ```
@@ -1074,19 +1078,19 @@ Vocabulary (complete enough to judge, not final):
 
 | Area | Verbs | Outcome objects |
 |---|---|---|
-| Sources/targets | `s.source(name).add/modify/delete/row(...)`, `s.target(name).account(id)`, `.group(id)`, `.accounts()` | `Account`: `hasAttribute`, `hasNoAttribute`, `isEnabled/isDisabled`, `memberOf`, `hasPassword`, `exists/doesNotExist` |
-| Tasks and time | `s.task(name).run()`, `s.resource(name).reconcile()/importAccounts()/liveSync()`, `s.time().advance("P30D")`, `s.time().runDueTasks()`, `s.time().runScanners()` | `TaskRun`: status, processed/failed counts |
-| Focus changes | `s.user(name).set("costCenter", "IT")`, `.assign("Role")`, `.unassign("Role")`, `.disable()`, `.enable()`, `.delete()`, `.recompute()`; `s.as("jdoe").user("jdoe").changePassword(...)` | `User`: `hasItem(path, values)`, `hasRole`, `hasNoRole`, `hasArchetype`, `isEnabled`, `hasAccountOn(resource)`, `hasNoAccountOn`, `situationOn(resource)` |
-| Requests and approvals | `s.as("jdoe").request().assign("Privileged Access")`, `s.cases().open()`, `s.workItems().assignedTo("cc-owner")`, `.approve(as: "cc-owner", comment: ...)`, `.reject`, `.delegateTo`, `.claim`; `s.case(name).cancel()` | `Case`: `isOpen/isClosed`, `stage()`, `outcome()`, `WorkItem`: `assignees`, `candidates`, `escalationLevel` |
-| Certification | `s.certification("role-assignments").start()`, `.openNextStage()`, `.workItems().forReviewer("sec-officer").decide("revoke")`, `.closeStage()`, `.remediate()`, `.close()` | campaign, cases, work items |
-| Reports | `s.report("users-by-cost-center").run(param: value)` | `ReportOutput`: `lines()`, `rows()` (parsed by the report's format), `columns()` |
-| Mails and notifications | `s.mails()`, `s.mails().since(step)`, `s.notifications()` | `Mail` as today (it is good) |
-| Files | `s.files().write(path, text)`, `s.files().read(path)` | `WrittenFile` as today |
-| Failure | `s.expectFailure(() -> ...)` returns the failure with its message and policy violations | |
-| Low level | `s.midpoint().bean(...)`, `s.midpoint().execute(ObjectDelta)`, `s.midpoint().object(type, name)` | escape hatch, prism types allowed here only |
-| Why | `s.why().item("e1001", "familyName")`, `s.why().attribute("LDAP", dn, "cn")`, `s.why().lastRun()` | the mapping evaluations behind one value, as a readable trace; also printed automatically when an outcome assertion fails |
+| Sources/targets | `t.source(name).add/modify/delete/row(...)`, `t.target(name).account(id)`, `.group(id)`, `.accounts()` | `Account`: `hasAttribute`, `hasNoAttribute`, `isEnabled/isDisabled`, `memberOf`, `hasPassword`, `exists/doesNotExist` |
+| Tasks and time | `t.task(name).run()`, `t.resource(name).reconcile()/importAccounts()/liveSync()`, `t.clock().advance("P30D")`, `t.clock().runDueTasks()`, `t.clock().runScanners()` | `TaskRun`: status, processed/failed counts |
+| Focus changes | `t.user(name).set("costCenter", "IT")`, `.assign("Role")`, `.unassign("Role")`, `.disable()`, `.enable()`, `.delete()`, `.recompute()`; `t.as("jdoe").user("jdoe").changePassword(...)` | `User`: `hasItem(path, values)`, `hasRole`, `hasNoRole`, `hasArchetype`, `isEnabled`, `hasAccountOn(resource)`, `hasNoAccountOn`, `situationOn(resource)` |
+| Requests and approvals | `t.as("jdoe").request().assign("Privileged Access")`, `t.cases().open()`, `t.workItems().assignedTo("cc-owner")`, `.approve(as: "cc-owner", comment: ...)`, `.reject`, `.delegateTo`, `.claim`; `t.case(name).cancel()` | `Case`: `isOpen/isClosed`, `stage()`, `outcome()`, `WorkItem`: `assignees`, `candidates`, `escalationLevel` |
+| Certification | `t.certification("role-assignments").start()`, `.openNextStage()`, `.workItems().forReviewer("sec-officer").decide("revoke")`, `.closeStage()`, `.remediate()`, `.close()` | campaign, cases, work items |
+| Reports | `t.report("users-by-cost-center").run(param: value)` | `ReportOutput`: `lines()`, `rows()` (parsed by the report's format), `columns()` |
+| Mails and notifications | `t.mails()`, `t.mails().since(step)`, `t.notifications()` | `Mail` as today (it is good) |
+| Files | `t.files().write(path, text)`, `t.files().read(path)` | `WrittenFile` as today |
+| Failure | `t.expectFailure(() -> ...)` returns the failure with its message and policy violations | |
+| Low level | `t.midpoint().bean(...)`, `t.midpoint().execute(ObjectDelta)`, `t.midpoint().object(type, name)` | escape hatch, prism types allowed here only |
+| Why | `t.why().item("e1001", "familyName")`, `t.why().attribute("LDAP", dn, "cn")`, `t.why().lastRun()` | the mapping evaluations behind one value, as a readable trace; also printed automatically when an outcome assertion fails |
 
-`hr.hire(...)`, `hr.transfer(...)` are **project-defined helpers** over `s.source("HR")` and `s.task(...)`: the tool
+`hr.hire(...)`, `hr.transfer(...)` are **project-defined helpers** over `t.source("HR")` and `t.task(...)`: the tool
 cannot know that "hire" means "a CSV row with these columns and a run of this task". The example in section 4 shows
 a five-line `Hr` helper. The tool ships generic verbs and makes helpers trivial to write; it should not ship a fake
 HR vocabulary.
@@ -1094,10 +1098,10 @@ HR vocabulary.
 **Expression inspection becomes `why()`.** The recorder stays installed (its cost is ~0.09 ms per evaluation). When
 `user("e1001").hasFullName("John Doe")` fails, the message shows the value, then the template mapping and inbounds that
 produced `fullName` for that user in the last run, with their sources and condition. `why()` exposes the same on demand.
-The `Selection`/`Identity` API survives under `s.why().evaluations()` for the tool's own tests and for power users; it
+The `Selection`/`Identity` API survives under `t.why().evaluations()` for the tool's own tests and for power users; it
 is not in the first package a user opens.
 
-**Steps.** `s.step("hire")` stays, with a different purpose: it names a **snapshot point** for the upgrade check (3.5)
+**Steps.** `t.step("hire")` stays, with a different purpose: it names a **snapshot point** for the upgrade check (3.5)
 and groups mails/evaluations. It is optional; a test without steps snapshots at its end.
 
 **Non-Java scenario files (YAML / Gherkin).** Recommendation: **not now.** Reasons: scenarios need computed values
@@ -1152,13 +1156,13 @@ from README 1071-1076 stays: this compares two fresh databases with two configur
 | Per-place tests (`VariablesTest`, `RecorderTest`, `IdentityTest`, `MappingPlacementTest`, `CoverageTest`...) | Keep in the tool's repo as recorder tests; never present as examples | They are correct as tests of the engine. |
 | `coverage.md` of user config | Replace by "which objects/resources/roles did any scenario touch" at outcome level (optional) | Expression coverage of a config is not what reviewers ask. |
 | `ResetMode.PER_CLASS` | Drop | One baseline, reset per test. |
-| `importObject(s)`/`importResource` in tests | Drop from the main API; keep `s.midpoint().importObject` as a driver for admin scenarios | The manifest loads the deployment. |
+| `importObject(s)`/`importResource` in tests | Drop from the main API; keep `t.midpoint().importObject` as a driver for admin scenarios | The manifest loads the deployment. |
 | `Run` returned by every driver | Drop; drivers return outcome objects or nothing; evaluations via `why()` | The main complaint. |
 | Static checks (`tester/static`) | **Separate artifact and CLI** (`midpoint-config-check-<line>`), run by the loader as a pre-flight (schema/upgrade findings printed before the first scenario) | Valuable for upgrade projects; wrong place in a test API. The Groovy compile check is a 6 s pre-flight nobody should have to write a test for. |
 | JVM agent (clock + file redirect) | Keep, **opt-in through the manifest** (`files.map`, `time.shiftJvmClock: true`), passed as `-javaagent` by the generated POM, not dynamically attached | JDK 21 warns, a future JDK refuses dynamic attach; most scenarios only need midPoint's `Clock`. |
 | 4.0 and 4.4 lines | Owner decision (question 2) | 4.8+: 2,318 lines shared in `base-4.8` plus 61-79 per line. 4.0/4.4: 837 shared in `base-4.0` plus 1,176/1,288 per line, a second recorder/driver implementation and a JDK 11 toolchain. Keep if an active 4.4 -> 4.8 upgrade project needs them; otherwise freeze the PoC for them. |
-| `MidPoint` god interface / `MidPointImpl` | Split into `Loader`, `Targets`, `Drivers`, `Services`, `Why` behind `Scenario` | Maintainability. |
-| `mp.script(code)`, `validateValue`, `generateValue`, `bulkAction` | Keep under `s.midpoint()` | Useful, not scenario-level. |
+| `MidPoint` god interface / `MidPointImpl` | Split into `Loader`, `Targets`, `Drivers`, `Services`, `Why` behind `MidPointConfigTester` | Maintainability. |
+| `mp.script(code)`, `validateValue`, `generateValue`, `bulkAction` | Keep under `t.midpoint()` | Useful, not scenario-level. |
 
 ### 3.7 Packaging
 
@@ -1197,22 +1201,22 @@ initialData: [initial-data/approvers.xml]          # cc-owner, it-member, sec-of
 ### 4.1 In the proposed API
 
 ```java
-@MidPointScenarios
+@MidPointConfigTest
 class HrLifecycleTest {
 
     /** Project helper: what "hire" means in this deployment. Five lines, owned by the project. */
-    record Hr(Scenario s) {
+    record Hr(MidPointConfigTester t) {
         void hire(String no, String first, String last, String dept) {
-            s.source("HR").add(no, Map.of("firstName", first, "lastName", last, "department", dept));
-            s.task("Reconcile HR").run();
+            t.source("HR").add(no, Map.of("firstName", first, "lastName", last, "department", dept));
+            t.task("Reconcile HR").run();
         }
         void update(String no, String column, String value) {
-            s.source("HR").modify(no, column, value);
-            s.task("Reconcile HR").run();
+            t.source("HR").modify(no, column, value);
+            t.task("Reconcile HR").run();
         }
         void terminate(String no) {
-            s.source("HR").delete(no);
-            s.task("Reconcile HR").run();
+            t.source("HR").delete(no);
+            t.task("Reconcile HR").run();
         }
     }
 
@@ -1221,55 +1225,55 @@ class HrLifecycleTest {
     static final String IT = "cn=it,ou=groups,dc=example,dc=com";
 
     @Test
-    void joinerMoverLeaver(Scenario s) {
+    void joinerMoverLeaver(MidPointConfigTester t) {
         Hr hr = new Hr(s);
 
-        s.step("hire");
+        t.step("hire");
         hr.hire("1001", "John", " DOE ", "Sales");
-        s.user("e1001").hasFullName("John Doe").hasItem("costCenter", "Sales").hasRole("Dept Sales")
+        t.user("e1001").hasFullName("John Doe").hasItem("costCenter", "Sales").hasRole("Dept Sales")
                 .hasAccountOn("HR").hasAccountOn("LDAP");
-        s.target("LDAP").account(JOHN).hasAttribute("cn", "John Doe").hasAttribute("ou", "Sales").memberOf(SALES);
+        t.target("LDAP").account(JOHN).hasAttribute("cn", "John Doe").hasAttribute("ou", "Sales").memberOf(SALES);
 
-        s.step("move to IT");
+        t.step("move to IT");
         hr.update("1001", "department", "IT");
-        s.user("e1001").hasRole("Dept IT").hasNoRole("Dept Sales");
-        s.target("LDAP").account(JOHN).hasAttribute("ou", "IT").memberOf(IT).notMemberOf(SALES);
+        t.user("e1001").hasRole("Dept IT").hasNoRole("Dept Sales");
+        t.target("LDAP").account(JOHN).hasAttribute("ou", "IT").memberOf(IT).notMemberOf(SALES);
 
-        s.step("leave");
+        t.step("leave");
         hr.terminate("1001");
-        s.user("e1001").doesNotExist();
-        s.target("LDAP").account(JOHN).doesNotExist();
-        s.target("LDAP").group(IT).hasNoMember(JOHN);
+        t.user("e1001").doesNotExist();
+        t.target("LDAP").account(JOHN).doesNotExist();
+        t.target("LDAP").group(IT).hasNoMember(JOHN);
     }
 
     @Test
-    void privilegedAccessNeedsTwoApprovals(Scenario s) {
+    void privilegedAccessNeedsTwoApprovals(MidPointConfigTester t) {
         new Hr(s).hire("1001", "John", "Doe", "IT");
 
-        s.step("request");
-        s.as("e1001").request().assign("Privileged Access");
-        s.user("e1001").hasNoRole("Privileged Access");
-        Case c = s.cases().single();
+        t.step("request");
+        t.as("e1001").request().assign("Privileged Access");
+        t.user("e1001").hasNoRole("Privileged Access");
+        Case c = t.cases().single();
         c.isOpen().atStage(1);
         c.workItems().assignedTo("cc-owner").exactly(1);
         c.workItems().offeredTo("IT department").exactly(1);
-        s.mails().to("cc-owner@example.com").withSubject(containing("Privileged Access")).exactly(1);
+        t.mails().to("cc-owner@example.com").withSubject(containing("Privileged Access")).exactly(1);
 
-        s.step("stage 1");
+        t.step("stage 1");
         c.workItems().assignedTo("cc-owner").approve(as("cc-owner"));
         c.workItems().offeredTo("IT department").claim(as("it-member")).approve(as("it-member"));
         c.atStage(2);
         c.workItems().offeredTo("Security officers").exactly(1);
 
-        s.step("escalation after the deadline");
-        s.time().advance("P6D").runScanners();
+        t.step("escalation after the deadline");
+        t.clock().advance("P6D").runScanners();
         c.workItems().open().single().hasEscalationLevel(1).hasAssignee("sec-officer");
 
-        s.step("stage 2");
+        t.step("stage 2");
         c.workItems().open().single().approve(as("sec-officer"));
         c.isClosed().withOutcome("approve");
-        s.user("e1001").hasRole("Privileged Access").hasItem("description", "privileged IT-100");
-        s.mails().to("e1001@example.com").withSubject(containing("approved")).exactly(1);
+        t.user("e1001").hasRole("Privileged Access").hasItem("description", "privileged IT-100");
+        t.mails().to("e1001@example.com").withSubject(containing("approved")).exactly(1);
     }
 }
 ```
@@ -1394,8 +1398,8 @@ so the raw baseline import is mostly ordering and reference resolution on top of
 Risk: raw import of objects the PoC always model-imported may surface differences (filter references in inducements,
 `resolutionTime=run`, autoassign); the real-config trial finds them.
 
-**Phase 2 - Scenario API.**
-`Scenario`, target/source handles, `User`/`Account`/`Case`/`WorkItem`/`Mail`/`ReportOutput` outcome objects with
+**Phase 2 - MidPointConfigTester API.**
+`MidPointConfigTester`, target/source handles, `User`/`Account`/`Case`/`WorkItem`/`Mail`/`ReportOutput` outcome objects with
 assertion helpers, `as(user)`, `request()`, `time()`, `expectFailure`. Drivers stop returning `Run`; the recorder keeps
 recording per driver call behind `why()`; failure messages append the trace. Port the PoC's scenario tests
 (`HrToLdap*`, `Activation*`, `LiveSync*`, `Approval*`, `Certification*`, `Report*`, `MailNotification*`) to the new API

@@ -229,6 +229,39 @@ final class MirrorResourceXml {
                 ? fromStoredSchema(schema, options, activation, password)
                 : fromSchemaHandling(objectTypes, accountClasses, otherClasses, associations, options, activation,
                         password, simulated);
+        for (ResourceOptions.StoredValues values : options.storedValues()) {
+            if (values.keySeparator == null && values.expression == null) {
+                continue;
+            }
+            List<MirrorClass> changed = new ArrayList<>();
+            boolean found = false;
+            for (MirrorClass c : classes) {
+                boolean match = c.midPointName.equals(values.objectClass);
+                found |= match;
+                changed.add(!match ? c : values.keySeparator != null
+                        ? c.withKeyedValues(values.attribute, values.keySeparator)
+                        : c.withStoreExpression(values.attribute, values.expression));
+            }
+            if (!found) {
+                throw new IllegalArgumentException("targets " + (values.keySeparator != null ? "keyedValues" : "store")
+                        + " " + values.attribute + ": no object class " + values.objectClass);
+            }
+            classes = changed;
+        }
+        if (options.identifierIsConnIdUid()) {
+            List<MirrorClass> generating = new ArrayList<>();
+            for (MirrorClass c : classes) {
+                generating.add(c.uidAttribute == null ? c.withGeneratedUid() : c);
+            }
+            classes = generating;
+        }
+        if (options.identifierValue() != null) {
+            List<MirrorClass> issuing = new ArrayList<>();
+            for (MirrorClass c : classes) {
+                issuing.add(c.withUidValue(options.identifierValue()));
+            }
+            classes = issuing;
+        }
         classes = withComputed(classes, associations, options);
         classes = withShortcuts(classes, shortcuts, options);
         if (validFrom || validTo) {
@@ -480,6 +513,14 @@ final class MirrorResourceXml {
                         + " in schemaHandling (" + String.join(", ", derived.keySet()) + ")");
             }
             d.add(new QName(NS_RI, extra[1]), false);
+        }
+        for (ResourceOptions.StoredValues multi : options.storedValues()) {
+            Derived d = derived.get(multi.objectClass);
+            if (d == null) {
+                throw new IllegalArgumentException("targets multiValued " + multi.attribute + ": no object class "
+                        + multi.objectClass + " in schemaHandling (" + String.join(", ", derived.keySet()) + ")");
+            }
+            d.add(new QName(NS_RI, multi.attribute), true);
         }
         boolean legacy = derived.keySet().stream().anyMatch(MirrorResourceXml::isLegacyName);
         String uid = options.identifier();

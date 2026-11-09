@@ -8,12 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
+
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 
 /**
  * Guards the reset every scenario starts from (the deployment's snapshot) and that the deployment cache's restore
@@ -23,7 +26,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
  * provisioning ResourceCache) that survives the reset serves the previous repetition's definitions and the next
  * repetition fails. A new midPoint line with a new kind of cache shows up here.
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 class ResetTest {
 
     static final File DIR = Fixtures.ROOT;
@@ -31,8 +34,9 @@ class ResetTest {
     @TempDir
     static Path tmp;
 
-    @BeforeAll
-    static void configure(MidPoint mp) {
+    @BeforeEach
+    void configure(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.importObject(new File(DIR, "role-employee.xml"));
         mp.importObject(new File(DIR, "role-dept-it.xml"));
         mp.importObject(new File(DIR, "object-template-user.xml"));
@@ -42,7 +46,8 @@ class ResetTest {
 
     /** The object template and an imported resource, changed after the reset. */
     @RepeatedTest(3)
-    void sameResultAfterEveryReset(MidPoint mp, RepetitionInfo repetition) throws IOException {
+    void sameResultAfterEveryReset(MidPointConfigTester t, RepetitionInfo repetition) throws IOException {
+        MidPoint mp = t.midpoint();
         int round = repetition.getCurrentRepetition();
         TargetSystem hr = mp.target("HR");
 
@@ -72,7 +77,8 @@ class ResetTest {
 
     /** A resource first imported in the test, under the same OID with another definition in every repetition. */
     @RepeatedTest(2)
-    void sameOidDifferentDefinitionAfterReset(MidPoint mp, RepetitionInfo repetition) throws IOException {
+    void sameOidDifferentDefinitionAfterReset(MidPointConfigTester t, RepetitionInfo repetition) throws IOException {
+        MidPoint mp = t.midpoint();
         int round = repetition.getCurrentRepetition();
         Path resource = tmp.resolve("resource-ldap-" + round + ".xml");
         Files.writeString(resource, read(new File(MembershipTest.DIR, "resource-ldap.xml"))

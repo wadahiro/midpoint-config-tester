@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -14,21 +14,29 @@ import com.evolveum.midpoint.model.common.mapping.MappingFactory;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ArchetypeType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType;
 
-/** The runtime: baseline, recorder wiring, and the reset after each method back to the class's configuration. */
-@MidPointTest
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
+
+/**
+ * The runtime: baseline, recorder wiring, and the reset after each method back to the deployment (the configuration a
+ * method imports is gone after it).
+ */
+@MidPointConfigTest(Fixtures.BARE)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RuntimeTest {
 
     static final String NS = "xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'";
 
-    @BeforeAll
-    static void configure(MidPoint mp) {
+    @BeforeEach
+    void configure(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.importObject(new File(Fixtures.ROOT, "role-dept-it.xml"));
     }
 
     @Test
     @Order(1)
-    void baselineAndWiring(MidPoint mp) throws Exception {
+    void baselineAndWiring(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
         // the line of the midPoint release the module is built against (-Dmidpoint48.version=... etc.)
         assertThat(System.getProperty("tester.midpointVersion")).startsWith(mp.line() + ".");
         // archetypes cases, approvals, certification and reports need
@@ -56,7 +64,8 @@ class RuntimeTest {
 
     @Test
     @Order(2)
-    void changeSomething(MidPoint mp) {
+    void changeSomething(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.addObjectXml("<user " + NS + "><name>temp</name></user>");
         mp.importObjectXml("<role " + NS + " oid='10000000-0000-0000-0000-00000000c002'><name>Renamed</name></role>");
         assertThat(mp.user("temp")).isNotNull();
@@ -64,7 +73,8 @@ class RuntimeTest {
 
     @Test
     @Order(3)
-    void startsFromTheClassState(MidPoint mp) {
+    void startsFromTheDeployment(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         assertThat(mp.user("temp")).isNull();
         assertThat(mp.object(RoleType.class, "10000000-0000-0000-0000-00000000c002").getName().getOrig())
                 .isEqualTo("Dept IT");

@@ -32,6 +32,15 @@ final class RecordingTransport extends DummyTransport {
         }
     }
 
+    /** Forgets the notifications after the first {@code count} (a checkpoint of the test, restored). */
+    void keep(int count) {
+        synchronized (sent) {
+            while (sent.size() > count) {
+                sent.remove(sent.size() - 1);
+            }
+        }
+    }
+
     void clear() {
         synchronized (sent) {
             sent.clear();

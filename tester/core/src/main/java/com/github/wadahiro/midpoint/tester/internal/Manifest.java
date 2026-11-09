@@ -38,7 +38,7 @@ import com.github.wadahiro.midpoint.tester.ResourceOptions;
  *   AD:   { schema: schema/ad.xml }   # the stored <schema>, exported from a midPoint connected to the real one
  * mail: { redirect: true }
  * http: { redirect: ["https://hooks.example.com"] }   # URL prefixes the tester stands in for (HttpStandIn)
- * files: { map: [/opt/midpoint/var] }
+ * files: { map: [/opt/midpoint/var], initial: { /opt/midpoint/var: files/var } }   # initial: the directory's tree
  * tasks: { recurring: held }              # held | scheduled
  * names: { package: com.example.idm.names }   # typed names generated from the configuration (NamesGenerator)
  * </pre>
@@ -89,7 +89,22 @@ public final class Manifest {
     public final boolean mailRedirect;
     /** URL prefixes of HTTP services the tester stands in for ({@code http.redirect}). */
     public final List<String> httpRedirect;
+    /** midPoint's constants ({@code <constants>} of its config.xml: {@code <const>}, {@code midpoint.getConst}). */
+    public final Map<String, String> constants;
+    /** Stand-in databases ({@code databases.<name>.init}: SQL files, relative to the manifest). */
+    public final Map<String, List<Path>> databases;
+    /** Environment variables of the scripts ({@code environment}; {@code ${database.<name>.url}} and {@code .user}). */
+    public final Map<String, String> environment;
+    /** Loggers captured besides the scripts' ({@code logs.capture}: a custom library's package, for {@code s.logs()}). */
+    public final List<String> logCapture;
+    /** Hosts of other machines the test JVM may connect to ({@code network.allow}; none by default). */
+    public final List<String> networkAllow;
     public final List<String> mappedDirectories;
+    /**
+     * Mapped directory -> a directory of the repository whose tree it holds when the deployment is loaded (files, and
+     * directories kept by a {@code .gitkeep}).
+     */
+    public final Map<String, Path> initialFiles;
     public final Recurring recurring;
     /** {@code names.package}: the package of the generated names ({@code NamesGenerator}); null: none generated. */
     public final String namesPackage;
@@ -97,7 +112,8 @@ public final class Manifest {
     private Manifest(Path file, Map<String, Object> yaml) {
         this.file = file;
         this.dir = file.getParent();
-        check(yaml, "", Set.of("config", "targets", "mail", "http", "files", "tasks", "names"));
+        check(yaml, "", Set.of("config", "targets", "constants", "databases", "environment", "mail", "http", "network", "logs", "files",
+                "tasks", "names"));
         Map<String, Object> config = map(yaml.get("config"), "config");
         check(config, "config.", Set.of("dirs", "exclude", "properties", "replace", "overlays", "schema"));
         configDirs = paths(config.get("dirs"), "config.dirs");
@@ -141,6 +157,39 @@ public final class Manifest {
         map(yaml.get("targets"), "targets").forEach((resource, value) -> t.put(resource, target(resource, value)));
         targets = Collections.unmodifiableMap(t);
 
+        Map<String, String> c = new LinkedHashMap<>();
+        map(yaml.get("constants"), "constants").forEach((name, value) -> {
+            if (value == null || value instanceof Map || value instanceof List) {
+                throw invalid("constants." + name + ": a value");
+            }
+            c.put(name, value.toString());
+        });
+        constants = Collections.unmodifiableMap(c);
+
+        Map<String, List<Path>> dbs = new LinkedHashMap<>();
+        map(yaml.get("databases"), "databases").forEach((name, value) -> {
+            Map<String, Object> db = map(value, "databases." + name);
+            check(db, "databases." + name + ".", Set.of("init"));
+            List<Path> init = new ArrayList<>();
+            for (String script : strings(db.get("init"), "databases." + name + ".init")) {
+                Path path = dir.resolve(script).normalize();
+                if (!Files.isRegularFile(path)) {
+                    throw invalid("databases." + name + ".init: no file " + path);
+                }
+                init.add(path);
+            }
+            dbs.put(name, init);
+        });
+        databases = Collections.unmodifiableMap(dbs);
+        Map<String, String> env = new LinkedHashMap<>();
+        map(yaml.get("environment"), "environment").forEach((name, value) -> {
+            if (value == null || value instanceof Map || value instanceof List) {
+                throw invalid("environment." + name + ": a value");
+            }
+            env.put(name, value.toString());
+        });
+        environment = Collections.unmodifiableMap(env);
+
         Map<String, Object> mail = map(yaml.get("mail"), "mail");
         check(mail, "mail.", Set.of("redirect"));
         mailRedirect = bool(mail.get("redirect"), "mail.redirect", true);
@@ -153,9 +202,30 @@ public final class Manifest {
             }
         }
 
+        Map<String, Object> network = map(yaml.get("network"), "network");
+        check(network, "network.", Set.of("allow"));
+        networkAllow = strings(network.get("allow"), "network.allow");
+
+        Map<String, Object> logs = map(yaml.get("logs"), "logs");
+        check(logs, "logs.", Set.of("capture"));
+        logCapture = strings(logs.get("capture"), "logs.capture");
+
         Map<String, Object> files = map(yaml.get("files"), "files");
-        check(files, "files.", Set.of("map"));
-        mappedDirectories = strings(files.get("map"), "files.map");
+        check(files, "files.", Set.of("map", "initial"));
+        List<String> mapped = new ArrayList<>(strings(files.get("map"), "files.map"));
+        Map<String, Path> initial = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : map(files.get("initial"), "files.initial").entrySet()) {
+            Path tree = dir.resolve(String.valueOf(e.getValue())).normalize();
+            if (!Files.isDirectory(tree)) {
+                throw invalid("files.initial." + e.getKey() + ": no directory " + tree);
+            }
+            initial.put(e.getKey(), tree);
+            if (!mapped.contains(e.getKey())) {
+                mapped.add(e.getKey());
+            }
+        }
+        mappedDirectories = List.copyOf(mapped);
+        initialFiles = java.util.Collections.unmodifiableMap(initial);
 
         Map<String, Object> tasks = map(yaml.get("tasks"), "tasks");
         check(tasks, "tasks.", Set.of("recurring"));
@@ -255,7 +325,7 @@ public final class Manifest {
         String where = "targets." + resource;
         Map<String, Object> spec = map(value, where);
         check(spec, where + ".", Set.of("connector", "initialData", "schema", "namingAttribute", "identifier", "referentialIntegrity",
-                "caseInsensitiveNames", "computed", "attributes"));
+                "caseInsensitiveNames", "computed", "attributes", "multiValued", "keyedValues", "store"));
         String connector = spec.get("connector") != null ? spec.get("connector").toString() : "mirror";
         if (!Set.of("mirror", "csv", "ldap").contains(connector)) {
             throw invalid(where + ".connector: mirror, csv or ldap, not " + connector);
@@ -281,8 +351,16 @@ public final class Manifest {
         } else if (naming != null) {
             options = options.namingAttribute(naming.toString());
         }
-        if (spec.get("identifier") != null) {
-            options = options.identifier(spec.get("identifier").toString());
+        Object identifier = spec.get("identifier");
+        if (identifier instanceof Map) {
+            Map<String, Object> id = map(identifier, where + ".identifier");
+            check(id, where + ".identifier.", Set.of("attribute", "value"));
+            if (id.get("attribute") == null || id.get("value") == null) {
+                throw new IllegalArgumentException(where + ".identifier: attribute and value (a Groovy expression)");
+            }
+            options = options.identifier(id.get("attribute").toString(), id.get("value").toString());
+        } else if (identifier != null) {
+            options = options.identifier(identifier.toString());
         }
         if (bool(spec.get("referentialIntegrity"), where + ".referentialIntegrity", false)) {
             options = options.referentialIntegrity();
@@ -295,6 +373,30 @@ public final class Manifest {
             for (Map.Entry<String, Object> e : map(spec.get("attributes"), where + ".attributes").entrySet()) {
                 for (Object attribute : list(e.getValue(), where + ".attributes." + e.getKey())) {
                     options = options.attribute(e.getKey(), attribute.toString());
+                }
+            }
+        }
+        if (spec.get("multiValued") != null) {
+            // { Connection: [parameters, ...] }: attributes multi-valued on the real resource
+            for (Map.Entry<String, Object> e : map(spec.get("multiValued"), where + ".multiValued").entrySet()) {
+                for (Object attribute : list(e.getValue(), where + ".multiValued." + e.getKey())) {
+                    options = options.multiValued(e.getKey(), attribute.toString());
+                }
+            }
+        }
+        if (spec.get("keyedValues") != null) {
+            // { Connection: { parameters: "=" } }: key=value values the target system keeps one per key
+            for (Map.Entry<String, Object> e : map(spec.get("keyedValues"), where + ".keyedValues").entrySet()) {
+                for (Map.Entry<String, Object> a : map(e.getValue(), where + ".keyedValues." + e.getKey()).entrySet()) {
+                    options = options.keyedValues(e.getKey(), a.getKey(), String.valueOf(a.getValue()));
+                }
+            }
+        }
+        if (spec.get("store") != null) {
+            // { Connection: { parameters: "<Groovy of values, add, remove, replace, name>" } }
+            for (Map.Entry<String, Object> e : map(spec.get("store"), where + ".store").entrySet()) {
+                for (Map.Entry<String, Object> a : map(e.getValue(), where + ".store." + e.getKey()).entrySet()) {
+                    options = options.store(e.getKey(), a.getKey(), String.valueOf(a.getValue()));
                 }
             }
         }

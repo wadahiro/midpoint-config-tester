@@ -43,4 +43,38 @@ class HttpStandInTest {
         http.clear();
         assertThat(http.requests()).isEmpty();
     }
+
+    /**
+     * A client that does not use the proxy selector is given the server's own address (the system property
+     * {@code tester.http.url}); the test's answer (status, JSON body) matches the path, the last answer wins, and
+     * the request is recorded with that address. Without an answer: 200 and no body.
+     */
+    @Test
+    void aClientGivenTheOwnAddressGetsTheTestsAnswer() throws Exception {
+        HttpStandIn http = HttpStandIn.get();
+        http.clear();
+        String base = System.getProperty(HttpStandIn.URL_PROPERTY);
+        assertThat(base).startsWith("http://127.0.0.1:");
+        http.respond("POST", "/issuer/api/issue", 500, "{\"error\":\"busy\"}");
+        http.respond("POST", "/issuer/api/issue", 200, "{\"serial\":\"01\"}");
+
+        HttpURLConnection post = (HttpURLConnection) new URL(base + "/issuer/api/issue").openConnection(
+                java.net.Proxy.NO_PROXY);
+        post.setRequestMethod("POST");
+        post.setDoOutput(true);
+        try (OutputStream out = post.getOutputStream()) {
+            out.write("{\"cn\":\"alice\"}".getBytes(StandardCharsets.UTF_8));
+        }
+        assertThat(post.getResponseCode()).isEqualTo(200);
+        assertThat(post.getContentType()).startsWith("application/json");
+        assertThat(new String(post.getInputStream().readAllBytes(), StandardCharsets.UTF_8))
+                .isEqualTo("{\"serial\":\"01\"}");
+        post.disconnect();
+        assertThat(http.requests()).extracting(HttpRequest::url).containsExactly(base + "/issuer/api/issue");
+
+        HttpURLConnection other = (HttpURLConnection) new URL(base + "/other").openConnection(java.net.Proxy.NO_PROXY);
+        assertThat(other.getResponseCode()).isEqualTo(200);
+        other.disconnect();
+        http.clear();
+    }
 }

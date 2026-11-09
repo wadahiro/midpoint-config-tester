@@ -75,7 +75,6 @@ import com.github.wadahiro.midpoint.tester.Reports;
 import com.github.wadahiro.midpoint.tester.ResourceOptions;
 import com.github.wadahiro.midpoint.tester.Run;
 import com.github.wadahiro.midpoint.tester.TargetSystem;
-import com.github.wadahiro.midpoint.tester.Time;
 
 /** {@link MidPoint} on top of a line's {@link Harness}; only API that is the same on every line is used here. */
 final class MidPointImpl implements MidPoint {
@@ -93,7 +92,6 @@ final class MidPointImpl implements MidPoint {
     final Harness harness;
     private final AtomicInteger xmlCount = new AtomicInteger();
     private final AtomicInteger mailCount = new AtomicInteger();
-    private String mirrorConnectorOid;
     private LineDrivers drivers;
     private volatile String step;
 
@@ -562,6 +560,59 @@ final class MidPointImpl implements MidPoint {
         return drivers().mails();
     }
 
+    /** The audit log's position when the test method started ({@link #markAuditStart()}). */
+    private long auditStart = AuditRecords.START;
+
+    /** midPoint's clock when the test method started: where the schedules of tasks that never ran start from. */
+    private long testStart = Long.MIN_VALUE;
+
+    /**
+     * Takes the audit log's position ({@link #auditRecords()}) and midPoint's clock ({@link #runDueTasks()}) as the
+     * start of the test method.
+     */
+    void markAuditStart() {
+        auditStart = drivers().auditPosition();
+        testStart = harness.bean(com.evolveum.midpoint.common.Clock.class).currentTimeMillis();
+        dueTasksRun = false;
+    }
+
+    /** The test's own positions (audit, schedules) at a checkpoint ({@link #restoreTestMarks}). */
+    Object[] testMarks() {
+        return new Object[] { auditStart, testStart, dueTasksRun };
+    }
+
+    void restoreTestMarks(Object[] marks) {
+        auditStart = (Long) marks[0];
+        testStart = (Long) marks[1];
+        dueTasksRun = (Boolean) marks[2];
+    }
+
+    /** Whether {@link #runDueTasks()} has run in this test method ({@link #startTestAt} must come before). */
+    private boolean dueTasksRun;
+
+    /**
+     * Takes {@code millis} (midPoint's clock, the clock already there) as the start of the test method for the
+     * schedules of tasks that never ran: a cron time before it is no run the test missed.
+     */
+    void startTestAt(long millis) {
+        if (dueTasksRun) {
+            throw new IllegalStateException("The test's start cannot move after due tasks have run");
+        }
+        testStart = millis;
+    }
+
+    @Override
+    public List<com.github.wadahiro.midpoint.tester.AuditRecord> auditRecords() {
+        return drivers().auditRecordsAfter(auditStart);
+    }
+
+    @Override
+    public List<com.github.wadahiro.midpoint.tester.AuditRecord> auditRecords(Runnable during) {
+        long before = drivers().auditPosition();
+        during.run();
+        return drivers().auditRecordsAfter(before);
+    }
+
     @Override
     public List<com.github.wadahiro.midpoint.tester.HttpRequest> httpRequests() {
         return HttpStandIn.get().requests();
@@ -669,23 +720,39 @@ final class MidPointImpl implements MidPoint {
 
     /**
      * Runs the recurring tasks due by midPoint's clock ({@link Time#runDueTasks()}): each once, in the order of their
-     * names, waiting for each run before the next.
+     * names, waiting for each run before the next; fails, after them all, if one of them could not run (fatal error).
      */
     Run runDueTasks() {
+        dueTasksRun = true;
         awaitBackgroundWork("run due tasks");
         long now = harness.bean(com.evolveum.midpoint.common.Clock.class).currentTimeMillis();
         List<String> due = new ArrayList<>(TaskSchedules.due(harness.quartzScheduler(), oid -> {
             Long last = lastRunStart(oid);
             return last != null ? Recorder.clockAt(oid, last) : null;
-        }, now));
+        }, now, testStart));
         // a trigger of a task the repository has suspended (e.g. resumed in an earlier test, the reset restoring the
         // repository, not Quartz) does not run, as in midPoint
         due.removeIf(oid -> !runnable(oid));
         due.sort(java.util.Comparator.comparing(oid -> nameOf(TaskType.class, oid)));
         return run("run due tasks", (task, result) -> {
+            List<String> failed = new ArrayList<>();
             for (String oid : due) {
                 runNow(oid, result);
                 awaitBackgroundWork("run " + nameOf(TaskType.class, oid));
+                // a due task that could not run (fatal error) fails the call; partial errors (some objects failed, as
+                // midPoint's tasks often have in production) stay in the run's result
+                OperationResult taskResult = new OperationResult("due task " + nameOf(TaskType.class, oid));
+                String errors = taskErrors(oid, taskResult);
+                if (errors != null) {
+                    result.addSubresult(taskResult);
+                    if (resultStatus(oid) == com.evolveum.midpoint.xml.ns._public.common.common_3
+                            .OperationResultStatusType.FATAL_ERROR) {
+                        failed.add(nameOf(TaskType.class, oid) + ": " + errors);
+                    }
+                }
+            }
+            if (!failed.isEmpty()) {
+                throw new IllegalStateException("Due tasks failed:\n" + String.join("\n", failed));
             }
             return Outcome.NONE;
         });
@@ -831,6 +898,12 @@ final class MidPointImpl implements MidPoint {
      * midPoint. Nothing for an OID of another type, or a task that ended without error; else the errors to report
      * (the result's tree and the last item the task failed on).
      */
+    /** The result status of the task's last run (null if there is no task). */
+    private com.evolveum.midpoint.xml.ns._public.common.common_3.OperationResultStatusType resultStatus(String oid) {
+        TaskType task = object(TaskType.class, oid);
+        return task != null ? task.getResultStatus() : null;
+    }
+
     private String taskErrors(String oid, OperationResult result) throws Exception {
         if (oid == null) {
             return null;
@@ -906,7 +979,7 @@ final class MidPointImpl implements MidPoint {
         return FileArea.get();
     }
 
-    @Override
+    /** The test's clock, as {@code MidPointConfigTester#clock()} drives it ({@link Internals#time}). */
     public synchronized Time time() {
         if (time == null) {
             time = new TimeImpl(this);
@@ -1010,6 +1083,22 @@ final class MidPointImpl implements MidPoint {
     }
 
     @Override
+    public <T> T createBean(Class<T> type) {
+        return harness.bean(org.springframework.context.ApplicationContext.class).getAutowireCapableBeanFactory()
+                .createBean(type);
+    }
+
+    @Override
+    public <T> Answer<T> invoke(String label, com.github.wadahiro.midpoint.tester.Invocation<T> code) {
+        java.util.List<T> value = new java.util.ArrayList<>(java.util.Collections.singletonList(null));
+        Run run = run(label, (task, result) -> {
+            value.set(0, code.run(task, result));
+            return Outcome.NONE;
+        });
+        return new Answer<>(value.get(0), run);
+    }
+
+    @Override
     public Object harness() {
         return harness.raw();
     }
@@ -1043,13 +1132,87 @@ final class MidPointImpl implements MidPoint {
         }
     }
 
+    /** The caller of the driver calls of a {@link #callAs} block; null outside one, and inside its calls' own work. */
+    private final ThreadLocal<com.github.wadahiro.midpoint.tester.Caller> caller = new ThreadLocal<>();
+
+    @Override
+    public void callAs(com.github.wadahiro.midpoint.tester.Caller who, Runnable calls) {
+        com.github.wadahiro.midpoint.tester.Caller before = caller.get();
+        caller.set(who);
+        try {
+            calls.run();
+        } finally {
+            caller.set(before);
+        }
+    }
+
     private Run runAsTimed(String user, String name, Operation operation, boolean failOnError) {
+        // the caller applies to this call, not to the lookups and runs it makes itself
+        com.github.wadahiro.midpoint.tester.Caller who = caller.get();
+        caller.remove();
+        try {
+            return runAsTimed(user, name, operation, failOnError, who);
+        } finally {
+            if (who != null) {
+                caller.set(who);
+            }
+        }
+    }
+
+    private Run runAsTimed(String user, String name, Operation operation, boolean failOnError,
+            com.github.wadahiro.midpoint.tester.Caller who) {
+        if (user == null && who != null) {
+            user = who.user();
+        }
+        String owner = who != null && user.equals(who.user()) ? who.owner() : user;
+        String channelBefore = who != null && who.channel() != null ? TaskChannel.use(who.channel()) : null;
+        if (who != null && who.isPrivileged() && user.equals(who.user())) {
+            Operation unprivileged = operation;
+            operation = (task, result) -> privileged(() -> unprivileged.run(task, result));
+        }
+        try {
+            return runAsTimed(user, owner, name, operation, failOnError);
+        } finally {
+            if (who != null && who.channel() != null) {
+                TaskChannel.use(channelBefore);
+            }
+        }
+    }
+
+    /** The body of an operation, as {@link #privileged} runs it. */
+    private interface Body {
+        Outcome run() throws Exception;
+    }
+
+    /** The operation with all authorizations added to the logged-in user's, as midPoint's {@code runPrivileged}. */
+    private Outcome privileged(Body call) throws Exception {
+        Exception[] failure = new Exception[1];
+        Outcome outcome = harness.bean(com.evolveum.midpoint.security.api.SecurityContextManager.class)
+                .runPrivileged(() -> {
+                    try {
+                        return call.run();
+                    } catch (Exception e) {
+                        failure[0] = e;
+                        return null;
+                    }
+                });
+        if (failure[0] != null) {
+            throw failure[0];
+        }
+        return outcome;
+    }
+
+    private Run runAsTimed(String user, String owner, String name, Operation operation, boolean failOnError) {
+        // the login the call leaves: code of the deployment may set or clear the security context (an API add-on's
+        // service clears it at its end), the next call must not run as nobody
+        org.springframework.security.core.Authentication loggedIn =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (user != null) {
             runtime.login(user);
         }
         Task task = harness.createTask("tester " + name);
-        if (user != null) {
-            task.setOwner(existing(UserType.class, user).asPrismObject());
+        if (owner != null) {
+            task.setOwner(existing(UserType.class, owner).asPrismObject());
         }
         OperationResult result = task.getResult();
         int notificationsBefore = drivers().notifications().size();
@@ -1077,6 +1240,8 @@ final class MidPointImpl implements MidPoint {
             Recorder.stop(recording);
             if (user != null) {
                 runtime.login(TesterRuntime.ADMINISTRATOR);
+            } else {
+                org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(loggedIn);
             }
         }
         // the focus of each evaluation, by the repository as the run left it (a user the run added or linked)
@@ -1117,8 +1282,8 @@ final class MidPointImpl implements MidPoint {
     /**
      * Deltas as a driver label that does not depend on midPoint's delta text or on generated OIDs: change type,
      * object type and name (looked up before the call, so a deleted object is named too), the paths of the modified
-     * items, e.g. {@code modify user:jdoe [locality]}. Labels are golden run keys: they must be the same on every
-     * line and in every run (no OIDs, container IDs, work item IDs, timestamps or counters).
+     * items, e.g. {@code modify user:jdoe [locality]}: the same on every line and in every run (no OIDs, container
+     * IDs, work item IDs, timestamps or counters).
      */
     String describe(Collection<? extends ObjectDelta<? extends ObjectType>> deltas) {
         List<String> out = new ArrayList<>();
@@ -1256,11 +1421,12 @@ final class MidPointImpl implements MidPoint {
         return existing(ResourceType.class, resource).getOid();
     }
 
+    /**
+     * The OID of the mirror connector, looked up every time: the connector objects of a deployment loaded from the
+     * cache (another JVM's dump) have that JVM's OIDs.
+     */
     String mirrorConnectorOid() {
-        if (mirrorConnectorOid == null) {
-            mirrorConnectorOid = connectorOid(MirrorBundle.CONNECTOR_TYPE);
-        }
-        return mirrorConnectorOid;
+        return connectorOid(MirrorBundle.CONNECTOR_TYPE);
     }
 
     /** The objects of the type as stored (repository, raw). */
@@ -1295,6 +1461,29 @@ final class MidPointImpl implements MidPoint {
      * and those of {@code items} that differ afterwards are replaced. Nothing when the object does not exist.
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
+    /** The mail servers of the stored system configuration that are not the tester's (see {@link MailRedirect}). */
+    List<String> unredirectedMailServers() {
+        return query("check the mail servers", (task, result) -> {
+            PrismObject<com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationType> config =
+                    harness.bean(RepositoryService.class).getObject(
+                            com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationType.class,
+                            "00000000-0000-0000-0000-000000000001", null, result);
+            return MailRedirect.otherServers(prismContext().xmlSerializer().serialize(config), "127.0.0.1");
+        });
+    }
+
+    /**
+     * Applies the stored system configuration to midPoint's components (mail transports, logging, caches...) as a
+     * change of it does: after a patch of the repository, which is no change event.
+     */
+    void applySystemConfiguration() {
+        query("apply the system configuration", (task, result) -> {
+            harness.bean(com.evolveum.midpoint.repo.api.SystemConfigurationChangeDispatcher.class)
+                    .dispatch(true, true, result);
+            return null;
+        });
+    }
+
     <O extends ObjectType> void patchStored(Class<O> type, String oid, java.util.function.UnaryOperator<String> transform,
             String... items) {
         query("patch " + oid, (task, result) -> {

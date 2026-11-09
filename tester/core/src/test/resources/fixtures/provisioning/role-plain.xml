@@ -1,0 +1,10 @@
+<role oid="10000000-0000-0000-0000-00000000c004" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Plain user</name>
+    <inducement>
+        <construction>
+            <resourceRef oid="10000000-0000-0000-0000-00000000a004" type="ResourceType"/>
+            <kind>account</kind>
+            <intent>default</intent>
+        </construction>
+    </inducement>
+</role>

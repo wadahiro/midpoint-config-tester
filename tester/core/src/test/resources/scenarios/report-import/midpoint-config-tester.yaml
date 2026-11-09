@@ -1,0 +1,8 @@
+# A report import whose script records who imports (ReportImportScenarioTest); midPoint 4.0 has no report import:
+# its overlay removes the report.
+config:
+  dirs: [post-initial-objects]
+  overlays:
+    "4.0": { dirs: [overlays/4.0], remove: [100-report-import-descriptions.xml] }
+mail: { redirect: true }
+tasks: { recurring: held }

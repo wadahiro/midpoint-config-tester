@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 4.8: the same, through the named transport "mail" the bulk action 900 configures -->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>SystemConfiguration</name>
+    <notificationConfiguration>
+        <handler>
+            <operation>add</operation>
+            <simpleUserNotifier>
+                <name>welcome</name>
+                <recipientExpression><script><code>requestee?.emailAddress</code></script></recipientExpression>
+                <subjectExpression><script><code>'Welcome ' + requestee?.name?.orig</code></script></subjectExpression>
+                <bodyExpression><script><code>'Hello'</code></script></bodyExpression>
+                <transport>mail</transport>
+            </simpleUserNotifier>
+        </handler>
+    </notificationConfiguration>
+</systemConfiguration>

@@ -45,7 +45,7 @@ import com.github.wadahiro.midpoint.tester.internal.TesterRuntime;
  * schema exactly on the lines its name says. A new line or patch release that changes them fails here: run
  * {@code .claude/skills/add-midpoint-line/scripts/initial-names.py} again.
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class InitialNamesTest {
 
     static final List<Class<?>> INITIAL = List.of(InitialUsers.class, InitialRoles.class, InitialArchetypes.class,
@@ -62,33 +62,33 @@ class InitialNamesTest {
             Map.entry("objectTemplate", "ObjectTemplateType"));
 
     @Test
-    void theInitialNamesOfTheLineAreInTheRepository(Scenario s) throws Exception {
+    void theInitialNamesOfTheLineAreInTheRepository(MidPointConfigTester t) throws Exception {
         List<String> problems = new ArrayList<>();
         int checked = 0;
         for (ObjectRef ref : constants(INITIAL, ObjectRef.class)) {
-            if (!ref.existsOn(s.line())) {
+            if (!ref.existsOn(t.line())) {
                 continue;
             }
             checked++;
             @SuppressWarnings("unchecked")
             Class<? extends ObjectType> type = (Class<? extends ObjectType>) Class.forName(
                     "com.evolveum.midpoint.xml.ns._public.common.common_3." + ref.type());
-            ObjectType object = s.midpoint().object(type, ref.oid());
+            ObjectType object = t.midpoint().object(type, ref.oid());
             if (object == null) {
                 problems.add(ref + ": no " + ref.type() + " " + ref.oid());
             } else if (!ref.name().equals(object.getName().getOrig())) {
                 problems.add(ref + ": named " + object.getName().getOrig());
             }
         }
-        assertThat(problems).as("initial names of midPoint " + s.line()).isEmpty();
+        assertThat(problems).as("initial names of midPoint " + t.line()).isEmpty();
         assertThat(checked).isPositive();
     }
 
     @Test
-    void everyInitialObjectOfTheLineHasAName(Scenario s) throws Exception {
+    void everyInitialObjectOfTheLineHasAName(MidPointConfigTester t) throws Exception {
         Set<String> named = new TreeSet<>();
         for (ObjectRef ref : constants(INITIAL, ObjectRef.class)) {
-            if (ref.existsOn(s.line())) {
+            if (ref.existsOn(t.line())) {
                 named.add(ref.type() + " " + ref.oid() + " " + ref.name());
             }
         }
@@ -96,38 +96,38 @@ class InitialNamesTest {
         for (String[] object : TesterRuntime.initialObjectsOfTheLine()) {
             String type = TYPES.get(object[0]);
             // 4.0's reports are Jasper reports, which the tester does not import
-            if (type != null && !("ReportType".equals(type) && "4.0".equals(s.line()))) {
+            if (type != null && !("ReportType".equals(type) && "4.0".equals(t.line()))) {
                 shipped.add(type + " " + object[1] + " " + object[2]);
             }
         }
         // one name of 4.4 is left out (two typos that 4.8 fixed)
         shipped.removeIf(o -> o.endsWith("(backgroud processing for chnage execution)"));
-        assertThat(named).as("typed initial names of midPoint " + s.line()).isEqualTo(shipped);
+        assertThat(named).as("typed initial names of midPoint " + t.line()).isEqualTo(shipped);
     }
 
     @Test
-    void theUserItemsAreInTheSchemaOfTheirLines(Scenario s) throws Exception {
-        PrismObjectDefinition<UserType> user = s.midpoint().bean(PrismContext.class).getSchemaRegistry()
+    void theUserItemsAreInTheSchemaOfTheirLines(MidPointConfigTester t) throws Exception {
+        PrismObjectDefinition<UserType> user = t.midpoint().bean(PrismContext.class).getSchemaRegistry()
                 .findObjectDefinitionByCompileTimeClass(UserType.class);
         List<String> problems = new ArrayList<>();
         for (ItemRef item : constants(List.of(UserItems.class), ItemRef.class)) {
             Object[] segments = java.util.Arrays.stream(item.path().split("/"))
                     .map(segment -> new QName(SchemaConstants.NS_C, segment)).toArray();
             boolean defined = user.findItemDefinition(ItemPath.create(segments)) != null;
-            if (defined != item.existsOn(s.line())) {
+            if (defined != item.existsOn(t.line())) {
                 problems.add(item.path() + (defined ? " is defined (" + item.lines() + ")" : " is not defined"));
             }
         }
-        assertThat(problems).as("user items of midPoint " + s.line()).isEmpty();
+        assertThat(problems).as("user items of midPoint " + t.line()).isEmpty();
     }
 
     /** A typed name works in the verbs as the string does. */
     @Test
-    void theInitialNamesWorkInTheVerbs(Scenario s) {
-        s.user("jack").hasRole(InitialRoles.END_USER).hasNoRole(InitialRoles.SUPERUSER)
+    void theInitialNamesWorkInTheVerbs(MidPointConfigTester t) {
+        t.user("jack").hasRole(InitialRoles.END_USER).hasNoRole(InitialRoles.SUPERUSER)
                 .hasItem(UserItems.FULL_NAME, "Jack Sparrow");
-        assertThat(s.user("jack").values(UserItems.NAME)).containsExactly("jack");
-        assertThat(s.task(InitialTasks.VALIDITY_SCANNER).name()).isEqualTo("Validity Scanner");
+        assertThat(t.user("jack").values(UserItems.NAME)).containsExactly("jack");
+        assertThat(t.task(InitialTasks.VALIDITY_SCANNER).name()).isEqualTo("Validity Scanner");
     }
 
     static <T> List<T> constants(List<Class<?>> classes, Class<T> type) throws IllegalAccessException {

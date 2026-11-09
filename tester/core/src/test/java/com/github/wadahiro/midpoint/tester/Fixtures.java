@@ -21,6 +21,8 @@ import com.github.wadahiro.midpoint.tester.internal.TesterRuntime;
 final class Fixtures {
 
     static final File ROOT = new File(System.getProperty("tester.fixtures", "src/test/resources/fixtures"));
+    /** The manifest of the bare deployment (nothing imported): the tests import their configuration themselves. */
+    static final String BARE = "classpath:scenarios/bare/midpoint-config-tester.yaml";
     /** The namespace of midPoint's objects, for XML written in a test. */
     static final String NS = "xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'";
 

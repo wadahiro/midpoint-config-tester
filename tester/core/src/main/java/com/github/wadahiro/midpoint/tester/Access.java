@@ -34,6 +34,13 @@ public interface Access {
     <O extends ObjectType> Answer<O> get(Class<O> type, String nameOrOid);
 
     /**
+     * The objects of the object collection (by name or OID) as this user sees it, as the GUI lists them: its filter
+     * with its expressions evaluated for the user (e.g. {@code midpoint.principalOid}), its base collection, the
+     * user's authorizations.
+     */
+    Answer<List<ObjectType>> collection(String nameOrOid);
+
+    /**
      * Whether the user is authorized for the action (an authorization action URI, e.g.
      * {@code ModelAuthorizationAction.MODIFY.getUrl()}) on the object with this name or OID (in any phase), as the
      * security enforcer decides it.

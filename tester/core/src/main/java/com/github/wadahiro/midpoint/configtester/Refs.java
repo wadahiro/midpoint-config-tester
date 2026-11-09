@@ -25,8 +25,8 @@ public final class Refs {
         if (ref.getType() != null && !name.type().equals(ref.getType().getLocalPart())) {
             return false;
         }
-        Scenario scenario = Scenario.current();
-        String actual = scenario != null ? scenario.nameOf(ref)
+        MidPointConfigTester tester = MidPointConfigTester.current();
+        String actual = tester != null ? tester.nameOf(ref)
                 : ref.getTargetName() != null ? ref.getTargetName().getOrig() : null;
         return name.name().equals(actual);
     }

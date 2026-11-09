@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.SynchronizationSituationType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 import com.github.wadahiro.midpoint.tester.internal.Recorder;
 
 /**
@@ -48,15 +50,19 @@ abstract class LiveSyncScenarioTest {
     }
 
     @Test
-    void hrDrivesTheDirectoryThroughLiveSync(MidPoint mp) {
+    void hrDrivesTheDirectoryThroughLiveSync(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem hr = mp.target("HR");
         TargetSystem ldap = mp.target("LDAP");
 
-        // ---- deploy: the task's first run (at its import) only fetches the token; a row already there is no change
+        // ---- deploy: the task's first run only fetches the token; a row already there is no change. The deployment
+        // holds recurring tasks: the import does not run it, the test does
         hr.addAccount("1000", Map.of("firstName", "Ann", "lastName", "Early", "department", "Sales"));
         mp.step("deploy");
         int runs = Recorder.taskRuns(TASK_OID);
-        Run deployed = mp.importObject(Fixtures.of(mp, new File(DIR, "task-livesync-hr.xml")));
+        mp.importObject(Fixtures.of(mp, new File(DIR, "task-livesync-hr.xml")));
+        assertThat(Recorder.taskRuns(TASK_OID) - runs).isZero();
+        Run deployed = mp.runTask(TASK);
 
         assertThat(deployed.evaluations()).isEmpty();
         assertThat(mp.user("e1000")).isNull();
@@ -125,7 +131,8 @@ abstract class LiveSyncScenarioTest {
 
     /** Without a deployed task: the driver creates a live synchronization task at its first call, then runs it. */
     @Test
-    void liveSyncDriverKeepsItsToken(MidPoint mp) {
+    void liveSyncDriverKeepsItsToken(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem hr = mp.target("HR");
         hr.addAccount("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
 
@@ -159,7 +166,8 @@ abstract class LiveSyncScenarioTest {
      * after the token (linked: synchronized, nothing to change).
      */
     @Test
-    void directoryChangesComeBackThroughLiveSync(MidPoint mp) {
+    void directoryChangesComeBackThroughLiveSync(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem hr = mp.target("HR");
         TargetSystem ldap = mp.target("LDAP");
         hr.addAccount("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));

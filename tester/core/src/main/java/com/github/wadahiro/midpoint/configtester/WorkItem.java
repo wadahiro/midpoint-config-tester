@@ -18,11 +18,11 @@ import com.github.wadahiro.midpoint.tester.Approvals;
  */
 public final class WorkItem {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final Approvals.WorkItem item;
 
-    WorkItem(Scenario scenario, Approvals.WorkItem item) {
-        this.scenario = scenario;
+    WorkItem(MidPointConfigTester tester, Approvals.WorkItem item) {
+        this.tester = tester;
         this.item = item;
     }
 
@@ -61,7 +61,7 @@ public final class WorkItem {
     /**
      * When it is due: the creation plus the stage's {@code duration}, after an escalation its {@code duration} from the
      * escalation; null without one. The stage's timed actions run at (or, {@code notifyBeforeAction}, before) this time,
-     * when the trigger scanner runs ({@link ScenarioTime#runDue()}).
+     * when the trigger scanner runs ({@link TestClock#runDue()}).
      */
     public Instant deadline() {
         return item.bean().getDeadline() != null
@@ -70,7 +70,7 @@ public final class WorkItem {
 
     /** The case the item is in. */
     public Case caseOf() {
-        return new Case(scenario, item.caseOid());
+        return new Case(tester, item.caseOid());
     }
 
     // ---- decisions --------------------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ public final class WorkItem {
     }
 
     public WorkItem approve(Actor approver, String comment) {
-        scenario.deployment().api().approvals().complete(item, approver.name(), true, comment);
+        tester.deployment().api().approvals().complete(item, approver.name(), true, comment);
         return this;
     }
 
@@ -90,7 +90,7 @@ public final class WorkItem {
     }
 
     public WorkItem reject(Actor approver, String comment) {
-        scenario.deployment().api().approvals().complete(item, approver.name(), false, comment);
+        tester.deployment().api().approvals().complete(item, approver.name(), false, comment);
         return this;
     }
 
@@ -100,7 +100,7 @@ public final class WorkItem {
      * it again to see the new ones.
      */
     public WorkItem delegate(Actor delegator, String... users) {
-        scenario.deployment().api().approvals().delegate(item, delegator.name(), users);
+        tester.deployment().api().approvals().delegate(item, delegator.name(), users);
         return this;
     }
 
@@ -124,19 +124,19 @@ public final class WorkItem {
 
     /** Forwards the item to these users (by name), as the forwarder: they replace its assignees (the GUI's "Forward"). */
     public WorkItem forward(Actor forwarder, String... users) {
-        scenario.deployment().api().approvals().forward(item, forwarder.name(), users);
+        tester.deployment().api().approvals().forward(item, forwarder.name(), users);
         return this;
     }
 
     /** The user claims the item offered to a group they are a member of, and becomes its assignee. */
     public WorkItem claim(Actor user) {
-        scenario.deployment().api().approvals().claim(item, user.name());
+        tester.deployment().api().approvals().claim(item, user.name());
         return this;
     }
 
     /** The user releases the item they claimed, back to the group. */
     public WorkItem release(Actor user) {
-        scenario.deployment().api().approvals().release(item, user.name());
+        tester.deployment().api().approvals().release(item, user.name());
         return this;
     }
 
@@ -151,7 +151,7 @@ public final class WorkItem {
     }
 
     public WorkItem hasAssignee(UserRef user) {
-        return hasAssignee(user.on(scenario.line()));
+        return hasAssignee(user.on(tester.line()));
     }
 
     /** Still open, as midPoint stores it now. */
@@ -170,7 +170,7 @@ public final class WorkItem {
     }
 
     public WorkItem isApprovedBy(UserRef user) {
-        return isApprovedBy(user.on(scenario.line()));
+        return isApprovedBy(user.on(tester.line()));
     }
 
     /** Closed, rejected by this user, as midPoint stores it now. */
@@ -179,7 +179,7 @@ public final class WorkItem {
     }
 
     public WorkItem isRejectedBy(UserRef user) {
-        return isRejectedBy(user.on(scenario.line()));
+        return isRejectedBy(user.on(tester.line()));
     }
 
     /**
@@ -224,7 +224,7 @@ public final class WorkItem {
 
     /** The item as midPoint stores it now. */
     private Approvals.WorkItem current() {
-        for (Approvals.Case c : scenario.deployment().api().approvals().cases()) {
+        for (Approvals.Case c : tester.deployment().api().approvals().cases()) {
             if (c.oid().equals(item.caseOid())) {
                 for (Approvals.WorkItem w : c.workItems()) {
                     if (w.id() == item.id()) {

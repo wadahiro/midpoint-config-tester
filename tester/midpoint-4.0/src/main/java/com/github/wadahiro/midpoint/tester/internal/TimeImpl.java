@@ -7,7 +7,6 @@ import com.evolveum.midpoint.model.api.ModelPublicConstants;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.task.api.TaskManager;
 import com.github.wadahiro.midpoint.tester.Run;
-import com.github.wadahiro.midpoint.tester.Time;
 
 /** {@link Time} on 4.0: midPoint's {@link Clock} override, scanners as single-run tasks with the scanner handlers. */
 final class TimeImpl implements Time {

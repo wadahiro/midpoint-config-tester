@@ -1,0 +1,6 @@
+# A deployment of nothing whose mapped directory starts with a tree (InitialFilesScenarioTest): a file to read and an
+# empty directory to write in (kept in git by a .gitkeep), as a deployment's volume has them.
+config:
+  dirs: [../bare/objects]
+files:
+  initial: { /opt/data: files/opt-data }

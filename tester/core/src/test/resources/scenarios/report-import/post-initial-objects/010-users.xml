@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- jdoe, whose description the import sets; ann, who imports (a superuser) -->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <user oid="30000000-0000-0000-0000-00000000c001">
+        <name>jdoe</name>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000c002">
+        <name>ann</name>
+        <assignment>
+            <targetRef oid="00000000-0000-0000-0000-000000000004" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

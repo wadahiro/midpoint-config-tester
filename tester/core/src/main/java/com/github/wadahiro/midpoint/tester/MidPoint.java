@@ -17,8 +17,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 
 /**
  * A real midPoint (Spring context, Clockwork, provisioning, cases, approvals, certification, reports) on an in-memory
- * PostgreSQL, driven through its production entry points. Inject it into {@link MidPointTest} test methods (or static
- * {@code @BeforeAll} methods) as a parameter.
+ * PostgreSQL, driven through its production entry points: {@code MidPointConfigTester#midpoint()}, the escape hatch of
+ * a test for what the tester's API has no call for.
  *
  * Every driver call returns a {@link Run} with the evaluations midPoint ran, and throws {@link OperationFailed} (which
  * carries the run) if midPoint reports an error. Configuration given as files is indexed so that evaluations can be
@@ -171,6 +171,16 @@ public interface MidPoint {
     List<Mail> mails();
 
     /**
+     * The records midPoint wrote to its audit log since the test method started, in the order written: the request
+     * and execution records of each change, logins... midPoint audits to its repository database (in memory), as in
+     * production, so its own searches of the audit log (audit reports, dashboards, scripts) work.
+     */
+    List<AuditRecord> auditRecords();
+
+    /** The records midPoint wrote to its audit log while the code ran (and the work it waited for). */
+    List<AuditRecord> auditRecords(Runnable during);
+
+    /**
      * The HTTP requests the configuration made to the URLs the manifest redirects to the tester
      * ({@code http.redirect}) since the test began, in the order received (the stand-in answered each {@code 200}).
      */
@@ -178,6 +188,13 @@ public interface MidPoint {
 
     /** Calls made as this user, with its authorizations, see {@link Access}. */
     Access as(String username);
+
+    /**
+     * Makes the driver calls of the block as the caller presents them ({@link Caller}: the user logged in, privileged
+     * or not, the owner of their tasks, their channel), as a service that calls midPoint on a user's behalf does;
+     * then the administrator again. A call of the block that names its own user ({@link #as}) keeps it.
+     */
+    void callAs(Caller caller, Runnable calls);
 
     /**
      * Checks the value against the value policy (by name or OID) as midPoint does for a password
@@ -219,7 +236,7 @@ public interface MidPoint {
     /**
      * Resumes the suspended task (by name or OID), as the GUI's "Resume" ({@code TaskService.resumeTask}): a
      * deployment that ships a task suspended and resumes it per environment. A recurring task held by the manifest
-     * then runs only when the test runs it ({@link #runTask}, due tasks of {@link Time}).
+     * then runs only when the test runs it ({@link #runTask}, the due tasks of {@code MidPointConfigTester#clock()}).
      */
     Run resumeTask(String task);
 
@@ -259,8 +276,6 @@ public interface MidPoint {
 
     Dashboards dashboards();
 
-    Time time();
-
     /**
      * The files scripts read and write: directories the configuration names, mapped to directories of the test
      * (see {@link MappedFiles}); what a driver call wrote is in {@link Run#filesWritten()}.
@@ -268,9 +283,8 @@ public interface MidPoint {
     MappedFiles files();
 
     /**
-     * Names the driver calls that follow (until the next {@code step} or the end of the test method): golden results
-     * match runs by this name instead of the driver's label, so a step stays matched when a line needs an extra
-     * driver call before it. Null goes back to the labels.
+     * Names the driver calls that follow (until the next {@code step} or the end of the test method), instead of the
+     * driver's label. Null goes back to the labels.
      */
     void step(String name);
 
@@ -304,6 +318,21 @@ public interface MidPoint {
 
     /** A Spring bean of the running midPoint, e.g. {@code ModelService} or {@code RepositoryService}. */
     <T> T bean(Class<T> type);
+
+    /**
+     * A new instance of the class with midPoint's beans injected (its {@code @Autowired} fields and constructor), as
+     * Spring makes a component: a class of an add-on that the test calls itself (a service of an API add-on, a
+     * component the deployment's Spring configuration would register).
+     */
+    <T> T createBean(Class<T> type);
+
+    /**
+     * Runs the code as a driver call: in its own task (the {@link #callAs} caller's, if any) and result, its
+     * evaluations recorded, the background work it starts waited for, failing as a driver call fails. For code of the
+     * deployment the test calls itself, e.g. a service of an add-on: {@code mp.invoke("add service", (task, result) ->
+     * service.addService(request, task, result))}.
+     */
+    <T> Answer<T> invoke(String label, Invocation<T> code);
 
     /** The line-specific {@code AbstractModelIntegrationTest} instance, for helpers this API does not cover. */
     Object harness();

@@ -79,6 +79,9 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
     @Override
     public Task createTask(String name) {
         Task task = super.createTask(name);
+        if (TaskChannel.current() != null) {
+            task.setChannel(TaskChannel.current());
+        }
         try {
             // cases (approvals, manual provisioning) and certification fail on a task without an owner
             task.setOwner(repositoryService.getObject(UserType.class, ADMINISTRATOR_OID, null,

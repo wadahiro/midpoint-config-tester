@@ -13,16 +13,16 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Roles;
 import com.github.wadahiro.midpoint.configtester.sample.access.Users;
 
 /** A report of the sample deployment {@code scenarios/access}: users by cost center with their roles (4.4+). */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class ReportScenarioTest {
 
     @Test
-    void usersOfACostCenterWithTheirRoles(Scenario s) {
+    void usersOfACostCenterWithTheirRoles(MidPointConfigTester t) {
         // the overlay of 4.0 removes the report (4.0 has no object collection reports): its generated name says so
-        assumeTrue(Reports.USERS_BY_COST_CENTER.existsOn(s.line()), "midPoint 4.0 has no object collection reports");
-        s.user(Users.JACK).assign(Roles.AUDITOR);
+        assumeTrue(Reports.USERS_BY_COST_CENTER.existsOn(t.line()), "midPoint 4.0 has no object collection reports");
+        t.user(Users.JACK).assign(Roles.AUDITOR);
 
-        ReportOutput it = s.report(Reports.USERS_BY_COST_CENTER).run(Map.of("costCenter", "IT"));
+        ReportOutput it = t.report(Reports.USERS_BY_COST_CENTER).run(Map.of("costCenter", "IT"));
 
         assertThat(it.columns()).containsExactly("User", "Full name", "Cost center", "Roles");
         it.hasRows(2).hasRowWith("User", Users.JACK.name()).hasRowWith("User", Users.ROLE_OWNER.name())
@@ -35,11 +35,11 @@ class ReportScenarioTest {
     }
 
     @Test
-    void withoutTheParameterEveryoneWithACostCenter(Scenario s) {
+    void withoutTheParameterEveryoneWithACostCenter(MidPointConfigTester t) {
         // the overlay of 4.0 removes the report (4.0 has no object collection reports): its generated name says so
-        assumeTrue(Reports.USERS_BY_COST_CENTER.existsOn(s.line()), "midPoint 4.0 has no object collection reports");
+        assumeTrue(Reports.USERS_BY_COST_CENTER.existsOn(t.line()), "midPoint 4.0 has no object collection reports");
 
-        s.report(Reports.USERS_BY_COST_CENTER).run().hasRows(4).hasRowWith("User", Users.SEC_OFFICER.name())
+        t.report(Reports.USERS_BY_COST_CENTER).run().hasRows(4).hasRowWith("User", Users.SEC_OFFICER.name())
                 .hasNoRowWith("User", InitialUsers.ADMINISTRATOR.name());
     }
 }

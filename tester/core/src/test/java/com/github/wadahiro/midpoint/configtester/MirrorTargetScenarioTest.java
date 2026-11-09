@@ -19,7 +19,7 @@ import com.github.wadahiro.midpoint.configtester.sample.hr.Tasks;
  * named by the naming attribute of the manifest, groups keep their members (referential integrity on rename and
  * delete), the mirror's simulated status follows the user, and the reconciliation finds what the test put there.
  */
-@MidPointScenarios("classpath:scenarios/hr-mirror/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/hr-mirror/midpoint-config-tester.yaml")
 class MirrorTargetScenarioTest {
 
     static final String JOHN = HrLifecycleScenarioTest.JOHN;
@@ -27,39 +27,39 @@ class MirrorTargetScenarioTest {
     static final String IT = HrLifecycleScenarioTest.IT;
 
     @Test
-    void joinerMoverLeaverOnMirrors(Scenario s) {
+    void joinerMoverLeaverOnMirrors(MidPointConfigTester t) {
         // no initial data on a mirror: the groups the roles refer to are added by the test
-        s.target(Resources.LDAP).system().addGroup(SALES, Map.of("cn", "sales"));
-        s.target(Resources.LDAP).system().addGroup(IT, Map.of("cn", "it"));
+        t.target(Resources.LDAP).system().addGroup(SALES, Map.of("cn", "sales"));
+        t.target(Resources.LDAP).system().addGroup(IT, Map.of("cn", "it"));
 
-        s.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
+        t.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
                 .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales")
                 .set(HrAttrs.START_DATE, LocalDate.of(2020, 4, 1).toString()));
-        s.task(Tasks.RECONCILE_HR).run();
-        s.user("e1001").hasFullName("John Doe").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP);
-        s.target(Resources.LDAP).account(JOHN).exists()
+        t.task(Tasks.RECONCILE_HR).run();
+        t.user("e1001").hasFullName("John Doe").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP);
+        t.target(Resources.LDAP).account(JOHN).exists()
                 .hasAttribute(LdapAttrs.CN, "John Doe")
                 .hasAttribute(LdapAttrs.OU, "Sales")
                 .memberOf(SALES).notMemberOf(IT).isEnabled();
-        assertThat(s.target(Resources.LDAP).accounts()).containsExactly(JOHN);
+        assertThat(t.target(Resources.LDAP).accounts()).containsExactly(JOHN);
 
-        s.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
-        s.task(Tasks.RECONCILE_HR).run();
-        s.user("e1001").hasRole(Roles.DEPT_IT).hasNoRole(Roles.DEPT_SALES);
-        s.target(Resources.LDAP).account(JOHN).hasAttribute(LdapAttrs.OU, "IT").memberOf(IT).notMemberOf(SALES);
+        t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
+        t.task(Tasks.RECONCILE_HR).run();
+        t.user("e1001").hasRole(Roles.DEPT_IT).hasNoRole(Roles.DEPT_SALES);
+        t.target(Resources.LDAP).account(JOHN).hasAttribute(LdapAttrs.OU, "IT").memberOf(IT).notMemberOf(SALES);
 
-        s.source(Resources.HR).delete("1001");
-        s.task(Tasks.RECONCILE_HR).run();
-        s.user("e1001").doesNotExist();
-        s.target(Resources.LDAP).account(JOHN).doesNotExist();
+        t.source(Resources.HR).delete("1001");
+        t.task(Tasks.RECONCILE_HR).run();
+        t.user("e1001").doesNotExist();
+        t.target(Resources.LDAP).account(JOHN).doesNotExist();
         // referential integrity: the deleted account is no member any more
-        assertThat(s.target(Resources.LDAP).system().groupValues(IT, "member")).isEmpty();
+        assertThat(t.target(Resources.LDAP).system().groupValues(IT, "member")).isEmpty();
     }
 
     @Test
-    void everyTestStartsFromTheDeploymentAsLoaded(Scenario s) {
-        assertThat(s.source(Resources.HR).accounts()).isEmpty();
-        assertThat(s.target(Resources.LDAP).accounts()).isEmpty();
-        s.user("e1001").doesNotExist();
+    void everyTestStartsFromTheDeploymentAsLoaded(MidPointConfigTester t) {
+        assertThat(t.source(Resources.HR).accounts()).isEmpty();
+        assertThat(t.target(Resources.LDAP).accounts()).isEmpty();
+        t.user("e1001").doesNotExist();
     }
 }

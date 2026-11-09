@@ -4,7 +4,7 @@
     build is not built and tested again. Inputs: the module's src/ and effective POM (dependencies, so also the midPoint
     version and the pgmem profile), plus what tester/pom.xml, tester/base-*/pom.xml and tester/static/pom.xml add with
     maven.build.cache.input.* (tester/core, the base module, static/core). The cache does not see -D properties: the
-    tester's own (golden.*, static.*, tester.*, -Dtest) switch it off for the build
+    tester's own (static.*, tester.*, -Dtest) switch it off for the build
     (profile no-build-cache in the root POM).
 -->
 <cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"

@@ -19,7 +19,7 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Users;
  * for each persona, by a filter, {@code special: self} and {@code orgRelation}; a selector with no sample outside it
  * is a warning.
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class AuthzMatrixCoverageScenarioTest {
 
     private static final String SPEC = String.join("\n",
@@ -41,8 +41,8 @@ class AuthzMatrixCoverageScenarioTest {
     Path dir;
 
     @Test
-    void theSamplesAreOnBothSidesOfTheSelectors(Scenario s) throws IOException {
-        List<AuthzMatrixTest.Coverage> coverage = coverage(s, SPEC);
+    void theSamplesAreOnBothSidesOfTheSelectors(MidPointConfigTester t) throws IOException {
+        List<AuthzMatrixTest.Coverage> coverage = coverage(t, SPEC);
 
         // a filter (costCenter IT): the help desk user has none
         assertThat(find(coverage, "help-desk", "'read-it-users'", "object"))
@@ -68,18 +68,18 @@ class AuthzMatrixCoverageScenarioTest {
      * from the org's inducement to its managers, its member jack has not.
      */
     @Test
-    void theAuthorizationsAreAsMidPointCompiledThem(Scenario s) {
-        assertThat(s.as(Users.IT_MANAGER).compiledAuthorizations())
+    void theAuthorizationsAreAsMidPointCompiledThem(MidPointConfigTester t) {
+        assertThat(t.as(Users.IT_MANAGER).compiledAuthorizations())
                 .extracting(c -> Actor.source(c.source()) + " " + c.authorization().getName())
                 .contains("role Department manager read-members", "role End user self-read");
-        assertThat(s.as(Users.JACK).compiledAuthorizations())
+        assertThat(t.as(Users.JACK).compiledAuthorizations())
                 .extracting(c -> Actor.source(c.source()))
                 .doesNotContain("role Department manager");
     }
 
     @Test
-    void aSelectorWithNoSampleOutsideIsAWarning(Scenario s) throws IOException {
-        List<AuthzMatrixTest.Coverage> coverage = coverage(s, SPEC.replace("  other-role: {role: Accountant}\n", ""));
+    void aSelectorWithNoSampleOutsideIsAWarning(MidPointConfigTester t) throws IOException {
+        List<AuthzMatrixTest.Coverage> coverage = coverage(t, SPEC.replace("  other-role: {role: Accountant}\n", ""));
 
         assertThat(find(coverage, "it-manager", "'assign-members-requestable-roles'", "target").warning)
                 .isEqualTo("persona it-manager: 'assign-members-requestable-roles' (role Department manager) target"
@@ -87,12 +87,12 @@ class AuthzMatrixCoverageScenarioTest {
                         + " does not select");
     }
 
-    private List<AuthzMatrixTest.Coverage> coverage(Scenario s, String spec) throws IOException {
+    private List<AuthzMatrixTest.Coverage> coverage(MidPointConfigTester t, String spec) throws IOException {
         Path file = dir.resolve("authz-matrix.yaml");
         Files.writeString(file, spec);
-        AuthzMatrixSpec read = AuthzMatrixSpec.read(file, s.line());
-        Map<String, String> users = AuthzMatrixTest.check(read, s);
-        return AuthzMatrixTest.coverage(read, s, users);
+        AuthzMatrixSpec read = AuthzMatrixSpec.read(file, t.line());
+        Map<String, String> users = AuthzMatrixTest.check(read, t);
+        return AuthzMatrixTest.coverage(read, t, users);
     }
 
     private static AuthzMatrixTest.Coverage find(List<AuthzMatrixTest.Coverage> coverage, String persona,

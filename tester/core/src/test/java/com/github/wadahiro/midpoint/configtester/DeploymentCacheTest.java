@@ -69,9 +69,9 @@ class DeploymentCacheTest {
         assertThat(joinerOutcome(restored)).isEqualTo(freshOutcome);
         // and every test starts from it again
         restored.reset();
-        Scenario s = new Scenario(restored);
-        s.user("e1001").doesNotExist();
-        assertThat(s.target(Resources.LDAP).accounts()).isEmpty();
+        MidPointConfigTester t = new MidPointConfigTester(restored);
+        t.user("e1001").doesNotExist();
+        assertThat(t.target(Resources.LDAP).accounts()).isEmpty();
     }
 
     @Test
@@ -126,25 +126,25 @@ class DeploymentCacheTest {
     /** Hires John and reads what midPoint made of it. */
     private static List<String> joinerOutcome(Deployment deployment) {
         deployment.reset();
-        Scenario s = new Scenario(deployment);
-        s.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
+        MidPointConfigTester t = new MidPointConfigTester(deployment);
+        t.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
                 .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales")
                 .set(HrAttrs.START_DATE, LocalDate.of(2020, 4, 1).toString()));
-        s.task(Tasks.RECONCILE_HR).run();
-        s.user("e1001").hasRole(Roles.DEPT_SALES);
+        t.task(Tasks.RECONCILE_HR).run();
+        t.user("e1001").hasRole(Roles.DEPT_SALES);
         List<String> out = new ArrayList<>();
-        out.add("fullName " + s.user("e1001").values(UserItems.FULL_NAME));
-        out.add("roles " + s.user("e1001").object().getAssignment().stream()
-                .map(a -> s.nameOf(a.getTargetRef()))
+        out.add("fullName " + t.user("e1001").values(UserItems.FULL_NAME));
+        out.add("roles " + t.user("e1001").object().getAssignment().stream()
+                .map(a -> t.nameOf(a.getTargetRef()))
                 .filter(r -> r.startsWith("Dept"))
                 .collect(Collectors.toList()));
-        Account account = s.target(Resources.LDAP).account("uid=e1001,ou=people,dc=example,dc=com");
+        Account account = t.target(Resources.LDAP).account("uid=e1001,ou=people,dc=example,dc=com");
         for (com.github.wadahiro.midpoint.configtester.names.AttributeRef attribute
                 : List.of(LdapAttrs.CN, LdapAttrs.OU, LdapAttrs.MAIL, LdapAttrs.EMPLOYEE_NUMBER)) {
             out.add(attribute.name() + " " + account.values(attribute));
         }
-        out.add("mails " + s.mails().to("e1001@example.com").count());
-        out.add("ldap " + s.target(Resources.LDAP).accounts());
+        out.add("mails " + t.mails().to("e1001@example.com").count());
+        out.add("ldap " + t.target(Resources.LDAP).accounts());
         return out;
     }
 

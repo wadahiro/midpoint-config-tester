@@ -24,13 +24,38 @@ public interface LineDrivers {
 
     void clearNotifications();
 
+    /**
+     * Where midPoint's audit log (its table in the repository database) is now: the records written after it are
+     * {@link #auditRecordsAfter}.
+     */
+    long auditPosition();
+
+    /**
+     * The objects of the object collection (its filter, with its expressions evaluated for the logged-in user, and its
+     * base collection), searched through the model as the logged-in user: what the GUI lists for the collection.
+     */
+    List<PrismObject<? extends ObjectType>> searchCollection(String collectionOid, Task task, OperationResult result)
+            throws Exception;
+
+    /** The records midPoint wrote to its audit log after the position, in the order written. */
+    List<com.github.wadahiro.midpoint.tester.AuditRecord> auditRecordsAfter(long position);
+
     /** The mails the in-memory SMTP server received since {@link #clearMails()}, in the order received. */
     List<Mail> mails();
 
     void clearMails();
 
+    /** Forgets the mails and the notifications after the first ones (a checkpoint of the test, restored). */
+    void keepMailsAndNotifications(int mails, int notifications);
+
     /** The port of the in-memory SMTP server on {@code 127.0.0.1}. */
     int smtpPort();
+
+    /**
+     * Makes the in-memory SMTP server refuse the mails with a recipient the predicate accepts (it answers {@code 451}
+     * to their data); null: it takes every mail again.
+     */
+    void rejectMails(java.util.function.Predicate<String> recipient);
 
     /** Whether the logged-in user may do the action on the object, in any phase. */
     boolean isAuthorized(String actionUrl, PrismObject<? extends ObjectType> object, Task task, OperationResult result)

@@ -19,12 +19,12 @@ import com.github.wadahiro.midpoint.tester.internal.Deployment;
  */
 public final class Account {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final Resource resource;
     private final String name;
 
-    Account(Scenario scenario, Resource resource, String name) {
-        this.scenario = scenario;
+    Account(MidPointConfigTester tester, Resource resource, String name) {
+        this.tester = tester;
         this.resource = resource;
         this.name = name;
     }
@@ -39,17 +39,17 @@ public final class Account {
      */
     public Why why(String attribute) {
         String owner = owner();
-        return Why.of(scenario, attribute, owner, attribute + " of " + name + " on " + resource.name());
+        return Why.of(tester, attribute, owner, attribute + " of " + name + " on " + resource.name());
     }
 
     /** The name of the user the account's shadow is linked to; null when none. */
     private String owner() {
-        String resourceOid = scenario.deployment().resourceOid(resource.name());
+        String resourceOid = tester.deployment().resourceOid(resource.name());
         if (resourceOid == null) {
             return null;
         }
         try {
-            return scenario.deployment().owner(resourceOid, name);
+            return tester.deployment().owner(resourceOid, name);
         } catch (RuntimeException e) {
             // only to narrow the mappings shown
             return null;
@@ -77,7 +77,7 @@ public final class Account {
         if (!Values.sameValues(wanted, actual)) {
             throw new AssertionError("Account " + name + " on " + resource.name() + ": " + attribute + " expected "
                     + wanted + " but was " + actual + "; attributes: " + new TreeMap<>(existing())
-                    + Why.mappings(scenario, attribute, owner(), attribute + " on " + resource.name()));
+                    + Why.mappings(tester, attribute, owner(), attribute + " on " + resource.name()));
         }
         return this;
     }
@@ -105,7 +105,7 @@ public final class Account {
 
     /** The values of the attribute as text. */
     public List<String> values(String attribute) {
-        scenario.readWhy(resource.name() + "/" + name + "/" + attribute, () -> why(attribute));
+        tester.readWhy(resource.name() + "/" + name + "/" + attribute, () -> why(attribute));
         return attributeValues(attribute);
     }
 
@@ -145,7 +145,7 @@ public final class Account {
         String owner = owner();
         if (owner != null) {
             // memberships follow the owner's roles
-            scenario.readWhy(owner + "/assignment", () -> Why.of(scenario, "assignment", owner, "assignments of " + owner));
+            tester.readWhy(owner + "/assignment", () -> Why.of(tester, "assignment", owner, "assignments of " + owner));
         }
         return out;
     }
@@ -155,7 +155,7 @@ public final class Account {
         existing();
         Status status = resource.system().enabled(name) ? Status.ENABLED : Status.DISABLED;
         String owner = owner();
-        scenario.readWhy(resource.name() + "/" + name + "/status", () -> Why.of(scenario,
+        tester.readWhy(resource.name() + "/" + name + "/status", () -> Why.of(tester,
                 "activation/administrativeStatus", owner, "the status of " + name + " on " + resource.name()));
         return status;
     }
@@ -192,7 +192,7 @@ public final class Account {
         if (!resource.system().enabled(name)) {
             throw new AssertionError("Account " + name + " on " + resource.name() + ": expected enabled, but it is"
                     + " disabled; attributes: " + new TreeMap<>(existing())
-                    + Why.mappings(scenario, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
+                    + Why.mappings(tester, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
         }
         return this;
     }
@@ -202,7 +202,7 @@ public final class Account {
         if (resource.system().enabled(name)) {
             throw new AssertionError("Account " + name + " on " + resource.name() + ": expected disabled, but it is"
                     + " enabled; attributes: " + new TreeMap<>(existing())
-                    + Why.mappings(scenario, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
+                    + Why.mappings(tester, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
         }
         return this;
     }
@@ -221,7 +221,7 @@ public final class Account {
 
     private boolean isMemberOf(String group) {
         Map<String, List<Object>> account = existing();
-        List<Deployment.Association> associations = scenario.deployment().associations(resource.name());
+        List<Deployment.Association> associations = tester.deployment().associations(resource.name());
         if (associations.isEmpty()) {
             throw new AssertionError("Resource " + resource.name() + " has no association in its account object types:"
                     + " memberships cannot be read");
@@ -267,7 +267,7 @@ public final class Account {
     private String membership(String group) {
         TargetSystem system = resource.system();
         StringBuilder sb = new StringBuilder();
-        for (Deployment.Association association : scenario.deployment().associations(resource.name())) {
+        for (Deployment.Association association : tester.deployment().associations(resource.name())) {
             if ("objectToSubject".equals(association.direction)) {
                 Map<String, List<Object>> attributes = system.group(group);
                 sb.append(group).append(' ').append(association.associationAttribute).append(": ")

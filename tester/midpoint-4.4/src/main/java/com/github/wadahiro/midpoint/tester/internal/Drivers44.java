@@ -7,6 +7,7 @@ import java.util.Map;
 import javax.xml.namespace.QName;
 import javax.xml.bind.JAXBElement;
 
+import com.evolveum.midpoint.xml.ns._public.common.audit_3.AuditEventRecordType;
 import com.evolveum.midpoint.model.api.ModelAuthorizationAction;
 import com.evolveum.midpoint.prism.delta.ContainerDelta;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
@@ -87,6 +88,106 @@ final class Drivers44 implements LineDrivers {
     }
 
     @Override
+    public List<PrismObject<? extends ObjectType>> searchCollection(String collectionOid, Task task,
+            OperationResult result) throws Exception {
+        com.evolveum.midpoint.xml.ns._public.common.common_3.CollectionRefSpecificationType spec =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.CollectionRefSpecificationType()
+                        .collectionRef(collectionOid,
+                                com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionType.COMPLEX_TYPE);
+        // as the GUI: the collection's definition compiled privileged (the filter's expressions still see the
+        // logged-in user), its objects searched as the user
+        com.evolveum.midpoint.model.api.authentication.CompiledObjectCollectionView view = privileged(
+                () -> harness.bean(com.evolveum.midpoint.model.api.ModelInteractionService.class)
+                        .compileObjectCollectionView(spec, null, task, result));
+        @SuppressWarnings("unchecked")
+        Class<ObjectType> type = (Class<ObjectType>) (Class<?>) view.getTargetClass(harness.bean(PrismContext.class));
+        // the compiled filter keeps its expressions (the GUI evaluates them for the logged-in user)
+        com.evolveum.midpoint.prism.query.ObjectFilter filter = view.getFilter() == null ? null
+                : com.evolveum.midpoint.repo.common.expression.ExpressionUtil.evaluateFilterExpressions(view.getFilter(),
+                        new com.evolveum.midpoint.schema.expression.VariablesMap(),
+                        com.evolveum.midpoint.schema.util.MiscSchemaUtil.getExpressionProfile(),
+                        harness.bean(com.evolveum.midpoint.repo.common.expression.ExpressionFactory.class), harness.bean(PrismContext.class),
+                        "collection filter", task, result);
+        return new ArrayList<>(harness.bean(com.evolveum.midpoint.model.api.ModelService.class).searchObjects(type,
+                harness.bean(PrismContext.class).queryFactory().createQuery(filter), null, task, result));
+    }
+
+    private interface Privileged<T> {
+        T run() throws Exception;
+    }
+
+    /** The code with all authorizations added to the logged-in user's (midPoint's {@code runPrivileged}). */
+    private <T> T privileged(Privileged<T> code) throws Exception {
+        Exception[] failure = new Exception[1];
+        T value = harness.bean(com.evolveum.midpoint.security.api.SecurityContextManager.class).runPrivileged(() -> {
+            try {
+                return code.run();
+            } catch (Exception e) {
+                failure[0] = e;
+                return null;
+            }
+        });
+        if (failure[0] != null) {
+            throw failure[0];
+        }
+        return value;
+    }
+
+    @Override
+    public long auditPosition() {
+        PrismContext prismContext = harness.bean(PrismContext.class);
+        List<AuditEventRecordType> last = searchAudit(prismContext.queryFor(AuditEventRecordType.class)
+                .desc(AuditEventRecordType.F_REPO_ID).maxSize(1).build());
+        return last.isEmpty() ? AuditRecords.START : last.get(0).getRepoId();
+    }
+
+    @Override
+    public List<com.github.wadahiro.midpoint.tester.AuditRecord> auditRecordsAfter(long position) {
+        PrismContext prismContext = harness.bean(PrismContext.class);
+        List<com.github.wadahiro.midpoint.tester.AuditRecord> out = new ArrayList<>();
+        for (AuditEventRecordType r : searchAudit(prismContext.queryFor(AuditEventRecordType.class)
+                .item(AuditEventRecordType.F_REPO_ID).gt(position).asc(AuditEventRecordType.F_REPO_ID).build())) {
+            ObjectReferenceType target = r.getTargetRef();
+            ObjectReferenceType initiator = r.getInitiatorRef();
+            List<String> deltas = new ArrayList<>();
+            for (com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectDeltaOperationType d : r.getDelta()) {
+                com.evolveum.prism.xml.ns._public.types_3.ObjectDeltaType delta = d.getObjectDelta();
+                if (delta != null) {
+                    deltas.add(AuditRecords.delta(delta.getChangeType(),
+                            delta.getObjectType() != null ? delta.getObjectType().getLocalPart() : null, delta.getOid(),
+                            d.getExecutionResult() != null ? d.getExecutionResult().getStatus() : null));
+                }
+            }
+            out.add(new com.github.wadahiro.midpoint.tester.AuditRecord(name(r.getEventType()), name(r.getEventStage()),
+                    name(r.getOutcome()),
+                    r.getTimestamp() != null ? r.getTimestamp().toGregorianCalendar().toInstant() : null,
+                    target != null ? target.getOid() : null, refName(target),
+                    target != null && target.getType() != null ? target.getType().getLocalPart() : null,
+                    initiator != null ? initiator.getOid() : null, refName(initiator), r.getChannel(), r.getTaskOID(),
+                    r.getMessage(), deltas));
+        }
+        return out;
+    }
+
+    /** The audit records of the query, through midPoint's audit service (the repository's, as configured). */
+    private List<AuditEventRecordType> searchAudit(com.evolveum.midpoint.prism.query.ObjectQuery query) {
+        try {
+            return harness.bean(com.evolveum.midpoint.init.AuditServiceProxy.class).searchObjects(query, null,
+                    new OperationResult("tester audit"));
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot read the audit log", e);
+        }
+    }
+
+    private static String refName(ObjectReferenceType ref) {
+        return ref != null && ref.getTargetName() != null ? ref.getTargetName().getOrig() : null;
+    }
+
+    private static String name(Enum<?> value) {
+        return value != null ? value.name() : null;
+    }
+
+    @Override
     public List<Mail> mails() {
         return harness.smtpServer().mails();
     }
@@ -97,8 +198,19 @@ final class Drivers44 implements LineDrivers {
     }
 
     @Override
+    public void keepMailsAndNotifications(int mails, int notifications) {
+        harness.smtpServer().keep(mails);
+        harness.notificationTransport().keep(notifications);
+    }
+
+    @Override
     public int smtpPort() {
         return harness.smtpServer().port();
+    }
+
+    @Override
+    public void rejectMails(java.util.function.Predicate<String> recipient) {
+        harness.smtpServer().reject(recipient);
     }
 
     @Override

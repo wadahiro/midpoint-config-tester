@@ -41,6 +41,7 @@ final class FileAgent {
     /** By name: a class literal here would load FileRemap from the class path before it is on the bootstrap one. */
     private static final String REMAP = "com.github.wadahiro.midpoint.tester.agent.FileRemap";
     private static final String TIME_SHIFT = "com.github.wadahiro.midpoint.tester.agent.TimeShift";
+    private static final String NETWORK_GUARD = "com.github.wadahiro.midpoint.tester.agent.NetworkGuard";
     private static String failure;
     private static boolean installed;
 
@@ -60,7 +61,8 @@ final class FileAgent {
             Map<String, byte[]> classes = Map.of(REMAP, locator.locate(REMAP).resolve(),
                     REMAP + "$Table", locator.locate(REMAP + "$Table").resolve(),
                     TIME_SHIFT, locator.locate(TIME_SHIFT).resolve(),
-                    TIME_SHIFT + "$FirstCaller", locator.locate(TIME_SHIFT + "$FirstCaller").resolve());
+                    TIME_SHIFT + "$FirstCaller", locator.locate(TIME_SHIFT + "$FirstCaller").resolve(),
+                    NETWORK_GUARD, locator.locate(NETWORK_GUARD).resolve());
             Path jarDir = Files.createDirectories(workDir.resolve("tester-agent"));
             ClassInjector.UsingInstrumentation.of(jarDir.toFile(), ClassInjector.UsingInstrumentation.Target.BOOTSTRAP,
                     instrumentation).injectRaw(classes);
@@ -73,6 +75,20 @@ final class FileAgent {
                         + " before the bootstrap class path");
             } else {
                 TimeAgent.install(instrumentation);
+            }
+            if (Class.forName(NETWORK_GUARD, true, null)
+                    != com.github.wadahiro.midpoint.tester.agent.NetworkGuard.class) {
+                System.err.println("Tester: the JVM's connections are not guarded: NetworkGuard was loaded from the"
+                        + " class path before the bootstrap class path");
+            } else {
+                String network = NetworkAgent.install(instrumentation);
+                if (network != null) {
+                    System.err.println("Tester: " + network);
+                }
+            }
+            String taskStop = TaskStop.install(instrumentation);
+            if (taskStop != null) {
+                System.err.println("Tester: " + taskStop);
             }
             List<Throwable> errors = new ArrayList<>();
             new AgentBuilder.Default()
@@ -94,6 +110,10 @@ final class FileAgent {
                     .type(named("sun.nio.fs.UnixPath"))
                     .transform((builder, type, loader, module, domain) ->
                             builder.visit(Advice.to(UnixPathAdvice.class).on(isConstructor())))
+                    .type(named("java.lang.ProcessBuilder"))
+                    .transform((builder, type, loader, module, domain) ->
+                            builder.visit(Advice.to(ProcessBuilderAdvice.class).on(named("start")
+                                    .and(net.bytebuddy.matcher.ElementMatchers.takesArguments(0)))))
                     .installOn(instrumentation);
             if (!errors.isEmpty()) {
                 return failure = "Cannot instrument the JDK's file classes: " + errors.get(0);
@@ -133,6 +153,21 @@ final class FileAgent {
             String physical = FileRemap.remap(path);
             if (physical != null) {
                 path = physical;
+            }
+        }
+    }
+
+    /**
+     * Inlined into {@code ProcessBuilder.start()}: the mapped directories in the command's arguments become the
+     * physical ones (a shell command of a report's post-report script, {@code "...".execute()} in Groovy), as the
+     * process does not go through {@code File} or {@code Path}.
+     */
+    static final class ProcessBuilderAdvice {
+        @Advice.OnMethodEnter
+        static void enter(@Advice.FieldValue(value = "command", readOnly = false) java.util.List<String> command) {
+            java.util.List<String> physical = FileRemap.remapCommand(command);
+            if (physical != null) {
+                command = physical;
             }
         }
     }

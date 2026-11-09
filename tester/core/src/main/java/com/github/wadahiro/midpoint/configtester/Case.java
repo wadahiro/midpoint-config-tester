@@ -6,16 +6,16 @@ import java.util.stream.Collectors;
 import com.github.wadahiro.midpoint.tester.Approvals;
 
 /**
- * An approval case ({@link Scenario#cases()}): what a request waits in. Read anew by every call; assertions return
+ * An approval case ({@link MidPointConfigTester#cases()}): what a request waits in. Read anew by every call; assertions return
  * the case for chaining.
  */
 public final class Case {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String oid;
 
-    Case(Scenario scenario, String oid) {
-        this.scenario = scenario;
+    Case(MidPointConfigTester tester, String oid) {
+        this.tester = tester;
         this.oid = oid;
     }
 
@@ -42,17 +42,17 @@ public final class Case {
 
     /** The user the request is for. */
     public String user() {
-        return scenario.nameOf(current().bean().getObjectRef());
+        return tester.nameOf(current().bean().getObjectRef());
     }
 
     /** The role (or other target) requested; null for a change of the user itself. */
     public String role() {
-        return scenario.nameOf(current().bean().getTargetRef());
+        return tester.nameOf(current().bean().getTargetRef());
     }
 
     /** The case's open work items. */
     public WorkItems workItems() {
-        return scenario.workItems().inCase(oid);
+        return tester.workItems().inCase(oid);
     }
 
     // ---- assertions -------------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ public final class Case {
     }
 
     Approvals.Case current() {
-        List<Approvals.Case> found = scenario.deployment().api().approvals().cases().stream()
+        List<Approvals.Case> found = tester.deployment().api().approvals().cases().stream()
                 .filter(c -> oid.equals(c.oid())).collect(Collectors.toList());
         if (found.isEmpty()) {
             throw new AssertionError("The case " + oid + " is gone (deleted by midPoint's cleanup?)");

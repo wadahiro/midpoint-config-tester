@@ -13,11 +13,11 @@ import com.github.wadahiro.midpoint.tester.Certification.Case;
  */
 public final class Campaign {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String oid;
 
-    Campaign(Scenario scenario, String oid) {
-        this.scenario = scenario;
+    Campaign(MidPointConfigTester tester, String oid) {
+        this.tester = tester;
         this.oid = oid;
     }
 
@@ -40,7 +40,7 @@ public final class Campaign {
 
     /** The review work items of the current stage (decided or not, until the stage closes). */
     public Reviews reviews() {
-        return new Reviews(scenario, this, (w, c) -> true, "");
+        return new Reviews(tester, this, (w, c) -> true, "");
     }
 
     /**
@@ -65,13 +65,13 @@ public final class Campaign {
 
     /** Opens the next stage (the first one of a campaign just created): its reviewers get their work items. */
     public Campaign nextStage() {
-        scenario.deployment().api().certification().openNextStage(oid);
+        tester.deployment().api().certification().openNextStage(oid);
         return this;
     }
 
     /** Closes the current stage: the cases get the stage's outcome. */
     public Campaign closeStage() {
-        scenario.deployment().api().certification().closeCurrentStage(oid);
+        tester.deployment().api().certification().closeCurrentStage(oid);
         return this;
     }
 
@@ -80,12 +80,12 @@ public final class Campaign {
      * assignments (waited for).
      */
     public Campaign remediate() {
-        scenario.deployment().api().certification().startRemediation(oid);
+        tester.deployment().api().certification().startRemediation(oid);
         return this;
     }
 
     public Campaign close() {
-        scenario.deployment().api().certification().closeCampaign(oid);
+        tester.deployment().api().certification().closeCampaign(oid);
         return this;
     }
 
@@ -115,11 +115,11 @@ public final class Campaign {
     }
 
     public Campaign hasOutcome(UserRef user, AssignableRef role, String expected) {
-        return hasOutcome(user.on(scenario.line()), role.on(scenario.line()), expected);
+        return hasOutcome(user.on(tester.line()), role.on(tester.line()), expected);
     }
 
     public String outcomeOf(UserRef user, AssignableRef role) {
-        return outcomeOf(user.on(scenario.line()), role.on(scenario.line()));
+        return outcomeOf(user.on(tester.line()), role.on(tester.line()));
     }
 
     @Override
@@ -135,7 +135,7 @@ public final class Campaign {
     }
 
     com.github.wadahiro.midpoint.tester.Certification.Campaign current() {
-        return scenario.deployment().api().certification().campaign(oid);
+        return tester.deployment().api().certification().campaign(oid);
     }
 
     private Case caseOf(String user, String role) {

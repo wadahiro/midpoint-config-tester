@@ -26,6 +26,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OperationResultStatu
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ReportDataType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ReportParameterType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ReportType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType;
 import com.github.wadahiro.midpoint.tester.OperationFailed;
 import com.github.wadahiro.midpoint.tester.Reports;
@@ -92,6 +93,11 @@ final class ReportsImpl implements Reports {
      */
     @Override
     public Import importFrom(String report, List<String> lines) {
+        return importFrom(report, lines, null);
+    }
+
+    @Override
+    public Import importFrom(String report, List<String> lines, String username) {
         ReportType bean = mp.existing(ReportType.class, report);
         String name = bean.getName().getOrig();
         File file = ReportImports.writeCsv(name, lines);
@@ -105,10 +111,14 @@ final class ReportsImpl implements Reports {
             return reportData.asPrismObject();
         });
         Map<String, String> before = ReportImports.versions(mp);
-        Run run = mp.runAs(null, "import report " + name, (task, result) -> {
+        Run run = mp.runAs(username, "import report " + name, (task, result) -> {
             String taskName = "Import task for " + name + " (tester)";
             Task importTask = mp.harness.createTask(taskName);
             importTask.setName(taskName);
+            if (username != null) {
+                // the user's task, as when the user imports in the GUI: its owner is the import script's actor
+                importTask.setOwner(mp.existing(UserType.class, username).asPrismObject());
+            }
             mp.bean(ReportManager.class).importReport(bean.asPrismObject(), data, importTask, result);
             return new MidPointImpl.Outcome(importTask.getOid(), null);
         });

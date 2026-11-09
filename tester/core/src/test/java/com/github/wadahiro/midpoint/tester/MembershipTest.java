@@ -12,12 +12,15 @@ import org.junit.jupiter.api.Test;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
+
 /**
  * Memberships as the target system keeps them (mirror options): a computed back-reference (LDAP {@code memberOf},
  * SCIM {@code groups}) and referential integrity, for references by name (LDAP DNs) and by identifier (SCIM ids), and
  * DNs that match regardless of case. Each method imports its resource with the options it needs.
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 class MembershipTest {
 
     static final File DIR = Fixtures.dir("provisioning");
@@ -36,7 +39,8 @@ class MembershipTest {
             .referentialIntegrity();
 
     @Test
-    void ldapMemberOfIsComputedAndSeenByMidPoint(MidPoint mp) throws Exception {
+    void ldapMemberOfIsComputedAndSeenByMidPoint(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
         TargetSystem ldap = ldapWithJdoe(mp, LDAP_SERVER);
 
         mp.assign(UserType.class, "jdoe", STAFF_ROLE);
@@ -52,7 +56,8 @@ class MembershipTest {
     }
 
     @Test
-    void ldapRenameAndDeleteKeepMembersValid(MidPoint mp) {
+    void ldapRenameAndDeleteKeepMembersValid(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem ldap = ldapWithJdoe(mp, LDAP_SERVER);
         mp.assign(UserType.class, "jdoe", STAFF_ROLE);
 
@@ -70,7 +75,8 @@ class MembershipTest {
     }
 
     @Test
-    void withoutReferentialIntegrityMembersGoStale(MidPoint mp) {
+    void withoutReferentialIntegrityMembersGoStale(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem ldap = ldapWithJdoe(mp, ResourceOptions.defaults());
         mp.assign(UserType.class, "jdoe", STAFF_ROLE);
 
@@ -80,7 +86,8 @@ class MembershipTest {
     }
 
     @Test
-    void ldapMatchesDnsRegardlessOfCase(MidPoint mp) {
+    void ldapMatchesDnsRegardlessOfCase(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem ldap = ldapWithJdoe(mp, ResourceOptions.defaults()
                 .computed("memberOf", "groupOfNames", "member").caseInsensitiveNames());
         mp.assign(UserType.class, "jdoe", STAFF_ROLE);
@@ -100,7 +107,8 @@ class MembershipTest {
     }
 
     @Test
-    void dnsAreCaseSensitiveByDefault(MidPoint mp) {
+    void dnsAreCaseSensitiveByDefault(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem ldap = ldapWithJdoe(mp, ResourceOptions.defaults().computed("memberOf", "groupOfNames", "member"));
         mp.assign(UserType.class, "jdoe", STAFF_ROLE);
         String upper = JDOE.toUpperCase(Locale.ROOT);
@@ -117,7 +125,8 @@ class MembershipTest {
      * attribute named {@code id} (the repository's parser takes it for the container id, a number).
      */
     @Test
-    void scimMembersByIdAndComputedGroups(MidPoint mp) {
+    void scimMembersByIdAndComputedGroups(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem scim = mp.importResource(Fixtures.of(mp, new File(DIR, "resource-scim.xml")), SCIM_SERVICE);
         scim.addGroup("staff", Map.of());
         mp.importObject(new File(DIR, "role-scim-staff.xml"));
@@ -140,7 +149,8 @@ class MembershipTest {
     }
 
     @Test
-    void scimInboundFromComputedGroups(MidPoint mp) {
+    void scimInboundFromComputedGroups(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         TargetSystem scim = mp.importResource(Fixtures.of(mp, new File(DIR, "resource-scim.xml")), SCIM_SERVICE);
         scim.addGroup("staff", Map.of());
         scim.addAccount("asmith", Map.of("displayName", "Alice Smith"));

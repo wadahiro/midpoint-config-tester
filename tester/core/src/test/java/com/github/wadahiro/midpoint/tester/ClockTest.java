@@ -16,15 +16,18 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
+
 /**
- * {@code mp.time().advance} moves the JVM's wall clock with midPoint's: what the test's own code and every library
+ * {@code t.clock().advance} moves the JVM's wall clock with midPoint's: what the test's own code and every library
  * read through {@code Date}, {@code Calendar} and {@code java.time}, not {@code System.currentTimeMillis()} from Java
  * nor {@code System.nanoTime()}; Groovy scripts read the moved time whichever way they read it
  * ({@link #scriptsSeeTheAdvancedTime}). The reset after each test sets it back. Quartz and {@code runDueTasks}:
  * {@code TaskRunsTest.recurringTaskRunsOnItsScheduleByMidPointsClock}; the validity scanner after
- * {@code s.time().advanceTo}: {@code HrLifecycleScenarioTest}.
+ * {@code t.clock().advanceTo}: {@code HrLifecycleScenarioTest}.
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ClockTest {
 
@@ -32,12 +35,11 @@ class ClockTest {
 
     @Test
     @Order(1)
-    void theJvmClockMovesWithMidPoints(MidPoint mp) {
-        assertThat(mp.time().shiftsTheJvmClock()).isTrue();
+    void theJvmClockMovesWithMidPoints(MidPointConfigTester t) {
         long nanos = System.nanoTime();
-        mp.time().advance("P30D");
+        t.clock().advance("P30D");
 
-        long clock = mp.time().now().toEpochMilli();
+        long clock = t.clock().now().toEpochMilli();
         long real = System.currentTimeMillis();
         assertThat(clock - real).isCloseTo(Duration.ofDays(30).toMillis(), MINUTE);
         assertThat(new Date().getTime()).isCloseTo(clock, MINUTE);
@@ -49,15 +51,14 @@ class ClockTest {
         assertThat(System.currentTimeMillis()).isCloseTo(real, MINUTE);
         assertThat(System.nanoTime() - nanos).isLessThan(Duration.ofMinutes(5).toNanos());
 
-        // waits use monotonic time: a driver call after a large advance does not time out
-        Run scan = mp.time().runValidityScanner();
-        assertThat(scan.isSuccess()).isTrue();
+        // waits use monotonic time: a driver call after a large advance does not time out (it fails if it does)
+        t.clock().runValidityScanner();
     }
 
     @Test
     @Order(2)
-    void theResetSetsTheJvmClockBack(MidPoint mp) {
-        assertThat(mp.time().now().toEpochMilli()).isCloseTo(System.currentTimeMillis(), MINUTE);
+    void theResetSetsTheJvmClockBack(MidPointConfigTester t) {
+        assertThat(t.clock().now().toEpochMilli()).isCloseTo(System.currentTimeMillis(), MINUTE);
         assertThat(Instant.now().toEpochMilli()).isCloseTo(System.currentTimeMillis(), MINUTE);
         assertThat(new Date().getTime()).isCloseTo(System.currentTimeMillis(), MINUTE);
     }
@@ -68,9 +69,10 @@ class ClockTest {
      */
     @Test
     @Order(3)
-    void scriptsSeeTheAdvancedTime(MidPoint mp) {
-        mp.time().advance("P30D");
-        long clock = mp.time().now().toEpochMilli();
+    void scriptsSeeTheAdvancedTime(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        t.clock().advance("P30D");
+        long clock = t.clock().now().toEpochMilli();
         assertThat(clock - System.currentTimeMillis()).isGreaterThan(Duration.ofDays(29).toMillis());
 
         assertThat(near(mp, "basic.currentDateTime().toGregorianCalendar().timeInMillis", clock)).isTrue();

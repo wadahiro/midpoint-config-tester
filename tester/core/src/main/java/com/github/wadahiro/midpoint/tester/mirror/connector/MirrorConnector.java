@@ -121,9 +121,11 @@ public class MirrorConnector
                 name.setNativeName(c.namingAttribute);
             }
             oc.addAttributeInfo(name.build());
-            if (c.uidAttribute != null) {
+            if (c.declaresUid()) {
                 AttributeInfoBuilder uid = new AttributeInfoBuilder(Uid.NAME, String.class);
-                uid.setNativeName(c.uidAttribute);
+                if (c.uidAttribute != null) {
+                    uid.setNativeName(c.uidAttribute);
+                }
                 uid.setCreateable(false);
                 uid.setUpdateable(false);
                 oc.addAttributeInfo(uid.build());
@@ -173,11 +175,23 @@ public class MirrorConnector
                 object.password = clear(single(attribute.getValue()));
             } else if (!attribute.is(Uid.NAME) && attribute.getValue() != null && !attribute.getValue().isEmpty()) {
                 rejectComputed(c, attribute.getName());
-                object.attributes.put(attribute.getName(), new ArrayList<>(attribute.getValue()));
+                object.attributes.put(attribute.getName(), oneByKey(c.attributes.get(attribute.getName()),
+                        attribute.getValue()));
             }
         }
         if (object.name == null) {
             throw new InvalidAttributeValueException("__NAME__ is required");
+        }
+        for (MirrorAttribute a : c.attributes.values()) {
+            if (a.storeExpression != null && object.attributes.containsKey(a.name)) {
+                List<Object> kept = resource.storedValues(c, a, object.name, List.of(), object.attributes.get(a.name),
+                        List.of(), null);
+                if (kept.isEmpty()) {
+                    object.attributes.remove(a.name);
+                } else {
+                    object.attributes.put(a.name, kept);
+                }
+            }
         }
         if (c.activation && object.enabled == null) {
             object.enabled = true;
@@ -216,7 +230,13 @@ public class MirrorConnector
                 object.password = clear(single(delta.getValuesToReplace()));
             } else {
                 rejectComputed(c, delta.getName());
-                apply(object.attributes, delta, resource.caseInsensitiveNames() && resource.holdsNames(c, delta.getName()));
+                MirrorAttribute definition = c.attributes.get(delta.getName());
+                if (definition != null && definition.storeExpression != null) {
+                    store(c, definition, object, delta);
+                } else {
+                    apply(object.attributes, delta,
+                            resource.caseInsensitiveNames() && resource.holdsNames(c, delta.getName()), definition);
+                }
             }
         }
         return sideEffects;
@@ -428,20 +448,26 @@ public class MirrorConnector
         }
     }
 
-    /** Applies the delta; values of {@code names} attributes compare regardless of case. */
-    private static void apply(Map<String, List<Object>> attributes, AttributeDelta delta, boolean names) {
+    /**
+     * Applies the delta; values of {@code names} attributes compare regardless of case. An attribute with keys
+     * ({@link MirrorAttribute#keySeparator}) keeps one value per key, as a map: removing a value removes its key, adding
+     * one replaces the value of its key.
+     */
+    private static void apply(Map<String, List<Object>> attributes, AttributeDelta delta, boolean names,
+            MirrorAttribute definition) {
         List<Object> values = attributes.computeIfAbsent(delta.getName(), k -> new ArrayList<>());
         if (delta.getValuesToReplace() != null) {
             values.clear();
-            values.addAll(delta.getValuesToReplace());
+            values.addAll(oneByKey(definition, delta.getValuesToReplace()));
         } else {
             if (delta.getValuesToRemove() != null) {
                 for (Object value : delta.getValuesToRemove()) {
-                    values.removeIf(v -> same(v, value, names));
+                    values.removeIf(v -> same(v, value, names) || sameKey(definition, v, value));
                 }
             }
             if (delta.getValuesToAdd() != null) {
                 for (Object value : delta.getValuesToAdd()) {
+                    values.removeIf(v -> sameKey(definition, v, value));
                     if (values.stream().noneMatch(v -> same(v, value, names))) {
                         values.add(value);
                     }
@@ -451,6 +477,37 @@ public class MirrorConnector
         if (values.isEmpty()) {
             attributes.remove(delta.getName());
         }
+    }
+
+    /** Keeps the values the attribute's expression makes of the delta ({@link MirrorAttribute#storeExpression}). */
+    private void store(MirrorClass c, MirrorAttribute definition, MirrorObject object, AttributeDelta delta) {
+        List<Object> values = object.attributes.getOrDefault(delta.getName(), List.of());
+        List<Object> kept = resource.storedValues(c, definition, object.name, values,
+                delta.getValuesToAdd() != null ? delta.getValuesToAdd() : List.of(),
+                delta.getValuesToRemove() != null ? delta.getValuesToRemove() : List.of(), delta.getValuesToReplace());
+        if (kept.isEmpty()) {
+            object.attributes.remove(delta.getName());
+        } else {
+            object.attributes.put(delta.getName(), kept);
+        }
+    }
+
+    private static boolean sameKey(MirrorAttribute definition, Object a, Object b) {
+        if (definition == null || definition.keySeparator == null) {
+            return false;
+        }
+        String key = definition.keyOf(a);
+        return key != null && key.equals(definition.keyOf(b));
+    }
+
+    /** The values, the last of each key kept for an attribute with keys. */
+    private static List<Object> oneByKey(MirrorAttribute definition, List<Object> values) {
+        List<Object> kept = new ArrayList<>();
+        for (Object value : values) {
+            kept.removeIf(v -> sameKey(definition, v, value));
+            kept.add(value);
+        }
+        return kept;
     }
 
     private static boolean same(Object a, Object b, boolean ignoreCase) {

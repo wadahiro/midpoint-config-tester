@@ -63,12 +63,29 @@ final class Baseline {
         }
     }
 
-    /** Uses the runtime's quiet logging unless the project configures logback itself. Call before midPoint starts. */
+    /**
+     * Uses the runtime's quiet logging unless the project configures logback itself. Call before midPoint starts. The
+     * {@code logback.xml} of midPoint's own artifacts is not the project's: the GUI's (on the class path for scripts
+     * that use its classes) would log to {@code midpoint.home_IS_UNDEFINED/log} in the project's directory.
+     */
     static void defaultLogging() {
         ClassLoader cl = Baseline.class.getClassLoader();
         if (System.getProperty("logback.configurationFile") == null
-                && cl.getResource("logback-test.xml") == null && cl.getResource("logback.xml") == null) {
+                && !projectHas(cl, "logback-test.xml") && !projectHas(cl, "logback.xml")) {
             System.setProperty("logback.configurationFile", "tester/logback-tester.xml");
+        }
+    }
+
+    private static boolean projectHas(ClassLoader cl, String resource) {
+        try {
+            for (java.util.Enumeration<java.net.URL> e = cl.getResources(resource); e.hasMoreElements(); ) {
+                if (!e.nextElement().toString().contains("/com/evolveum/midpoint/")) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            return cl.getResource(resource) != null;
         }
     }
 }

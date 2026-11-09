@@ -58,7 +58,10 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
         this.multivalueDelimiter = resource.property("multivalueDelimiter", null);
     }
 
-    /** The header the file starts with: unique, name, password columns, then the attributes of schemaHandling. */
+    /**
+     * The header the file starts with: unique, name, password columns, then the attributes of schemaHandling, then the
+     * other attributes of the stored schema's account classes.
+     */
     static List<String> header(RealResourceXml resource) {
         Set<String> columns = new LinkedHashSet<>();
         String unique = resource.property("uniqueAttribute", null);

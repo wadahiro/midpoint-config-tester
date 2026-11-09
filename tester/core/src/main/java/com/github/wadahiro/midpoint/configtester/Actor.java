@@ -24,7 +24,7 @@ import com.github.wadahiro.midpoint.tester.GuiPages;
 import com.github.wadahiro.midpoint.tester.GuiProfile;
 
 /**
- * A user who acts in the scenario ({@link Scenario#as}): requests roles, approves and rejects work items, reviews in
+ * A user who acts in the scenario ({@link MidPointConfigTester#as}): requests roles, approves and rejects work items, reviews in
  * certification campaigns. midPoint runs the action logged in as that user, so their authorizations apply (a request
  * needs the End user role's "assign requestable roles", an approval the Approver role's, a review the Reviewer
  * role's). What the user sees and may do in the GUI is asked the same way, by midPoint's actions: what their searches
@@ -33,18 +33,18 @@ import com.github.wadahiro.midpoint.tester.GuiProfile;
  * these fails, the failure lists the user's authorizations.
  *
  * <pre>{@code
- * s.as("jack").request().assign("Privileged Access");
- * s.workItems().forRole("Privileged Access").single().approve(s.as("cc-owner"), "ok");
- * assertThat(s.as("helpdesk").search(UserType.class)).containsExactlyInAnyOrder(Users.JACK, Users.HELPDESK);
+ * t.as("jack").request().assign("Privileged Access");
+ * t.workItems().forRole("Privileged Access").single().approve(t.as("cc-owner"), "ok");
+ * assertThat(t.as("helpdesk").search(UserType.class)).containsExactlyInAnyOrder(Users.JACK, Users.HELPDESK);
  * }</pre>
  */
 public final class Actor {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String name;
 
-    Actor(Scenario scenario, String name) {
-        this.scenario = scenario;
+    Actor(MidPointConfigTester tester, String name) {
+        this.tester = tester;
         this.name = name;
     }
 
@@ -55,16 +55,16 @@ public final class Actor {
 
     /** A request for the actor themself, as in the GUI's "Request access". */
     public Request request() {
-        return new Request(scenario, this, name);
+        return new Request(tester, this, name);
     }
 
     /** A request for another user (midPoint checks that the actor may assign to them). */
     public Request request(String forUser) {
-        return new Request(scenario, this, forUser);
+        return new Request(tester, this, forUser);
     }
 
     public Request request(UserRef forUser) {
-        return request(forUser.on(scenario.line()));
+        return request(forUser.on(tester.line()));
     }
 
     /**
@@ -74,7 +74,19 @@ public final class Actor {
     public List<ObjectRef> search(Class<? extends ObjectType> type) {
         explainAuthorizations();
         List<ObjectRef> out = new ArrayList<>();
-        for (ObjectType object : scenario.midpoint().as(name).search(type, null).value()) {
+        for (ObjectType object : tester.midpoint().as(name).search(type, null).value()) {
+            out.add(ObjectRef.of(typeName(object), object.getName().getOrig(), object.getOid()));
+        }
+        return out;
+    }
+
+    /**
+     * The objects of the object collection (by name or OID) as the user sees it in the GUI's list of it: its filter
+     * evaluated for the user ({@code midpoint.principalOid}...), its base collection, the user's authorizations.
+     */
+    public List<ObjectRef> collection(String nameOrOid) {
+        List<ObjectRef> out = new ArrayList<>();
+        for (ObjectType object : tester.midpoint().as(name).collection(nameOrOid).value()) {
             out.add(ObjectRef.of(typeName(object), object.getName().getOrig(), object.getOid()));
         }
         return out;
@@ -91,7 +103,7 @@ public final class Actor {
      */
     public boolean canGet(ObjectRef object) {
         explainAuthorizations();
-        return scenario.midpoint().as(name).get(typeOf(object), key(object)).value() != null;
+        return tester.midpoint().as(name).get(typeOf(object), key(object)).value() != null;
     }
 
     /**
@@ -100,7 +112,7 @@ public final class Actor {
      */
     public boolean isAuthorized(String actionUrl, ObjectRef object) {
         explainAuthorizations();
-        return scenario.midpoint().as(name).isAuthorized(actionUrl, typeOf(object), key(object)).value();
+        return tester.midpoint().as(name).isAuthorized(actionUrl, typeOf(object), key(object)).value();
     }
 
     /**
@@ -110,14 +122,14 @@ public final class Actor {
      */
     public boolean canAssign(ObjectRef focus, ObjectRef target, QName relation) {
         explainAuthorizations();
-        return scenario.midpoint().as(name).isAuthorizedToAssign(typeOf(focus), key(focus), typeOf(target),
+        return tester.midpoint().as(name).isAuthorizedToAssign(typeOf(focus), key(focus), typeOf(target),
                 key(target), relation).value();
     }
 
     /** As {@link #canAssign}, the unassignment ({@code #unassign}). */
     public boolean canUnassign(ObjectRef focus, ObjectRef target, QName relation) {
         explainAuthorizations();
-        return scenario.midpoint().as(name).isAuthorizedToUnassign(typeOf(focus), key(focus), typeOf(target),
+        return tester.midpoint().as(name).isAuthorizedToUnassign(typeOf(focus), key(focus), typeOf(target),
                 key(target), relation).value();
     }
 
@@ -139,7 +151,7 @@ public final class Actor {
         Set<String> actions;
         if (pageOrActions.length == 1 && pageOrActions[0].startsWith("/")) {
             GuiPages.Required required = GuiPages.of().required(pageOrActions[0], guiAll());
-            scenario.read("page " + pageOrActions[0], () -> "Page " + pageOrActions[0] + ": "
+            tester.read("page " + pageOrActions[0], () -> "Page " + pageOrActions[0] + ": "
                     + (required.matches().isEmpty() ? "no page matches" : "matches " + required.matches())
                     + (required.permitted() ? ", any user opens it" : ", needs one of " + required.actions()));
             if (required.permitted()) {
@@ -153,14 +165,14 @@ public final class Actor {
             actions = new LinkedHashSet<>(Arrays.asList(pageOrActions));
             actions.addAll(guiAll());
         }
-        return scenario.midpoint().as(name).isAuthorizedForAny(actions).value();
+        return tester.midpoint().as(name).isAuthorizedForAny(actions).value();
     }
 
     /** The {@code #guiAll} actions the GUI adds to a page's: 4.0 has a deprecated one too. */
     private Set<String> guiAll() {
         Set<String> out = new LinkedHashSet<>();
         out.add(AuthorizationConstants.AUTZ_GUI_ALL_URL);
-        if (scenario.line().equals("4.0")) {
+        if (tester.line().equals("4.0")) {
             // AUTZ_GUI_ALL_DEPRECATED_URL, gone from 4.4's constants
             out.add("http://midpoint.evolveum.com/xml/ns/public/security/authorization-3#guiAll");
         }
@@ -170,7 +182,7 @@ public final class Actor {
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();
-        Answer<? extends PrismObjectDefinition<?>> definition = scenario.midpoint().as(name)
+        Answer<? extends PrismObjectDefinition<?>> definition = tester.midpoint().as(name)
                 .editDefinition(typeOf(object), key(object));
         return new Form(name, object, definition.value());
     }
@@ -183,8 +195,8 @@ public final class Actor {
      */
     public GuiProfile guiProfile() {
         explainAuthorizations();
-        GuiProfile profile = scenario.midpoint().as(name).guiProfile().value();
-        scenario.read("GUI profile of " + name, () -> describe(profile));
+        GuiProfile profile = tester.midpoint().as(name).guiProfile().value();
+        tester.read("GUI profile of " + name, () -> describe(profile));
         return profile;
     }
 
@@ -218,12 +230,12 @@ public final class Actor {
 
     /** Once per user and test, however many of their checks the test makes. */
     private void explainAuthorizations() {
-        scenario.read("authorizations of " + name, this::authorizations);
+        tester.read("authorizations of " + name, this::authorizations);
     }
 
     /** The user's authorizations, by the role (or archetype) they come from, as a failure shows them. */
     String authorizations() {
-        if (scenario.midpoint().object(UserType.class, name) == null) {
+        if (tester.midpoint().object(UserType.class, name) == null) {
             return "No user " + name;
         }
         StringBuilder sb = new StringBuilder("Authorizations of " + name + " (as midPoint compiled them at login):");
@@ -242,7 +254,7 @@ public final class Actor {
 
     /** The user's authorizations as midPoint compiled them at login ({@code Access.authorizations()}). */
     List<CompiledAuthorization> compiledAuthorizations() {
-        return scenario.midpoint().as(name).authorizations().value();
+        return tester.midpoint().as(name).authorizations().value();
     }
 
     /** {@code role:<oid>(End user)} as {@code role End user}. */
@@ -328,6 +340,6 @@ public final class Actor {
     }
 
     private String key(ObjectRef object) {
-        return object.oid() != null ? object.oid() : object.on(scenario.line());
+        return object.oid() != null ? object.oid() : object.on(tester.line());
     }
 }

@@ -17,19 +17,19 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Users;
  * the post-initial import, as at midPoint's first start, so the deployment can use the End user role, the default
  * security and password policies; its own system configuration replaces the initial one.
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class InitialObjectsScenarioTest {
 
     @Test
-    void theTemplateAssignsTheInitialEndUserRole(Scenario s) {
-        s.user(Users.JACK).hasFullName("Jack Sparrow").hasRole(InitialRoles.END_USER);
-        s.user(Users.ANN).hasRole(InitialRoles.END_USER).hasRole(Roles.ACCOUNTANT);
+    void theTemplateAssignsTheInitialEndUserRole(MidPointConfigTester t) {
+        t.user(Users.JACK).hasFullName("Jack Sparrow").hasRole(InitialRoles.END_USER);
+        t.user(Users.ANN).hasRole(InitialRoles.END_USER).hasRole(Roles.ACCOUNTANT);
     }
 
     /** The post-initial system configuration overwrites the initial one (midPoint: overwrite on every line). */
     @Test
-    void theDeploymentsSystemConfigurationReplacesTheInitialOne(Scenario s) {
-        SystemConfigurationType config = s.midpoint().object(SystemConfigurationType.class, "SystemConfiguration");
+    void theDeploymentsSystemConfigurationReplacesTheInitialOne(MidPointConfigTester t) {
+        SystemConfigurationType config = t.midpoint().object(SystemConfigurationType.class, "SystemConfiguration");
         assertThat(config.getDescription()).isEqualTo("Access deployment");
         // the initial one has a cleanup policy and GUI configuration (object collection views); the deployment's
         // has no cleanup policy, and GUI configuration of its own: one view
@@ -38,16 +38,16 @@ class InitialObjectsScenarioTest {
                 .extracting(v -> v.getIdentifier()).containsExactly("people");
         // the initial objects the deployment refers to are there
         assertThat(config.getGlobalSecurityPolicyRef().getOid()).isEqualTo(InitialPolicies.DEFAULT_SECURITY_POLICY.oid());
-        assertThat(s.midpoint().object(SecurityPolicyType.class, InitialPolicies.DEFAULT_SECURITY_POLICY.oid())).isNotNull();
-        assertThat(s.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.name())).isNotNull();
+        assertThat(t.midpoint().object(SecurityPolicyType.class, InitialPolicies.DEFAULT_SECURITY_POLICY.oid())).isNotNull();
+        assertThat(t.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.name())).isNotNull();
     }
 
     /** midPoint's default password policy (an initial object, by the default security policy) checks passwords. */
     @Test
-    void theDefaultPasswordPolicyRejectsAShortPassword(Scenario s) {
-        Failure failure = s.expectFailure(() -> s.user(Users.JACK).setPassword("ab"));
+    void theDefaultPasswordPolicyRejectsAShortPassword(MidPointConfigTester t) {
+        Failure failure = t.expectFailure(() -> t.user(Users.JACK).setPassword("ab"));
         assertThat(failure.isPolicyViolation()).as(failure.message()).isTrue();
 
-        s.user(Users.JACK).setPassword("Correct-Horse7");
+        t.user(Users.JACK).setPassword("Correct-Horse7");
     }
 }

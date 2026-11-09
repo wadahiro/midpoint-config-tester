@@ -49,10 +49,12 @@
     -->
     <modules>
         <module>tester</module>
+        <module>tester/kotest</module>
         <!-- the parents of config repositories, one per line (midpoint-config-tester-parent-<line>) -->
         <module>parent</module>
         <!-- an example config repository on the 4.8 parent, built and tested with the tester -->
         <module>examples/hr-ldap</module>
+        <module>examples/kotest-scenarios</module>
     </modules>
 
     <properties>
@@ -76,6 +78,10 @@
         <unboundid.version>7.0.3</unboundid.version>
         <!-- test JVMs per line module (-Dtester.forks=N): each restores the cached deployments (README, Speed) -->
         <tester.forks>1</tester.forks>
+        <!-- Kotlin and Kotest, for the opt-in Kotest layer (tester/kotest) and the repositories that use it -->
+        <kotlin.version>2.3.10</kotlin.version>
+        <kotest.version>6.2.6</kotest.version>
+        <kotlinx-coroutines.version>1.10.2</kotlinx-coroutines.version>
     </properties>
 
     <repositories>
@@ -94,11 +100,6 @@
             The Maven Build Cache (opt-in, .mvn/maven-build-cache-config.xml) keys a module on its inputs, not on -D
             properties: with one of the tester's properties (or -Dtest) given, a module is always built and tested.
         -->
-        <profile>
-            <id>no-build-cache-golden.mode</id>
-            <activation><property><name>golden.mode</name></property></activation>
-            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
-        </profile>
         <profile>
             <id>no-build-cache-static.dir</id>
             <activation><property><name>static.dir</name></property></activation>

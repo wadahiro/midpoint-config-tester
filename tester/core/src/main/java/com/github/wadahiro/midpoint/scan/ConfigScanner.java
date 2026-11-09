@@ -39,7 +39,7 @@ import groovy.lang.GroovyClassLoader;
  * literals, so a class removed in the target line is found; a fully qualified name used as a value
  * ({@code com.example.Util.call()}) and missing methods are only found at run time. Classes of production that are
  * not on the test classpath (model-impl, GUI, connectors, custom jars) do not resolve on any line: compare the results
- * of two lines (golden files) rather than reading one alone.
+ * of two lines rather than reading one alone.
  *
  * This class does not depend on the midPoint line nor on a runtime: every line module and the static checks include it.
  */

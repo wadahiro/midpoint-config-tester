@@ -13,18 +13,22 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
+
 /**
  * A task run that fails on one of its objects fails the driver call that ran it, as the task fails in midPoint, and
  * says which object failed and why: midPoint's result of the run only counts the failures.
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 class TaskErrorsTest {
 
     @TempDir
     static Path tmp;
 
     @Test
-    void aReconciliationThatFailsOnAnAccountFailsWithTheAccountAndWhy(MidPoint mp) throws IOException {
+    void aReconciliationThatFailsOnAnAccountFailsWithTheAccountAndWhy(MidPointConfigTester t) throws IOException {
+        MidPoint mp = t.midpoint();
         Path resource = tmp.resolve("resource-hr-failing.xml");
         String hr = Files.readString(Fixtures.of(mp, new File(Fixtures.ROOT, "resource-hr.xml")).toPath(),
                 StandardCharsets.UTF_8);

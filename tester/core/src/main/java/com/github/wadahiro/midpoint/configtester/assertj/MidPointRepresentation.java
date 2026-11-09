@@ -6,7 +6,7 @@ import com.github.wadahiro.midpoint.configtester.Describe;
 
 /**
  * AssertJ's representation with midPoint's values as {@link Describe} shows them: an assignment as
- * {@code assignment of role Dept Sales}, a reference as {@code role Dept Sales}. {@code ScenarioExtension} makes it
+ * {@code assignment of role Dept Sales}, a reference as {@code role Dept Sales}. {@code MidPointConfigTestExtension} makes it
  * AssertJ's representation during every scenario test.
  */
 public class MidPointRepresentation extends StandardRepresentation {

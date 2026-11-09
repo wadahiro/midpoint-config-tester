@@ -32,7 +32,7 @@ final class CertificationImpl implements Certification {
     public Run createCampaign(String definition) {
         AccessCertificationDefinitionType bean = mp.existing(AccessCertificationDefinitionType.class, definition);
         String definitionOid = bean.getOid();
-        // labels are golden run keys: names and stage numbers, no OIDs or container IDs (they differ between lines)
+        // labels name the run the same on every line: names and stage numbers, no OIDs or container IDs
         return mp.runAs(null, "create campaign " + bean.getName().getOrig(), (task, result) -> {
             AccessCertificationCampaignType campaign = manager().createCampaign(definitionOid, task, result);
             return new MidPointImpl.Outcome(campaign.getOid(), null);
@@ -128,7 +128,7 @@ final class CertificationImpl implements Certification {
 
     /**
      * The campaign by its definition's name: the campaign's own name has a counter ({@code <definition> 1}), which
-     * depends on the campaigns created before; a repeated label gets {@code #2} in golden results.
+     * depends on the campaigns created before.
      */
     private String name(AccessCertificationCampaignType campaign) {
         return campaign.getDefinitionRef() != null

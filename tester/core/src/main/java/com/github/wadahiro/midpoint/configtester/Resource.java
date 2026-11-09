@@ -9,20 +9,20 @@ import com.github.wadahiro.midpoint.configtester.names.AttributeRef;
 import com.github.wadahiro.midpoint.tester.TargetSystem;
 
 /**
- * The system behind a resource of the deployment ({@link Scenario#source} / {@link Scenario#target}), as the manifest
+ * The system behind a resource of the deployment ({@link MidPointConfigTester#source} / {@link MidPointConfigTester#target}), as the manifest
  * set it up (a mirror, a CSV file, an in-memory LDAP server). Accounts are named by the resource's naming attribute
  * (the CSV's unique column, the LDAP DN); attribute names are the resource's ({@code cn}, not {@code ri:cn}).
  *
  * <p>Changes here are made on the system itself, as its own administrator (or the HR department) would; midPoint
- * sees them when it reads the system next ({@link Scenario#task}, {@link Scenario#reconcile}).</p>
+ * sees them when it reads the system next ({@link MidPointConfigTester#task}, {@link MidPointConfigTester#reconcile}).</p>
  */
 public final class Resource {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String name;
 
-    Resource(Scenario scenario, String name) {
-        this.scenario = scenario;
+    Resource(MidPointConfigTester tester, String name) {
+        this.tester = tester;
         this.name = name;
     }
 
@@ -82,15 +82,15 @@ public final class Resource {
 
     /** The attribute's name, checked to be one of this resource on this line. */
     String attribute(AttributeRef attribute) {
-        return attribute.of(name, scenario.line());
+        return attribute.of(name, tester.line());
     }
 
     /** The local name of the attribute that names the accounts ({@code dn}, the CSV's name column). */
     String namingAttribute() {
-        String naming = scenario.deployment().namingAttribute(name);
+        String naming = tester.deployment().namingAttribute(name);
         if (naming == null) {
             throw new AssertionError("No resource " + name + " in the deployment (resources: "
-                    + scenario.deployment().resources() + ")");
+                    + tester.deployment().resources() + ")");
         }
         return naming;
     }
@@ -122,7 +122,7 @@ public final class Resource {
 
     /** An account of the system, to check (it need not exist: {@link Account#doesNotExist()}). */
     public Account account(String account) {
-        return new Account(scenario, this, account);
+        return new Account(tester, this, account);
     }
 
     /** The names of the accounts on the system now. */
@@ -133,7 +133,7 @@ public final class Resource {
     /** The PoC's view of the system (groups, other object classes, passwords). */
     public TargetSystem system() {
         try {
-            return scenario.deployment().api().target(name);
+            return tester.deployment().api().target(name);
         } catch (IllegalArgumentException | AssertionError e) {
             throw new AssertionError("No resource " + name + " in the deployment: " + e.getMessage(), e);
         }

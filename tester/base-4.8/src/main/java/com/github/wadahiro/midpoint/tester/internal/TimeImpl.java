@@ -11,7 +11,6 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.TriggerScanWorkDefinitionType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.WorkDefinitionsType;
 import com.github.wadahiro.midpoint.tester.Run;
-import com.github.wadahiro.midpoint.tester.Time;
 
 /** {@link Time} on 4.8: midPoint's {@link Clock} override, scanners as single-run activity tasks. */
 final class TimeImpl implements Time {

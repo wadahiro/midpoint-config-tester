@@ -65,7 +65,7 @@ final class Line48 {
                 + "      <jdbcPassword></jdbcPassword>\n"
                 + "    </repository>\n"
                 + "    <audit><auditService>"
-                + "<auditServiceFactoryClass>com.evolveum.midpoint.test.DummyAuditServiceFactory</auditServiceFactoryClass>"
+                + "<auditServiceFactoryClass>com.evolveum.midpoint.repo.sqale.audit.SqaleAuditServiceFactory</auditServiceFactoryClass>"
                 + "</auditService></audit>\n"
                 + "    <taskManager><jdbcJobStore>false</jdbcJobStore><testMode>true</testMode></taskManager>\n"
                 + "    <icf><scanClasspath>true</scanClasspath><scanDirectory>" + xml(connectorDir) + "</scanDirectory></icf>\n"

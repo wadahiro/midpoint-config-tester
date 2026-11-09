@@ -20,8 +20,8 @@ public final class LineSupport {
     }
 
     /**
-     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that golden results compare
-     * its content; null when prism cannot serialize it.
+     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that the normalized text
+     * shows its content; null when prism cannot serialize it.
      */
     public static String serializeRealValue(Object value) {
         return Line48.serializeRealValue(value);
@@ -60,6 +60,19 @@ public final class LineSupport {
             }
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot clear the ext item names of the repository", e);
+        }
+        // the shadow partitions: the partition manager remembers the resource tables it created, which the reset of
+        // the database drops (a resource imported after the snapshot then gets no table for its shadows)
+        try {
+            Object manager = com.evolveum.midpoint.repo.sqale.qmodel.shadow.QShadowMapping.getShadowMapping()
+                    .getPartitionManager();
+            java.lang.reflect.Field tables = manager.getClass().getDeclaredField("resourceTable");
+            tables.setAccessible(true);
+            synchronized (manager) {
+                tables.set(manager, null);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot clear the shadow partitions the repository knows", e);
         }
         context.clearCaches();
     }

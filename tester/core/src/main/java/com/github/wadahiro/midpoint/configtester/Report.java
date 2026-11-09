@@ -4,16 +4,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * A report of the deployment, by name ({@link Scenario#report}). midPoint 4.4+ (object collection and dashboard
+ * A report of the deployment, by name ({@link MidPointConfigTester#report}). midPoint 4.4+ (object collection and dashboard
  * reports); 4.0's reports are Jasper reports, which the tester does not run ({@link UnsupportedOperationException}).
  */
 public final class Report {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String name;
 
-    Report(Scenario scenario, String name) {
-        this.scenario = scenario;
+    Report(MidPointConfigTester tester, String name) {
+        this.tester = tester;
         this.name = name;
     }
 
@@ -28,7 +28,7 @@ public final class Report {
      */
     public ReportOutput run(Map<String, ?> parameters) {
         return new ReportOutput(name,
-                scenario.deployment().api().reports().export(name, new LinkedHashMap<>(parameters)).lines());
+                tester.deployment().api().reports().export(name, new LinkedHashMap<>(parameters)).lines());
     }
 
     public String name() {

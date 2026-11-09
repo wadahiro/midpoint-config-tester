@@ -41,8 +41,8 @@ public final class LineSupport {
     }
 
     /**
-     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that golden results compare
-     * its content; null when prism cannot serialize it.
+     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that the normalized text
+     * shows its content; null when prism cannot serialize it.
      */
     public static String serializeRealValue(Object value) {
         try {
@@ -68,7 +68,7 @@ public final class LineSupport {
                 + "      <jdbcPassword></jdbcPassword>\n"
                 + "    </repository>\n"
                 + "    <audit><auditService>"
-                + "<auditServiceFactoryClass>com.evolveum.midpoint.test.DummyAuditServiceFactory</auditServiceFactoryClass>"
+                + "<auditServiceFactoryClass>com.evolveum.midpoint.repo.sqale.audit.SqaleAuditServiceFactory</auditServiceFactoryClass>"
                 + "</auditService></audit>\n"
                 + "    <taskManager><jdbcJobStore>false</jdbcJobStore><testMode>true</testMode></taskManager>\n"
                 + "    <icf><scanClasspath>true</scanClasspath><scanDirectory>" + xml(connectorDir) + "</scanDirectory></icf>\n"

@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import com.github.wadahiro.midpoint.tester.ResourceOptions;
 import com.github.wadahiro.midpoint.tester.mirror.MirrorClass;
+import com.github.wadahiro.midpoint.tester.mirror.MirrorObject;
+import com.github.wadahiro.midpoint.tester.mirror.MirrorResource;
 
 /** The resource-to-mirror transform on its own (no midPoint needed). */
 class MirrorResourceXmlTest {
@@ -239,6 +241,35 @@ class MirrorResourceXmlTest {
         assertThat(r.otherClasses).containsExactly("group", "list");
     }
 
+    /**
+     * An identifier the target system issues on create (a certificate's serial and validity): the expression gets the
+     * name, the other attributes and the tester's clock; a second object gets its own identifier.
+     */
+    @Test
+    void anIdentifierIssuedOnCreate() {
+        MirrorResourceXml r = transform(HEAD
+                + "<schema><definition><xsd:schema><xsd:complexType name='cert'><xsd:sequence>"
+                + "<xsd:element name='certName'/><xsd:element name='certId'/><xsd:element name='days'/>"
+                + "</xsd:sequence></xsd:complexType></xsd:schema></definition></schema></resource>",
+                ResourceOptions.defaults().namingAttribute("certName").identifier("certId",
+                        "name + '/' + attributes.days[0] + '/' + (now.toEpochMilli() > 0)"));
+        MirrorClass cert = classes(r).get("cert");
+        assertThat(cert.uidAttribute).isEqualTo("certId");
+
+        MirrorResource store = new MirrorResource("issued");
+        store.define(java.util.List.of(cert), java.util.List.of(), false, false);
+        MirrorObject object = new MirrorObject();
+        object.name = "t1/alice";
+        object.attributes.put("days", java.util.List.of("214"));
+
+        assertThat(store.add(cert, object)).isEqualTo("t1/alice/214/true");
+        assertThat(store.findByUid(cert, "t1/alice/214/true").name).isEqualTo("t1/alice");
+        MirrorObject failing = new MirrorObject();
+        failing.name = "t1/bob";
+        assertThatThrownBy(() -> store.add(cert, failing))
+                .hasMessageContaining("The identifier expression of cert failed for t1/bob");
+    }
+
     @Test
     void optionsOverrideTheStoredSchema() {
         MirrorResourceXml r = transform(HEAD
@@ -428,6 +459,49 @@ class MirrorResourceXmlTest {
         assertThat(classes(r).get("AccountObjectClass").attributes).containsOnlyKeys("mail", "category");
         assertThatThrownBy(() -> transform(body, ResourceOptions.defaults().attribute("person", "category")))
                 .hasMessageContaining("no object class person");
+    }
+
+    /** An attribute multi-valued on the real resource: schemaHandling names it without maxOccurs, the options say so. */
+    @Test
+    void attributesMultiValuedOnTheRealResource() {
+        String body = HEAD + "<schemaHandling><objectType><objectClass>ri:AccountObjectClass</objectClass>"
+                + "<attribute><ref>icfs:name</ref></attribute><attribute><ref>ri:parameters</ref></attribute>"
+                + "</objectType></schemaHandling></resource>";
+
+        assertThat(classes(transform(body, ResourceOptions.defaults())).get("AccountObjectClass").attributes
+                .get("parameters").multiValued).isFalse();
+        MirrorResourceXml r = transform(body, ResourceOptions.defaults().multiValued("AccountObjectClass", "parameters")
+                .multiValued("AccountObjectClass", "tags"));
+        assertThat(classes(r).get("AccountObjectClass").attributes.get("parameters").multiValued).isTrue();
+        assertThat(classes(r).get("AccountObjectClass").attributes.get("tags").multiValued).isTrue();
+        assertThatThrownBy(() -> transform(body, ResourceOptions.defaults().multiValued("person", "parameters")))
+                .hasMessageContaining("no object class person");
+        MirrorResourceXml keyed = transform(body, ResourceOptions.defaults().keyedValues("AccountObjectClass",
+                "parameters", "="));
+        assertThat(classes(keyed).get("AccountObjectClass").attributes.get("parameters").multiValued).isTrue();
+        assertThat(classes(keyed).get("AccountObjectClass").attributes.get("parameters").keySeparator).isEqualTo("=");
+    }
+
+    /**
+     * {@code icfs:uid}: ConnId's identifier without a native name, which the target system issues apart from the name;
+     * a class with an identifier of its own keeps it.
+     */
+    @Test
+    void anIdentifierWithoutANativeName() {
+        String body = HEAD + "<schemaHandling><objectType><objectClass>ri:AccountObjectClass</objectClass>"
+                + "<attribute><ref>icfs:name</ref></attribute><attribute><ref>ri:mail</ref></attribute>"
+                + "</objectType></schemaHandling></resource>";
+
+        assertThat(classes(transform(body)).get("AccountObjectClass").generatedUid()).isFalse();
+        MirrorClass generated = classes(transform(body, ResourceOptions.defaults().identifier("icfs:uid")))
+                .get("AccountObjectClass");
+        assertThat(generated.generatedUid()).isTrue();
+        assertThat(generated.uidAttribute).isNull();
+        assertThat(generated.attributes).containsOnlyKeys("mail");
+        assertThat(classes(transform(body, ResourceOptions.defaults().identifier("icfs:uid", "'id-' + name")))
+                .get("AccountObjectClass").uidValue).isEqualTo("'id-' + name");
+        assertThatThrownBy(() -> ResourceOptions.defaults().identifier("icfs:name"))
+                .hasMessageContaining("a ri: attribute, or icfs:uid");
     }
 
     /** Classes named by different attributes: each its own, over the resource's. */

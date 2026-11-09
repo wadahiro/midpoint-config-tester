@@ -27,6 +27,7 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
 import com.evolveum.midpoint.common.Clock;
+import com.evolveum.midpoint.model.common.ConstantsManager;
 import com.github.wadahiro.midpoint.configtester.DeploymentLoadException;
 import com.github.wadahiro.midpoint.tester.CsvFile;
 import com.github.wadahiro.midpoint.tester.LdapDirectory;
@@ -107,7 +108,109 @@ public final class Deployment {
         this.runtime = runtime;
         this.mp = (MidPointImpl) runtime.api();
         this.workDir = runtime.workDir().resolve("tester-deployment").resolve(id(manifest.file));
+        useConstants();
+        useDatabasesAndEnvironment();
+        if (!manifest.networkAllow.isEmpty()) {
+            List<String> hosts = new ArrayList<>(manifest.networkAllow);
+            String property = System.getProperty("tester.network.allow", "");
+            if (!property.isBlank()) {
+                hosts.addAll(List.of(property.trim().split("\\s*,\\s*")));
+            }
+            com.github.wadahiro.midpoint.tester.agent.NetworkGuard.activate(hosts.toArray(new String[0]));
+        }
     }
+
+    /** The stand-in databases of the manifest, started; the scripts' environment with their URLs. */
+    private final Map<String, StandInDatabases.Database> databases = new LinkedHashMap<>();
+
+    private void useDatabasesAndEnvironment() {
+        for (Map.Entry<String, List<Path>> db : manifest.databases.entrySet()) {
+            databases.put(db.getKey(), StandInDatabases.start(manifest.file + "#" + db.getKey(), db.getKey(),
+                    db.getValue(), runtime.workDir()));
+        }
+        Map<String, String> environment = new LinkedHashMap<>();
+        manifest.environment.forEach((name, value) -> {
+            for (Map.Entry<String, StandInDatabases.Database> db : databases.entrySet()) {
+                value = value.replace("${database." + db.getKey() + ".url}", db.getValue().url())
+                        .replace("${database." + db.getKey() + ".user}", db.getValue().user());
+            }
+            if (value.contains("${database.")) {
+                throw new DeploymentLoadException(manifest.file + ": environment." + name + ": " + value
+                        + " names a database the manifest does not have (databases: " + databases.keySet() + ")");
+            }
+            environment.put(name, value);
+        });
+        ScriptEnvironment.use(environment);
+    }
+
+    /** A stand-in database of the manifest ({@code databases}); fails for another name. */
+    /** midPoint's own database (the pgmem fork): its JDBC URL. */
+    public String repositoryJdbcUrl() {
+        return runtime.repositoryJdbcUrl();
+    }
+
+    public String repositoryUser() {
+        return runtime.repositoryUser();
+    }
+
+    public StandInDatabases.Database database(String name) {
+        StandInDatabases.Database db = databases.get(name);
+        if (db == null) {
+            throw new IllegalArgumentException("No database " + name + " in the manifest (databases: "
+                    + databases.keySet() + ")");
+        }
+        return db;
+    }
+
+    /**
+     * Fails if midPoint (or a script) tried to reach another machine since the last check: the guard refused it, but
+     * the error may have been only logged (a mail notification).
+     */
+    public static void checkNetwork(String during) {
+        List<String> refused = com.github.wadahiro.midpoint.tester.agent.NetworkGuard.takeViolations();
+        if (!refused.isEmpty()) {
+            throw new AssertionError("The tester refused connections to other machines " + during + ": " + refused
+                    + ". A test reaches only the tester's stand-ins: a service the deployment calls needs one"
+                    + " (http.redirect, a stand-in resource, the mail redirect), or the manifest's network.allow");
+        }
+    }
+
+    /**
+     * midPoint's constants as the manifest gives them ({@code <constants>} of config.xml), over the test
+     * configuration's: before the import (a resource's configuration may use them) and after every reset (another
+     * deployment of this JVM may have other ones).
+     */
+    private void useConstants() {
+        ConstantsManager constants = mp.harness.bean(ConstantsManager.class);
+        try {
+            java.lang.reflect.Method read = ConstantsManager.class.getDeclaredMethod("getConstConfig");
+            read.setAccessible(true);
+            java.lang.reflect.Field field = ConstantsManager.class.getDeclaredField("constConfig");
+            field.setAccessible(true);
+            if (baseConstants == null) {
+                baseConstants = new org.apache.commons.configuration2.BaseConfiguration();
+                Object configured = read.invoke(constants);
+                if (configured != null) {
+                    org.apache.commons.configuration2.Configuration from =
+                            (org.apache.commons.configuration2.Configuration) configured;
+                    from.getKeys().forEachRemaining(k -> baseConstants.setProperty(k, from.getProperty(k)));
+                }
+            }
+            org.apache.commons.configuration2.BaseConfiguration effective =
+                    new org.apache.commons.configuration2.BaseConfiguration();
+            baseConstants.getKeys().forEachRemaining(k -> effective.setProperty(k, baseConstants.getProperty(k)));
+            manifest.constants.forEach(effective::setProperty);
+            field.set(constants, effective);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot set midPoint's constants", e);
+        }
+    }
+
+    /** The deployment whose system configuration midPoint's components have, see {@link #reset()}. */
+    private static Deployment active;
+
+    /** The constants of the test configuration, before any manifest's. */
+    private static org.apache.commons.configuration2.BaseConfiguration baseConstants;
 
     /**
      * The deployment of the manifest, loaded on first use in this JVM; a load that failed fails again with the same
@@ -278,9 +381,7 @@ public final class Deployment {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        for (String directory : manifest.mappedDirectories) {
-            FileArea.get().map(directory);
-        }
+        mapDirectories();
         Map<String, Path> sources = sources();
         prepare(sources, copy);
 
@@ -315,6 +416,12 @@ public final class Deployment {
             });
         }
         mp.awaitBackgroundWork("the post-initial import of " + manifest.file);
+        redirectStoredMail();
+        try {
+            checkNetwork("during the load");
+        } catch (AssertionError e) {
+            throw new DeploymentLoadException(e.getMessage(), e);
+        }
         initial = runtime.initialImport();
         NamesCheck.check(this, mp, LineSupport.LINE);
         runtime.takeJournal();
@@ -372,9 +479,7 @@ public final class Deployment {
         Path copy = workDir.resolve("post-initial-objects");
         deleteTree(workDir);
         Files.createDirectories(copy);
-        for (String directory : manifest.mappedDirectories) {
-            FileArea.get().map(directory);
-        }
+        mapDirectories();
         loadingInitialData = false;
         prepare(sources(), copy);
         if (!resourceOids.equals(meta.get("resourceOids"))) {
@@ -429,10 +534,29 @@ public final class Deployment {
                         return Xml.serialize(doc);
                     }, "connectorConfiguration");
         }
+        redirectStoredMail();
+    }
+
+    /**
+     * The mail servers of the stored system configuration moved to this JVM's SMTP server: after the import (a script
+     * of the deployment may have configured a transport, e.g. a production server, which no imported file has) and
+     * after a restore (the port is this JVM's). midPoint's mail transports keep the configuration of its last change
+     * event, which a patch of the repository is not: it is applied to them.
+     */
+    private void redirectStoredMail() {
         if (manifest.mailRedirect || !systemConfigurationInDeployment) {
             mp.patchStored(com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationType.class,
                     "00000000-0000-0000-0000-000000000001", mp::redirectMail, "notificationConfiguration",
                     "messageTransportConfiguration");
+            mp.applySystemConfiguration();
+            if (manifest.mailRedirect) {
+                List<String> other = mp.unredirectedMailServers();
+                if (!other.isEmpty()) {
+                    throw new DeploymentLoadException("Mail servers of the system configuration are not the tester's"
+                            + " after its redirection: " + other + " (a form of the configuration the tester does not"
+                            + " know; report it)");
+                }
+            }
         }
     }
 
@@ -713,15 +837,111 @@ public final class Deployment {
 
     // ---- use ------------------------------------------------------------------------------------------------
 
+    /** Maps the manifest's directories, with their initial trees ({@code files.initial}). */
+    private void mapDirectories() {
+        for (String directory : manifest.mappedDirectories) {
+            FileArea.get().map(directory);
+        }
+        for (Map.Entry<String, Path> initial : manifest.initialFiles.entrySet()) {
+            Path target = FileArea.get().physical(initial.getKey());
+            try (java.util.stream.Stream<Path> tree = Files.walk(initial.getValue())) {
+                for (Path source : (Iterable<Path>) tree::iterator) {
+                    Path to = target.resolve(initial.getValue().relativize(source).toString());
+                    if (Files.isDirectory(source)) {
+                        Files.createDirectories(to);
+                    } else if (!source.getFileName().toString().equals(".gitkeep")) {
+                        // a .gitkeep keeps an empty directory in git: the directory is made, the file is not there
+                        Files.createDirectories(to.getParent());
+                        Files.copy(source, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
+
     /**
      * Back to the deployment as loaded: database, target systems, mapped files, the clock at the real time, the
      * recurring tasks as the manifest says; logged in as the administrator, no mails or notifications.
      */
     public void reset() {
+        useConstants();
+        useDatabasesAndEnvironment();
+        databases.values().forEach(StandInDatabases.Database::reset);
         runtime.reset(state);
+        if (active != this) {
+            // midPoint's components (the mail transports among them) keep the system configuration of its last change
+            // event: the one of the deployment used before in this JVM
+            mp.applySystemConfiguration();
+            active = this;
+        }
         runtime.takeJournal();
         runtime.clearNotifications();
         mp.step(null);
+        LogCapture.start(manifest.logCapture);
+    }
+
+    /**
+     * midPoint as the test has it now, to come back to with {@link #restore}: see {@link Checkpoint}. Waits for the
+     * background work. Release it ({@link #release(Checkpoint)}) when it is no longer needed.
+     */
+    public Checkpoint checkpoint() {
+        Map<String, String> dbs = new LinkedHashMap<>();
+        databases.forEach((name, db) -> dbs.put(name, db.checkpoint()));
+        TesterRuntime.State state = runtime.checkpoint();
+        Clock clock = clock();
+        return new Checkpoint(state, dbs, (Long) clockField(clock, "override"), (Long) clockField(clock, "overrideOffset"),
+                mp.drivers().mails().size(), mp.drivers().notifications().size(), LogCapture.count(),
+                HttpStandIn.captureIfStarted(), mp.testMarks(), TaskSchedules.scheduledAt());
+    }
+
+    /**
+     * Back to the checkpoint: the reset's machinery to its snapshot, then midPoint's clock as it was (moved or stopped:
+     * also back in time), and what the test had seen then (the later mails, notifications, logs and HTTP requests
+     * forgotten).
+     */
+    public void restore(Checkpoint checkpoint) {
+        if (checkpoint.released) {
+            throw new IllegalStateException("The checkpoint was released");
+        }
+        databases.forEach((name, db) -> db.restore(checkpoint.databases.get(name)));
+        runtime.reset(checkpoint.state);
+        TaskSchedules.restoreScheduledAt(checkpoint.scheduledAt);
+        Clock clock = clock();
+        if (checkpoint.clockOverride != null) {
+            clock.override(checkpoint.clockOverride);
+        }
+        clock.overrideOffset(checkpoint.clockOffset);
+        TimeAgent.sync(clock);
+        mp.drivers().keepMailsAndNotifications(checkpoint.mails, checkpoint.notifications);
+        LogCapture.keep(checkpoint.logs);
+        HttpStandIn.restore(checkpoint.http);
+        mp.restoreTestMarks(checkpoint.marks);
+        runtime.takeJournal();
+    }
+
+    /** How much midPoint was asked to do so far (driver calls, API calls, task starts): grows with every call. */
+    public long activity() {
+        return runtime.activityCount();
+    }
+
+    public void release(Checkpoint checkpoint) {
+        if (!checkpoint.released) {
+            checkpoint.released = true;
+            runtime.release(checkpoint.state);
+            databases.forEach((name, db) -> db.release(checkpoint.databases.get(name)));
+        }
+    }
+
+    private static Object clockField(Clock clock, String name) {
+        try {
+            java.lang.reflect.Field field = Clock.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(clock);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot read midPoint's clock (" + name + ")", e);
+        }
     }
 
     /**
@@ -731,6 +951,11 @@ public final class Deployment {
     public static synchronized Deployment reload(Path manifestFile) {
         LOADED.remove(manifestFile.toAbsolutePath().normalize());
         return load(manifestFile);
+    }
+
+    /** Makes the tester's SMTP server refuse the mails to the recipients the predicate accepts; null: none. */
+    public void rejectMails(java.util.function.Predicate<String> recipient) {
+        mp.drivers().rejectMails(recipient);
     }
 
     /** The cache entry this deployment was restored from; null when it was loaded afresh. */
@@ -892,6 +1117,15 @@ public final class Deployment {
         clock.override(instant.toEpochMilli());
         clock.overrideOffset(null);
         TimeAgent.sync(clock);
+    }
+
+    /**
+     * Stops the clock at the instant ({@link #stopAt}) and starts the test there: the schedules of the tasks that never
+     * ran count from it, as from a test that began at that instant. Fails after due tasks have run in the test.
+     */
+    public void startAt(Instant instant) {
+        stopAt(instant);
+        mp.startTestAt(instant.toEpochMilli());
     }
 
     private Clock clock() {

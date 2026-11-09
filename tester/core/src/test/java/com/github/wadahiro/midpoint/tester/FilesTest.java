@@ -8,15 +8,18 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 
 /**
  * Files scripts read and write under a directory the configuration names ({@code /opt/midpoint/var}), mapped to a
  * directory of the test: bulk actions, ad-hoc scripts, task scripts. The real directory is never touched.
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 class FilesTest {
 
     static final String VAR = "/opt/midpoint/var";
@@ -24,24 +27,21 @@ class FilesTest {
     static final String OUTPUT = VAR + "/export/users.csv";
     static final File DIR = Fixtures.dir("files");
 
-    @BeforeAll
-    static void configure(MidPoint mp) {
-        // mapped and written before the test methods: there in each of them
-        mp.files().map(VAR).write(INPUT, "id,name\n1001,John Doe\n1002,Jane Roe\n");
-    }
-
     @BeforeEach
-    void eachTestStartsFromTheFilesOfBeforeAll(MidPoint mp) {
-        // what another test method wrote is gone, the input file of @BeforeAll is back
-        assertThat(mp.files().mapped()).containsExactly(VAR);
+    void configure(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        // what another test method mapped and wrote is gone
+        assertThat(mp.files().mapped()).isEmpty();
+        // mapped and written before each test method
+        mp.files().map(VAR).write(INPUT, "id,name\n1001,John Doe\n1002,Jane Roe\n");
         assertThat(mp.files().list(VAR)).containsExactly(INPUT);
-        assertThat(mp.files().read(INPUT)).startsWith("id,name\n");
         // as midPoint's report output directory
         assertThat(mp.files().list(mp.files().exportDirectory())).isEmpty();
     }
 
     @Test
-    void bulkActionReadsAndWritesCsvFiles(MidPoint mp) throws Exception {
+    void bulkActionReadsAndWritesCsvFiles(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
         Answer<BulkActionOutput> out = mp.bulkAction(
                 "<s:executeScript xmlns:s='http://midpoint.evolveum.com/xml/ns/public/model/scripting-3'"
                         + " xmlns:c='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
@@ -75,7 +75,8 @@ class FilesTest {
     }
 
     @Test
-    void scriptWithJavaIoAndNio(MidPoint mp) throws Exception {
+    void scriptWithJavaIoAndNio(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
         Answer<List<Object>> out = mp.script(
                 "import java.nio.file.Files\n"
                         + "import java.nio.file.Path\n"
@@ -108,7 +109,8 @@ class FilesTest {
     }
 
     @Test
-    void javaCodeCalledByAScript(MidPoint mp) throws Exception {
+    void javaCodeCalledByAScript(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
         // Java code (here FileUtility, like a custom library or Commons IO) builds its paths from strings itself
         Answer<List<Object>> out = mp.script(
                 "def names = com.github.wadahiro.midpoint.tester.FileUtility.writeAll(dir, 'from java')\n"
@@ -127,24 +129,26 @@ class FilesTest {
     }
 
     @Test
-    void taskScriptWritesAFile(MidPoint mp) {
+    void taskScriptWritesAFile(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name></user>");
 
         // a single-run task is due when imported: the import waits for it
         Run run = mp.importObject(Fixtures.of(mp, new File(DIR, "task-export-users.xml")));
 
         assertThat(run.fileWritten(VAR + "/export/user-names.txt").lines()).containsExactly("administrator", "jdoe");
-        Evaluation script = run.select().evaluator("script").first();
-        assertThat(script.task()).isEqualTo("export user names");
         // the script parameter of an execute-script action (the bulk action of the task's activity; on 4.0 in the
-        // task's extension)
-        assertThat(script.identity()).hasToString("task:export user names/" + (Lines.atLeast(mp, "4.4")
-                ? "activity/work/nonIterativeScripting/scriptExecutionRequest" : "extension/executeScript")
-                + "/pipeline/action/parameter[script]");
+        // task's extension), among the scripts the task's run evaluated (also midPoint's own, e.g. of an actor)
+        assertThat(run.select().evaluator("script").list()).filteredOn(e -> "export user names".equals(e.task()))
+                .extracting(e -> e.identity().toString())
+                .contains("task:export user names/" + (Lines.atLeast(mp, "4.4")
+                        ? "activity/work/nonIterativeScripting/scriptExecutionRequest" : "extension/executeScript")
+                        + "/pipeline/action/parameter[script]");
     }
 
     @Test
-    void reportExportWritesItsFile(MidPoint mp) {
+    void reportExportWritesItsFile(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         assumeTrue(Lines.atLeast(mp, "4.4"), "midPoint 4.0 has no object collection reports");
         // here, not in @BeforeAll: the users would change what the other tests' scripts see on 4.4+ only
         mp.importObject(new File(Fixtures.dir("async"), "reported-users.xml"));
@@ -162,7 +166,8 @@ class FilesTest {
     }
 
     @Test
-    void scriptDeletesAFile(MidPoint mp) {
+    void scriptDeletesAFile(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         Run run = mp.script("new File('" + INPUT + "').delete()").evaluate().run();
 
         assertThat(run.filesDeleted()).containsExactly(INPUT);
@@ -170,8 +175,27 @@ class FilesTest {
         // the next test method gets it back (eachTestStartsFromTheFilesOfBeforeAll)
     }
 
+    /**
+     * A shell command the JVM starts (a report's post-report script, {@code "...".execute()}) does not go through
+     * {@code File} or {@code Path}: the mapped directories written in its arguments become the physical ones. A sibling
+     * with the same prefix ({@code /opt/midpoint/variable}) stays.
+     */
     @Test
-    void pathsOutsideMappedDirectoriesAreLeftAlone(MidPoint mp) {
+    void shellCommandsSeeTheMappedDirectory(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        Object out = mp.script("def p = ['/bin/sh', '-c', 'mkdir -p " + VAR + "/shell && { head -1 " + INPUT
+                + "; echo /opt/midpoint/variable/x; } > \"" + VAR + "/shell/out.txt\" && cat " + VAR + "/shell/out.txt']"
+                + ".execute()\n"
+                + "p.waitFor()\n"
+                + "p.exitValue() + ':' + p.text").evaluate().value().get(0);
+
+        assertThat(out).isEqualTo("0:id,name\n/opt/midpoint/variable/x\n");
+        assertThat(mp.files().lines(VAR + "/shell/out.txt")).containsExactly("id,name", "/opt/midpoint/variable/x");
+    }
+
+    @Test
+    void pathsOutsideMappedDirectoriesAreLeftAlone(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         Answer<List<Object>> out = mp.script(
                 "[new File('/nonexistent-tester-dir/x.txt').path, new File('/opt/midpoint/variable/x').path,"
                         + " java.nio.file.Paths.get('/nonexistent-tester-dir').toString(),"
@@ -185,7 +209,8 @@ class FilesTest {
     }
 
     @Test
-    void mapAndWriteRules(MidPoint mp) {
+    void mapAndWriteRules(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         // the test's own input files go under mapped directories only
         IllegalArgumentException outside = assertThrows(IllegalArgumentException.class,
                 () -> mp.files().write("/nonexistent-tester-dir/in.csv", "x"));

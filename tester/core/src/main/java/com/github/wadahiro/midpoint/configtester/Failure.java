@@ -3,7 +3,7 @@ package com.github.wadahiro.midpoint.configtester;
 import com.github.wadahiro.midpoint.tester.OperationFailed;
 
 /**
- * An operation midPoint refused ({@link Scenario#expectFailure}): its message and what kind of refusal it was.
+ * An operation midPoint refused ({@link MidPointConfigTester#expectFailure}): its message and what kind of refusal it was.
  * Nothing of the operation was executed.
  */
 public final class Failure {

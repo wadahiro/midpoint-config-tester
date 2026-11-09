@@ -22,7 +22,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.AccessCertificationW
  * }</pre>
  *
  * Work items are delegated and escalated by a stage's {@code timedActions} only (there is no service call for them):
- * move midPoint's clock and run the trigger scanner ({@link MidPoint#time()}).
+ * move midPoint's clock and run the trigger scanner ({@code MidPointConfigTester#clock()}).
  */
 public interface Certification {
 

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- My requests: the approval cases the logged-in user requested (CollectionScenarioTest), as a "my requests" page of
+     the GUI lists them. The base collection: the archetype of approval cases. -->
+<objectCollection oid="30000000-0000-0000-0000-00000000f022"
+                  xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                  xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>My requests</name>
+    <type>CaseType</type>
+    <filter>
+        <q:ref>
+            <q:path>requestorRef</q:path>
+            <expression>
+                <script>
+                    <code>
+                        new com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType().oid(midpoint.principalOid)
+                    </code>
+                </script>
+            </expression>
+        </q:ref>
+    </filter>
+    <baseCollection>
+        <collectionRef oid="00000000-0000-0000-0000-000000000342" type="ArchetypeType"/>
+    </baseCollection>
+</objectCollection>

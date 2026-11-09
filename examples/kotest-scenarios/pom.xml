@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example.idm</groupId>
+    <artifactId>kotest-scenarios</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Example: Kotest specs over the tester's sample deployments</name>
+    <description>
+        The Kotest layer (tester/kotest) as a config repository uses it, on 4.0 (JDK 11) and 4.8: the specs in
+        src/test/kotlin, shared by the line modules, over the tester's sample deployments (classpath:scenarios/...).
+    </description>
+    <modules>
+        <module>midpoint-4.0</module>
+        <module>midpoint-4.8</module>
+    </modules>
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+</project>

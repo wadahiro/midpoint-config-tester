@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 
 import org.quartz.CronExpression;
 import org.quartz.CronTrigger;
@@ -18,6 +19,7 @@ import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 import org.quartz.impl.matchers.GroupMatcher;
+import org.quartz.listeners.SchedulerListenerSupport;
 import org.quartz.listeners.TriggerListenerSupport;
 
 /**
@@ -55,6 +57,11 @@ final class TaskSchedules {
     private static volatile boolean regularRunsHeld;
     /** The tasks (OIDs) whose next firing of the standard trigger is a run now, not held. */
     private static final Map<String, Boolean> RUN_NOW = new ConcurrentHashMap<>();
+    /**
+     * When each trigger (by key) was scheduled, by midPoint's clock: Quartz takes the start of a trigger made "now"
+     * from the real time, which is not the test's once its clock has moved.
+     */
+    private static final Map<TriggerKey, Long> SCHEDULED_AT = new ConcurrentHashMap<>();
 
     private TaskSchedules() {
     }
@@ -113,9 +120,18 @@ final class TaskSchedules {
         }
     }
 
-    /** Adds the listener that vetoes the held regular runs ({@link #holdRegularRuns}) to midPoint's scheduler. */
-    static void installHold(Scheduler scheduler) {
+    /**
+     * Adds the listener that vetoes the held regular runs ({@link #holdRegularRuns}) to midPoint's scheduler, and the one
+     * that notes when each trigger was scheduled by {@code clock} (midPoint's).
+     */
+    static void installHold(Scheduler scheduler, LongSupplier clock) {
         try {
+            scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerSupport() {
+                @Override
+                public void jobScheduled(Trigger trigger) {
+                    SCHEDULED_AT.put(trigger.getKey(), clock.getAsLong());
+                }
+            });
             scheduler.getListenerManager().addTriggerListener(new TriggerListenerSupport() {
                 @Override
                 public String getName() {
@@ -142,6 +158,25 @@ final class TaskSchedules {
      * (except a run now, {@link #permitRegularRun}), also those of tasks added or resumed later; run-now triggers and
      * other tasks are not affected.
      */
+    /** When each trigger was scheduled, by midPoint's clock (a checkpoint of the test). */
+    static Map<TriggerKey, Long> scheduledAt() {
+        return new java.util.HashMap<>(SCHEDULED_AT);
+    }
+
+    /**
+     * Back to the times of a checkpoint: the reset re-creates triggers (4.4: every activity task's) and they would count
+     * from the clock of the reset.
+     */
+    static void restoreScheduledAt(Map<TriggerKey, Long> scheduledAt) {
+        SCHEDULED_AT.clear();
+        SCHEDULED_AT.putAll(scheduledAt);
+    }
+
+    /** Whether the regular runs are held now ({@link #holdRegularRuns}). */
+    static boolean regularRunsHeld() {
+        return regularRunsHeld;
+    }
+
     static void holdRegularRuns() {
         regularRunsHeld = true;
     }
@@ -241,11 +276,11 @@ final class TaskSchedules {
 
     /**
      * The OIDs of the loosely bound recurring tasks due at {@code now} by their schedule (interval or cron): never
-     * run, or their next regular time after {@code lastRunAt} (both in midPoint's clock) has come. Suspended tasks
+     * run ({@link #firstRun}), or their next regular time after {@code lastRunAt} (both in midPoint's clock) has come. Suspended tasks
      * (paused triggers) and tightly bound ones (no repeating trigger) are not due; held regular runs
      * ({@link #holdRegularRuns}) do not pause the trigger, so those tasks are due as usual.
      */
-    static List<String> due(Scheduler scheduler, Function<String, Long> lastRunAt, long now) {
+    static List<String> due(Scheduler scheduler, Function<String, Long> lastRunAt, long now, long testStart) {
         List<String> due = new ArrayList<>();
         try {
             for (JobKey job : scheduler.getJobKeys(GroupMatcher.jobGroupEquals(JobKey.DEFAULT_GROUP))) {
@@ -256,7 +291,7 @@ final class TaskSchedules {
                     continue;
                 }
                 Long last = lastRunAt.apply(job.getName());
-                Long next = last != null ? nextRun(trigger, last) : Long.valueOf(Long.MIN_VALUE);
+                Long next = last != null ? nextRun(trigger, last) : firstRun(trigger, testStart);
                 if (next != null && next <= now) {
                     due.add(job.getName());
                 }
@@ -265,6 +300,21 @@ final class TaskSchedules {
             throw new IllegalStateException("Cannot read the Quartz triggers", e);
         }
         return due;
+    }
+
+    /**
+     * The first regular run of a task that never ran: a cron task's first cron time after its trigger was made (Quartz
+     * fires a new cron trigger then, not at once; by midPoint's clock, {@link #SCHEDULED_AT}), and not before the test
+     * started (each test starts from the deployment as loaded: a cron time between the load and the test is no run the
+     * test missed); an interval task at once (midPoint schedules it to start now).
+     */
+    private static Long firstRun(Trigger trigger, long testStart) {
+        if (trigger instanceof CronTrigger && trigger.getStartTime() != null) {
+            Long scheduled = SCHEDULED_AT.get(trigger.getKey());
+            long made = scheduled != null ? scheduled : trigger.getStartTime().getTime();
+            return nextRun(trigger, Math.max(made, testStart) - 1);
+        }
+        return Long.MIN_VALUE;
     }
 
     /** The regular run after {@code last}: an interval later, or the next cron time; null for other triggers. */

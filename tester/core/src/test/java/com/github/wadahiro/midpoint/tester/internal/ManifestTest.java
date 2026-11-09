@@ -31,7 +31,8 @@ class ManifestTest {
     void namingAttributesByObjectClassAndAttributesSchemaHandlingDoesNotName() throws IOException {
         Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
                 + "  SCIM: { namingAttribute: { User: userName, Group: displayName },"
-                + " attributes: { User: [category, region] } }\n"
+                + " attributes: { User: [category, region] }, multiValued: { Group: [tags] },"
+                + " keyedValues: { Group: { labels: \"=\" } }, store: { User: { emails: \"values + add\" } } }\n"
                 + "  CRM: { namingAttribute: login }\n");
 
         ResourceOptions scim = m.targets.get("SCIM").options;
@@ -40,7 +41,32 @@ class ManifestTest {
         assertThat(scim.namingAttributeOf("Group")).isEqualTo("displayName");
         assertThat(scim.attributes()).extracting(a -> a[0] + "/" + a[1]).containsExactly("User/category",
                 "User/region");
+        assertThat(scim.storedValues()).extracting(a -> a.objectClass + "/" + a.attribute).containsExactly(
+                "Group/tags", "Group/labels", "User/emails");
+        assertThat(scim.storedValues().get(1).keySeparator).isEqualTo("=");
+        assertThat(scim.storedValues().get(2).expression).isEqualTo("values + add");
         assertThat(m.targets.get("CRM").options.namingAttributeOf("AccountObjectClass")).isEqualTo("login");
+    }
+
+    @Test
+    void anIdentifierTheTargetSystemIssues() throws IOException {
+        Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
+                + "  Certs: { namingAttribute: certName, identifier: { attribute: certId, value: \"name + '/1'\" } }\n"
+                + "  CRM: { identifier: crmId }\n");
+
+        assertThat(m.targets.get("Certs").options.identifier()).isEqualTo("certId");
+        assertThat(m.targets.get("Certs").options.identifierValue()).isEqualTo("name + '/1'");
+        assertThat(m.targets.get("CRM").options.identifierValue()).isNull();
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n"
+                + "  Certs: { identifier: { attribute: certId } }\n"))
+                .hasMessageContaining("targets.Certs.identifier: attribute and value");
+    }
+
+    @Test
+    void midPointsConstants() throws IOException {
+        assertThat(read("config:\n  dirs: [objects]\nconstants: { tenant: 13, host: a.example.com }\n").constants)
+                .containsExactly(java.util.Map.entry("tenant", "13"), java.util.Map.entry("host", "a.example.com"));
+        assertThat(read("config:\n  dirs: [objects]\n").constants).isEmpty();
     }
 
     @Test

@@ -99,6 +99,11 @@ final class ReportsImpl implements Reports {
      */
     @Override
     public Import importFrom(String report, List<String> lines) {
+        return importFrom(report, lines, null);
+    }
+
+    @Override
+    public Import importFrom(String report, List<String> lines, String username) {
         ReportType bean = mp.existing(ReportType.class, report);
         String name = bean.getName().getOrig();
         File file = ReportImports.writeCsv(name, lines);
@@ -111,7 +116,7 @@ final class ReportsImpl implements Reports {
             return mp.bean(RepositoryService.class).addObject(data.asPrismObject(), null, result);
         });
         Map<String, String> before = ReportImports.versions(mp);
-        Run run = mp.runAs(null, "import report " + name, (task, result) -> {
+        Run run = mp.runAs(username, "import report " + name, (task, result) -> {
             ClassicReportImportWorkDefinitionType work = new ClassicReportImportWorkDefinitionType()
                     .reportRef(ObjectTypeUtil.createObjectRef(bean))
                     .reportDataRef(new ObjectReferenceType().oid(dataOid).type(ReportDataType.COMPLEX_TYPE));

@@ -91,6 +91,141 @@ final class Drivers40 implements LineDrivers {
     }
 
     @Override
+    public List<PrismObject<? extends ObjectType>> searchCollection(String collectionOid, Task task,
+            OperationResult result) throws Exception {
+        // as the GUI: the collection's definition read and compiled privileged (the filter's expressions still see the
+        // logged-in user), its objects searched as the user
+        com.evolveum.midpoint.model.api.authentication.CompiledObjectCollectionView view = privileged(() -> {
+            PrismObject<com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionType> collection =
+                    harness.bean(com.evolveum.midpoint.repo.api.RepositoryService.class).getObject(
+                            com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionType.class,
+                            collectionOid, null, result);
+            return harness.bean(ModelInteractionService.class).compileObjectCollectionView(collection, null, task,
+                    result);
+        });
+        Class<ObjectType> type = view.getTargetClass();
+        return new ArrayList<>(harness.bean(com.evolveum.midpoint.model.api.ModelService.class).searchObjects(type,
+                harness.bean(PrismContext.class).queryFactory().createQuery(view.getFilter()), null, task, result));
+    }
+
+    private interface Privileged<T> {
+        T run() throws Exception;
+    }
+
+    /** The code with all authorizations added to the logged-in user's (midPoint's {@code runPrivileged}). */
+    private <T> T privileged(Privileged<T> code) throws Exception {
+        Exception[] failure = new Exception[1];
+        T value = harness.bean(com.evolveum.midpoint.security.api.SecurityContextManager.class).runPrivileged(() -> {
+            try {
+                return code.run();
+            } catch (Exception e) {
+                failure[0] = e;
+                return null;
+            }
+        });
+        if (failure[0] != null) {
+            throw failure[0];
+        }
+        return value;
+    }
+
+    @Override
+    public long auditPosition() {
+        return audit40(con -> {
+            try (java.sql.Statement st = con.createStatement();
+                    java.sql.ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(id), 0) FROM m_audit_event")) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        });
+    }
+
+    /**
+     * The rows of {@code m_audit_event} after the position, read with JDBC: 4.0's audit service reads records back
+     * without their target and initiator. The numbers are midPoint's enums ({@code RAuditEventType}...), as it wrote
+     * them.
+     */
+    @Override
+    public List<com.github.wadahiro.midpoint.tester.AuditRecord> auditRecordsAfter(long position) {
+        PrismContext prismContext = harness.bean(PrismContext.class);
+        return audit40(con -> {
+            List<com.github.wadahiro.midpoint.tester.AuditRecord> out = new ArrayList<>();
+            try (java.sql.PreparedStatement st = con.prepareStatement(
+                    "SELECT * FROM m_audit_event WHERE id > ? ORDER BY id")) {
+                st.setLong(1, position);
+                try (java.sql.ResultSet rs = st.executeQuery()) {
+                    while (rs.next()) {
+                        java.sql.Timestamp timestamp = rs.getTimestamp("timestampValue");
+                        out.add(new com.github.wadahiro.midpoint.tester.AuditRecord(
+                                enumName(rs, "eventType", i -> com.evolveum.midpoint.repo.sql.data.audit.RAuditEventType
+                                        .values()[i].getType()),
+                                enumName(rs, "eventStage", i -> com.evolveum.midpoint.repo.sql.data.audit
+                                        .RAuditEventStage.values()[i].getStage()),
+                                enumName(rs, "outcome", i -> com.evolveum.midpoint.repo.sql.data.common.enums
+                                        .ROperationResultStatus.values()[i].getStatus()),
+                                timestamp != null ? timestamp.toInstant() : null,
+                                rs.getString("targetOid"), rs.getString("targetName"), objectType(rs, "targetType"),
+                                rs.getString("initiatorOid"), rs.getString("initiatorName"), rs.getString("channel"),
+                                rs.getString("taskOID"), rs.getString("message"),
+                                deltas40(con, rs.getLong("id"), prismContext)));
+                    }
+                }
+            }
+            return out;
+        });
+    }
+
+    private static List<String> deltas40(java.sql.Connection con, long recordId, PrismContext prismContext)
+            throws java.sql.SQLException {
+        List<String> out = new ArrayList<>();
+        try (java.sql.PreparedStatement st = con.prepareStatement("SELECT * FROM m_audit_delta WHERE record_id = ?")) {
+            st.setLong(1, recordId);
+            try (java.sql.ResultSet rs = st.executeQuery()) {
+                while (rs.next()) {
+                    com.evolveum.midpoint.schema.ObjectDeltaOperation<?> operation;
+                    try {
+                        operation = com.evolveum.midpoint.repo.sql.data.audit.RObjectDeltaOperation.fromRepo(rs,
+                                prismContext, false);
+                    } catch (com.evolveum.midpoint.repo.sql.util.DtoTranslationException e) {
+                        throw new IllegalStateException("Cannot read the audit delta of record " + recordId, e);
+                    }
+                    ObjectDelta<?> delta = operation != null ? operation.getObjectDelta() : null;
+                    if (delta != null) {
+                        out.add(AuditRecords.delta(delta.getChangeType(), delta.getObjectTypeClass().getSimpleName(),
+                                delta.getOid(), operation.getExecutionResult() != null
+                                        ? operation.getExecutionResult().getStatus() : null));
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    private static String enumName(java.sql.ResultSet rs, String column,
+            java.util.function.IntFunction<Enum<?>> value) throws java.sql.SQLException {
+        int ordinal = rs.getInt(column);
+        return rs.wasNull() ? null : value.apply(ordinal).name();
+    }
+
+    private static String objectType(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        int ordinal = rs.getInt(column);
+        return rs.wasNull() ? null : com.evolveum.midpoint.repo.sql.data.common.other.RObjectType.values()[ordinal]
+                .getJaxbClass().getSimpleName();
+    }
+
+    private interface Jdbc<T> {
+        T on(java.sql.Connection con) throws java.sql.SQLException;
+    }
+
+    private <T> T audit40(Jdbc<T> work) {
+        try (java.sql.Connection con = harness.bean(javax.sql.DataSource.class).getConnection()) {
+            return work.on(con);
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException("Cannot read the audit log", e);
+        }
+    }
+
+    @Override
     public List<Mail> mails() {
         return harness.smtpServer().mails();
     }
@@ -101,8 +236,19 @@ final class Drivers40 implements LineDrivers {
     }
 
     @Override
+    public void keepMailsAndNotifications(int mails, int notifications) {
+        harness.smtpServer().keep(mails);
+        harness.notificationTransport().keep(notifications);
+    }
+
+    @Override
     public int smtpPort() {
         return harness.smtpServer().port();
+    }
+
+    @Override
+    public void rejectMails(java.util.function.Predicate<String> recipient) {
+        harness.smtpServer().reject(recipient);
     }
 
     @Override

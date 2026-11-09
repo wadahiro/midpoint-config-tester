@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-parent-4.0</artifactId>
+        <version>0.1.1-SNAPSHOT</version>
+        <relativePath>../../../parent/midpoint-4.0/pom.xml</relativePath>
+    </parent>
+    <groupId>com.example.idm</groupId>
+    <artifactId>kotest-scenarios-4.0</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
+    <name>Example: Kotest specs on midPoint 4.0</name>
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- the specs name the samples' objects by their names: no typed names, no manifest of its own -->
+        <tester.names.skip>true</tester.names.skip>
+        <tester.kotlin.testSourceDir>${project.basedir}/../src/test/kotlin</tester.kotlin.testSourceDir>
+        <tester.dir>${project.basedir}/../../../tester</tester.dir>
+    </properties>
+    <dependencies>
+        <!-- the opt-in to Kotest (parent POM, "Kotest specs") -->
+        <dependency>
+            <groupId>io.github.wadahiro.midpoint</groupId>
+            <artifactId>midpoint-config-tester-kotest</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.kotest</groupId>
+            <artifactId>kotest-runner-junit5-jvm</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.kotest</groupId>
+            <artifactId>kotest-assertions-core-jvm</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <testResources>
+            <!-- classpath:scenarios/access and scenarios/hr, with the extension schema the hr manifest refers to -->
+            <testResource>
+                <directory>${tester.dir}/core/src/test/resources</directory>
+                <includes>
+                    <include>scenarios/access/**</include>
+                    <include>scenarios/hr/**</include>
+                    <include>schema/**</include>
+                </includes>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- the hr sample's extension schema from the start: midPoint reads one schema per JVM, and the
+                             access sample (no schema) may load first -->
+                        <tester.extensionSchemaDir>${tester.dir}/core/src/test/resources/schema</tester.extensionSchemaDir>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

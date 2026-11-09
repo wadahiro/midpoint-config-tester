@@ -198,9 +198,9 @@ public final class Why {
      * The mapping evaluations of the test's runs whose target is the item; {@code item} is a path ({@code fullName},
      * {@code activation/administrativeStatus}) or an attribute ({@code cn}), {@code focus} a user name or null (any).
      */
-    static Why of(Scenario scenario, String item, String focus, String what) {
+    static Why of(MidPointConfigTester tester, String item, String focus, String what) {
         List<Step> steps = new ArrayList<>();
-        for (Run run : scenario.runs()) {
+        for (Run run : tester.runs()) {
             for (Evaluation e : run.evaluations()) {
                 if (!e.isMapping() || e.target() == null || !matches(e.target(), item)) {
                     continue;
@@ -215,9 +215,9 @@ public final class Why {
     }
 
     /** The items (as the mappings name their targets, e.g. {@code fullName}) mappings of this test set for the user. */
-    static List<String> targets(Scenario scenario, String focus) {
+    static List<String> targets(MidPointConfigTester tester, String focus) {
         java.util.Set<String> out = new java.util.LinkedHashSet<>();
-        for (Run run : scenario.runs()) {
+        for (Run run : tester.runs()) {
             for (Evaluation e : run.evaluations()) {
                 if (e.isMapping() && e.target() != null && e.focus() != null && e.focus().is(focus)
                         && !normalize(e.target()).startsWith("attributes/")) {
@@ -229,8 +229,8 @@ public final class Why {
     }
 
     /** For a failure message: a new line and the last evaluations, or an empty string when none was recorded. */
-    static String mappings(Scenario scenario, String item, String focus, String what) {
-        Why why = of(scenario, item, focus, what);
+    static String mappings(MidPointConfigTester tester, String item, String focus, String what) {
+        Why why = of(tester, item, focus, what);
         if (why.isEmpty()) {
             return "";
         }

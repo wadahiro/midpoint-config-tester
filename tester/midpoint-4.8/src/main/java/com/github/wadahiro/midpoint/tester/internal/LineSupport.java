@@ -20,8 +20,8 @@ public final class LineSupport {
     }
 
     /**
-     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that golden results compare
-     * its content; null when prism cannot serialize it.
+     * A container or bean value (e.g. {@code InformationType}) as one line of JSON, so that the normalized text
+     * shows its content; null when prism cannot serialize it.
      */
     public static String serializeRealValue(Object value) {
         return Line48.serializeRealValue(value);

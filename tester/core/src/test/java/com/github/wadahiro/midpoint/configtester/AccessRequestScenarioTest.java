@@ -22,98 +22,98 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Users;
  * End users (the user template assigns the role to everyone), the approvers have the Approver role (their users'
  * file). A user decides only the work items assigned to them; on 4.8+ only with the Approver role too.</p>
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class AccessRequestScenarioTest {
 
     @Test
-    void privilegedAccessNeedsTheOwnerThenASecurityOfficer(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+    void privilegedAccessNeedsTheOwnerThenASecurityOfficer(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
         // nothing assigned yet: the request waits in a case, at the role owner
-        s.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
-        Case request = s.cases().forUser(Users.JACK).forRole(Roles.PRIVILEGED_ACCESS).single();
+        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        Case request = t.cases().forUser(Users.JACK).forRole(Roles.PRIVILEGED_ACCESS).single();
         request.isOpen().atStage(1);
-        s.workItems().assignedTo(Users.ROLE_OWNER).single().approve(s.as(Users.ROLE_OWNER), "ok for jack");
+        t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.as(Users.ROLE_OWNER), "ok for jack");
 
         // stage 2: each Security officer has a work item of their own, none offered to the group
         request.atStage(2);
         request.workItems().exactly(2);
-        WorkItem officer = s.workItems().assignedTo(Users.SEC_OFFICER).single().atStage(2);
-        WorkItem analyst = s.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(2);
+        WorkItem officer = t.workItems().assignedTo(Users.SEC_OFFICER).single().atStage(2);
+        WorkItem analyst = t.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(2);
         assertThat(officer.assignees()).containsExactly(Users.SEC_OFFICER);
         assertThat(officer.candidates()).isEmpty();
 
         // the first decision counts: the other officer's work item is closed without a decision
-        officer.approve(s.as(Users.SEC_OFFICER));
+        officer.approve(t.as(Users.SEC_OFFICER));
         officer.isApprovedBy(Users.SEC_OFFICER);
         analyst.isCancelled();
         request.isApproved();
-        s.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
-        s.workItems().none();
+        t.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
+        t.workItems().none();
     }
 
     @Test
-    void oneSecurityOfficerRejectsForAll(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
-        s.workItems().forUser(Users.JACK).single().approve(s.as(Users.ROLE_OWNER));
-        WorkItem officer = s.workItems().assignedTo(Users.SEC_OFFICER).single();
-        WorkItem analyst = s.workItems().assignedTo(Users.SEC_ANALYST).single();
+    void oneSecurityOfficerRejectsForAll(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.workItems().forUser(Users.JACK).single().approve(t.as(Users.ROLE_OWNER));
+        WorkItem officer = t.workItems().assignedTo(Users.SEC_OFFICER).single();
+        WorkItem analyst = t.workItems().assignedTo(Users.SEC_ANALYST).single();
 
-        analyst.reject(s.as(Users.SEC_ANALYST), "not needed");
+        analyst.reject(t.as(Users.SEC_ANALYST), "not needed");
         analyst.isRejectedBy(Users.SEC_ANALYST);
         officer.isCancelled();
-        s.cases().forUser(Users.JACK).single().isRejected();
-        s.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
-        s.workItems().none();
+        t.cases().forUser(Users.JACK).single().isRejected();
+        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.workItems().none();
     }
 
     /** The role owner forwards the work item: the other user replaces them, and decides. */
     @Test
-    void theOwnerForwardsTheWorkItem(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+    void theOwnerForwardsTheWorkItem(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
-        s.workItems().assignedTo(Users.ROLE_OWNER).single().forward(s.as(Users.ROLE_OWNER), Users.SEC_ANALYST);
+        t.workItems().assignedTo(Users.ROLE_OWNER).single().forward(t.as(Users.ROLE_OWNER), Users.SEC_ANALYST);
 
-        s.workItems().assignedTo(Users.ROLE_OWNER).none();
-        s.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(1).approve(s.as(Users.SEC_ANALYST));
-        s.cases().forUser(Users.JACK).single().atStage(2);
+        t.workItems().assignedTo(Users.ROLE_OWNER).none();
+        t.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(1).approve(t.as(Users.SEC_ANALYST));
+        t.cases().forUser(Users.JACK).single().atStage(2);
     }
 
     /** The role owner delegates the work item: the other user becomes an assignee too, either decides. */
     @Test
-    void theOwnerDelegatesTheWorkItem(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+    void theOwnerDelegatesTheWorkItem(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
-        s.workItems().assignedTo(Users.ROLE_OWNER).single().delegate(s.as(Users.ROLE_OWNER), Users.SEC_ANALYST);
+        t.workItems().assignedTo(Users.ROLE_OWNER).single().delegate(t.as(Users.ROLE_OWNER), Users.SEC_ANALYST);
 
-        WorkItem item = s.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(1);
+        WorkItem item = t.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(1);
         assertThat(item.assignees()).containsExactlyInAnyOrder(Users.ROLE_OWNER, Users.SEC_ANALYST);
-        item.approve(s.as(Users.SEC_ANALYST));
-        s.cases().forUser(Users.JACK).single().atStage(2);
+        item.approve(t.as(Users.SEC_ANALYST));
+        t.cases().forUser(Users.JACK).single().atStage(2);
     }
 
     @Test
-    void aRoleWithoutApprovalIsAssignedAtOnce(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.AUDITOR);
+    void aRoleWithoutApprovalIsAssignedAtOnce(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.AUDITOR);
 
-        s.user(Users.JACK).hasRole(Roles.AUDITOR);
-        s.cases().none();
+        t.user(Users.JACK).hasRole(Roles.AUDITOR);
+        t.cases().none();
     }
 
     @Test
-    void aRoleThatIsNotRequestableIsRefused(Scenario s) {
-        Failure failure = s.expectFailure(() -> s.as(Users.JACK).request().assign(Roles.ACCOUNTANT));
+    void aRoleThatIsNotRequestableIsRefused(MidPointConfigTester t) {
+        Failure failure = t.expectFailure(() -> t.as(Users.JACK).request().assign(Roles.ACCOUNTANT));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
-        s.user(Users.JACK).hasNoRole(Roles.ACCOUNTANT);
+        t.user(Users.JACK).hasNoRole(Roles.ACCOUNTANT);
     }
 
     @Test
-    void theRequesterIsAnEndUserAndTheApproversAreApprovers(Scenario s) {
-        assertThat(s.user(Users.JACK).object().getAssignment())
+    void theRequesterIsAnEndUserAndTheApproversAreApprovers(MidPointConfigTester t) {
+        assertThat(t.user(Users.JACK).object().getAssignment())
                 .haveExactly(1, targeting(InitialRoles.END_USER)).doNotHave(targeting(InitialRoles.APPROVER));
         for (UserRef approver : List.of(Users.ROLE_OWNER, Users.SEC_OFFICER, Users.SEC_ANALYST)) {
-            assertThat(s.user(approver).object().getAssignment()).as(approver.name())
+            assertThat(t.user(approver).object().getAssignment()).as(approver.name())
                     .haveExactly(1, targeting(InitialRoles.APPROVER));
         }
     }
@@ -124,29 +124,29 @@ class AccessRequestScenarioTest {
      * to (or a deputy or candidate of), so the role owner decides without it.
      */
     @Test
-    void onFourEightTheApproverRoleIsWhatLetsAnApproverDecide(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
-        s.user(Users.ROLE_OWNER).unassign(InitialRoles.APPROVER);
-        WorkItem item = s.workItems().assignedTo(Users.ROLE_OWNER).single();
+    void onFourEightTheApproverRoleIsWhatLetsAnApproverDecide(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.ROLE_OWNER).unassign(InitialRoles.APPROVER);
+        WorkItem item = t.workItems().assignedTo(Users.ROLE_OWNER).single();
 
-        if (s.line().equals("4.0") || s.line().equals("4.4")) {
-            item.approve(s.as(Users.ROLE_OWNER));
+        if (t.line().equals("4.0") || t.line().equals("4.4")) {
+            item.approve(t.as(Users.ROLE_OWNER));
             item.isApprovedBy(Users.ROLE_OWNER);
             return;
         }
-        Failure failure = s.expectFailure(() -> item.approve(s.as(Users.ROLE_OWNER)));
+        Failure failure = t.expectFailure(() -> item.approve(t.as(Users.ROLE_OWNER)));
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
         item.isOpen();
-        s.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
     }
 
     /** An approver decides only their own work items: another approver's is refused. */
     @Test
-    void anApproverCannotDecideAnotherApproversItem(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
-        WorkItem item = s.workItems().assignedTo(Users.ROLE_OWNER).single();
+    void anApproverCannotDecideAnotherApproversItem(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        WorkItem item = t.workItems().assignedTo(Users.ROLE_OWNER).single();
 
-        Failure failure = s.expectFailure(() -> item.approve(s.as(Users.SEC_OFFICER)));
+        Failure failure = t.expectFailure(() -> item.approve(t.as(Users.SEC_OFFICER)));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
         item.isOpen();
@@ -154,31 +154,31 @@ class AccessRequestScenarioTest {
 
     /** A requester cannot approve their own request. */
     @Test
-    void theRequesterCannotApproveTheirOwnRequest(Scenario s) {
-        s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
-        WorkItem item = s.workItems().assignedTo(Users.ROLE_OWNER).single();
+    void theRequesterCannotApproveTheirOwnRequest(MidPointConfigTester t) {
+        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        WorkItem item = t.workItems().assignedTo(Users.ROLE_OWNER).single();
 
-        Failure failure = s.expectFailure(() -> item.approve(s.as(Users.JACK)));
+        Failure failure = t.expectFailure(() -> item.approve(t.as(Users.JACK)));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
         item.isOpen();
-        s.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
     }
 
     @Test
-    void theSegregationOfDutiesRuleRefusesAuditorToAnAccountant(Scenario s) {
-        Failure failure = s.expectFailure(() -> s.user(Users.ANN).assign(Roles.AUDITOR));
+    void theSegregationOfDutiesRuleRefusesAuditorToAnAccountant(MidPointConfigTester t) {
+        Failure failure = t.expectFailure(() -> t.user(Users.ANN).assign(Roles.AUDITOR));
 
         assertThat(failure.isPolicyViolation()).as(failure.message()).isTrue();
         failure.hasMessageContaining("Auditor");
-        s.user(Users.ANN).hasNoRole(Roles.AUDITOR).hasRole(Roles.ACCOUNTANT);
+        t.user(Users.ANN).hasNoRole(Roles.AUDITOR).hasRole(Roles.ACCOUNTANT);
     }
 
     @Test
-    void expectFailureFailsWhenMidPointDoesIt(Scenario s) {
+    void expectFailureFailsWhenMidPointDoesIt(MidPointConfigTester t) {
         AssertionError error = null;
         try {
-            s.expectFailure(() -> s.user(Users.JACK).assign(Roles.AUDITOR));
+            t.expectFailure(() -> t.user(Users.JACK).assign(Roles.AUDITOR));
         } catch (AssertionError e) {
             error = e;
         }

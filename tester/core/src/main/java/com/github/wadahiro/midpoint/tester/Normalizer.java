@@ -38,8 +38,8 @@ import com.github.wadahiro.midpoint.tester.internal.ConfigIndex;
 import com.github.wadahiro.midpoint.tester.internal.LineSupport;
 
 /**
- * Turns evaluations into text that is stable from run to run (and, as far as possible, from line to line): the form
- * golden comparison will use, and what {@link Evaluation#toString()} shows.
+ * Turns evaluations into text that is stable from run to run (and, as far as possible, from line to line): what
+ * {@link Evaluation#toString()} shows.
  * <ul>
  *   <li>Values as short text: objects as {@code User:jdoe(oid)}, references as {@code ref Role:Employee(oid)},
  *       strings quoted; a variable present with a null value as {@code null}.</li>
@@ -372,7 +372,7 @@ public final class Normalizer {
     }
 
     /**
-     * A class name as golden results show it: the simple name without an {@code Impl} suffix, as implementations move
+     * A class name as the normalized text shows it: the simple name without an {@code Impl} suffix, as implementations move
      * between packages and are renamed from line to line ({@code PrismObjectImpl} and {@code PrismObject} are one).
      */
     public static String className(Class<?> type) {
@@ -386,7 +386,7 @@ public final class Normalizer {
     }
 
     /**
-     * An error as golden results compare it: the root cause's class name ({@link #className}) and the first line of
+     * An error as the normalized text shows it: the root cause's class name ({@link #className}) and the first line of
      * its message (for a Groovy compilation error the next one, without the generated script's name), OIDs
      * normalized.
      */

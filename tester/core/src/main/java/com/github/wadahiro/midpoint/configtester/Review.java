@@ -7,11 +7,11 @@ import com.github.wadahiro.midpoint.tester.Certification;
 /** An open review work item of a campaign ({@link Reviews#single()}): a reviewer's decision on one assignment. */
 public final class Review {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final Certification.WorkItem item;
 
-    Review(Scenario scenario, Certification.WorkItem item) {
-        this.scenario = scenario;
+    Review(MidPointConfigTester tester, Certification.WorkItem item) {
+        this.tester = tester;
         this.item = item;
     }
 
@@ -61,7 +61,7 @@ public final class Review {
      * {@code noResponse}.
      */
     public Review decide(Actor reviewer, String response, String comment) {
-        scenario.deployment().api().certification().decide(item, reviewer.name(), response, comment);
+        tester.deployment().api().certification().decide(item, reviewer.name(), response, comment);
         return this;
     }
 

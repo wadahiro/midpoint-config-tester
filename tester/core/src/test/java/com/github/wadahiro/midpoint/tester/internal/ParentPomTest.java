@@ -42,6 +42,18 @@ class ParentPomTest {
         }
     }
 
+    /** The GUI, opt-in for a repository whose scripts use its classes: at midpoint.version, on the test class path. */
+    @Test
+    void theParentManagesTheGuiForTests() throws IOException {
+        Path pom = TESTER.resolve("../parent/midpoint-" + LineSupport.LINE + "/pom.xml");
+        assertThat(managed(pom)).containsEntry("com.evolveum.midpoint.gui:admin-gui", "${midpoint.version}");
+        // 4.0 and 4.4 ship the GUI as a war: its classes are the "classes" jar
+        String classifier = LineSupport.LINE.equals("4.0") || LineSupport.LINE.equals("4.4")
+                ? "(?:\\s*<!--[^>]*-->)?\\s*<classifier>classes</classifier>" : "";
+        assertThat(read(pom)).containsPattern("<artifactId>admin-gui</artifactId>\\s*<version>\\$\\{midpoint.version}"
+                + "</version>" + classifier + "\\s*<scope>test</scope>");
+    }
+
     /** groupId:artifactId of the POM's midPoint dependencies (not those of its dependency management). */
     private static List<String> midPointDependencies(Path pom) throws IOException {
         Element project = Xml.parse(read(pom)).getDocumentElement();

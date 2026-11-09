@@ -9,8 +9,8 @@ import java.util.TreeMap;
 import com.github.wadahiro.midpoint.tester.Mail;
 
 /**
- * Mails midPoint sent in the test ({@link Scenario#mails()}), narrowed by recipient, sender, subject and body, e.g.
- * {@code s.mails().to("jdoe@example.com").withSubject("Welcome").exactly(1)}. Each narrowing returns a new selection.
+ * Mails midPoint sent in the test ({@link MidPointConfigTester#mails()}), narrowed by recipient, sender, subject and body, e.g.
+ * {@code t.mails().to("jdoe@example.com").withSubject("Welcome").exactly(1)}. Each narrowing returns a new selection.
  *
  * <p>A mail is one SMTP transaction: 4.0 and 4.4 send one mail to all recipients of a notification, 4.8+ one mail per
  * recipient. {@link #to(String)} and {@link #perRecipient()} count per recipient and so read the same on every
@@ -79,7 +79,7 @@ public final class Mails {
 
     /**
      * How many of the selected mails each address received (To, Cc or Bcc; lower case, sorted), e.g.
-     * {@code assertThat(s.mails().perRecipient()).isEqualTo(Map.of("ann@example.com", 2))} for "these and nobody else".
+     * {@code assertThat(t.mails().perRecipient()).isEqualTo(Map.of("ann@example.com", 2))} for "these and nobody else".
      */
     public Map<String, Integer> perRecipient() {
         Map<String, Integer> out = new TreeMap<>();

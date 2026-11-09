@@ -52,9 +52,21 @@ final class SmtpServer {
         UserManager users = greenMail.getUserManager();
         MessageDeliveryHandler delivery = users.getMessageDeliveryHandler();
         users.setMessageDeliveryHandler((message, address) -> {
+            java.util.function.Predicate<String> rejecting = rejected;
+            if (rejecting != null && rejecting.test(address.getEmail())) {
+                // GreenMail answers 451 to the data: the client's send fails
+                throw new IllegalStateException("rejected by the test: " + address.getEmail());
+            }
             record(message, address.getEmail());
             return delivery.handle(message, address);
         });
+    }
+
+    /** The recipients whose mails are refused (see {@code LineDrivers.rejectMails}), or null. */
+    private volatile java.util.function.Predicate<String> rejected;
+
+    void reject(java.util.function.Predicate<String> recipient) {
+        rejected = recipient;
     }
 
     int port() {
@@ -82,6 +94,15 @@ final class SmtpServer {
             out.add(toMail(r.message.getMessage(), r.recipients));
         }
         return out;
+    }
+
+    /** Forgets the mails after the first {@code count} (a checkpoint of the test, restored). */
+    void keep(int count) {
+        synchronized (received) {
+            while (received.size() > count) {
+                received.remove(received.size() - 1);
+            }
+        }
     }
 
     void clear() {

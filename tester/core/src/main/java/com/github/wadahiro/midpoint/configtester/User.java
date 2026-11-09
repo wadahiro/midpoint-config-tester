@@ -16,7 +16,7 @@ import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
 import com.github.wadahiro.midpoint.tester.Shadow;
 
 /**
- * A user of the scenario by name ({@link Scenario#user}), read anew by every call. {@link #object()} gives the user
+ * A user of the scenario by name ({@link MidPointConfigTester#user}), read anew by every call. {@link #object()} gives the user
  * as midPoint has it now, a plain {@code UserType} to check with any assertion library (with AssertJ:
  * {@code configtester.assertj}); a failed test then shows the mappings of the test that set an item whose value
  * appears in the failure. The assertions ({@code hasRole}, {@code isEnabled}...) return the user for chaining and fail
@@ -24,11 +24,11 @@ import com.github.wadahiro.midpoint.tester.Shadow;
  */
 public final class User {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String name;
 
-    User(Scenario scenario, String name) {
-        this.scenario = scenario;
+    User(MidPointConfigTester tester, String name) {
+        this.tester = tester;
         this.name = name;
     }
 
@@ -44,7 +44,7 @@ public final class User {
     }
 
     public User doesNotExist() {
-        UserType user = scenario.deployment().api().user(name);
+        UserType user = tester.deployment().api().user(name);
         if (user != null) {
             throw new AssertionError("Expected no user " + name + ", but it exists (" + user.getOid() + ")"
                     + accounts(user));
@@ -69,24 +69,24 @@ public final class User {
         List<String> wanted = Values.texts(expected);
         if (!Values.sameValues(wanted, actual)) {
             throw new AssertionError("User " + name + ": " + path + " expected " + wanted + " but was " + actual
-                    + Why.mappings(scenario, path, name, path + " of " + name));
+                    + Why.mappings(tester, path, name, path + " of " + name));
         }
         return this;
     }
 
     /** The values of the item as text (see {@link #hasItem}). */
     public List<String> values(String path) {
-        scenario.readWhy(name + "/" + path, () -> why(path));
+        tester.readWhy(name + "/" + path, () -> why(path));
         return itemValues(path);
     }
 
     /**
      * The user as midPoint has it now (read anew by every call: after a change, call it again), as the scripts of the
-     * configuration see it: {@code assertThat(s.user("e1001").object().getCostCenter()).isEqualTo("Sales")}.
+     * configuration see it: {@code assertThat(t.user("e1001").object().getCostCenter()).isEqualTo("Sales")}.
      */
     public UserType object() {
         UserType user = existing();
-        scenario.readObject(name);
+        tester.readObject(name);
         return user;
     }
 
@@ -149,32 +149,32 @@ public final class User {
         if (!"UserType".equals(item.ownerType())) {
             throw new AssertionError(item + " is not an item of users");
         }
-        return item.on(scenario.line());
+        return item.on(tester.line());
     }
 
     /** {@link #hasRole(String)} by the generated name ({@code Roles.DEPT_SALES}, an org, service or archetype). */
     public User hasRole(AssignableRef role) {
-        return hasRole(role.on(scenario.line()));
+        return hasRole(role.on(tester.line()));
     }
 
     public User hasNoRole(AssignableRef role) {
-        return hasNoRole(role.on(scenario.line()));
+        return hasNoRole(role.on(tester.line()));
     }
 
     public User assign(AssignableRef role) {
-        return assign(role.on(scenario.line()));
+        return assign(role.on(tester.line()));
     }
 
     public User unassign(AssignableRef role) {
-        return unassign(role.on(scenario.line()));
+        return unassign(role.on(tester.line()));
     }
 
     public User hasAccountOn(ResourceRef resource) {
-        return hasAccountOn(resource.on(scenario.line()));
+        return hasAccountOn(resource.on(tester.line()));
     }
 
     public User hasNoAccountOn(ResourceRef resource) {
-        return hasNoAccountOn(resource.on(scenario.line()));
+        return hasNoAccountOn(resource.on(tester.line()));
     }
 
     // ---- roles ------------------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ public final class User {
         List<String> assigned = assignedNames();
         if (!assigned.contains(role)) {
             throw new AssertionError("User " + name + ": expected an assignment of " + role + ", assigned: " + assigned
-                    + Why.mappings(scenario, "assignment", name, "assignments of " + name));
+                    + Why.mappings(tester, "assignment", name, "assignments of " + name));
         }
         return this;
     }
@@ -193,7 +193,7 @@ public final class User {
         List<String> assigned = assignedNames();
         if (assigned.contains(role)) {
             throw new AssertionError("User " + name + ": expected no assignment of " + role + ", assigned: " + assigned
-                    + Why.mappings(scenario, "assignment", name, "assignments of " + name));
+                    + Why.mappings(tester, "assignment", name, "assignments of " + name));
         }
         return this;
     }
@@ -203,7 +203,7 @@ public final class User {
         for (AssignmentType assignment : existing().getAssignment()) {
             ObjectReferenceType target = assignment.getTargetRef();
             if (target != null) {
-                out.add(scenario.nameOf(target));
+                out.add(tester.nameOf(target));
             }
         }
         return out;
@@ -214,7 +214,7 @@ public final class User {
     /** The user has a live account (shadow) on the resource, linked to it. */
     public User hasAccountOn(String resource) {
         existing();
-        Shadow shadow = scenario.deployment().api().shadow(name, resource);
+        Shadow shadow = tester.deployment().api().shadow(name, resource);
         if (shadow == null || shadow.dead()) {
             throw new AssertionError("User " + name + ": expected an account on " + resource
                     + (shadow != null ? ", but its shadow is dead" : ", but there is none") + accounts(existing()));
@@ -224,7 +224,7 @@ public final class User {
 
     public User hasNoAccountOn(String resource) {
         existing();
-        Shadow shadow = scenario.deployment().api().shadow(name, resource);
+        Shadow shadow = tester.deployment().api().shadow(name, resource);
         if (shadow != null && !shadow.dead()) {
             throw new AssertionError("User " + name + ": expected no account on " + resource + ", but has "
                     + shadow.name() + " (" + shadow.situation() + ")");
@@ -268,31 +268,31 @@ public final class User {
                 : "administrativeStatus " + Values.text(user.getActivation().getAdministrativeStatus())
                         + ", validFrom " + Values.text(user.getActivation().getValidFrom())
                         + ", validTo " + Values.text(user.getActivation().getValidTo()))
-                + "; midPoint's clock " + scenario.time().now();
+                + "; midPoint's clock " + tester.clock().now();
     }
 
     // ---- changes ----------------------------------------------------------------------------------------------
 
     /** Assigns the role (or org, service) of this name, as an administrator in the GUI would. */
     public User assign(String role) {
-        scenario.deployment().api().assign(UserType.class, name, role);
+        tester.deployment().api().assign(UserType.class, name, role);
         return this;
     }
 
     public User unassign(String role) {
-        scenario.deployment().api().unassign(UserType.class, name, role);
+        tester.deployment().api().unassign(UserType.class, name, role);
         return this;
     }
 
     /**
      * Sets the user's password, as an administrator in the GUI would; midPoint checks it against the password policy
-     * of the user's security policy (a value that violates it fails: {@link Scenario#expectFailure}).
+     * of the user's security policy (a value that violates it fails: {@link MidPointConfigTester#expectFailure}).
      */
     public User setPassword(String password) {
         com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType value =
                 new com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType();
         value.setClearValue(password);
-        scenario.deployment().api().modify(UserType.class, name, ItemPath.create(UserType.F_CREDENTIALS,
+        tester.deployment().api().modify(UserType.class, name, ItemPath.create(UserType.F_CREDENTIALS,
                 com.evolveum.midpoint.xml.ns._public.common.common_3.CredentialsType.F_PASSWORD,
                 com.evolveum.midpoint.xml.ns._public.common.common_3.PasswordType.F_VALUE), value);
         return this;
@@ -300,7 +300,7 @@ public final class User {
 
     /** Recomputes the user, as the GUI's "Recompute". */
     public User recompute() {
-        scenario.deployment().api().recompute(UserType.class, name);
+        tester.deployment().api().recompute(UserType.class, name);
         return this;
     }
 
@@ -311,13 +311,13 @@ public final class User {
      * {@code activation/administrativeStatus}), oldest first; {@code why("fullName").print()} shows them.
      */
     public Why why(String path) {
-        return Why.of(scenario, path, name, path + " of " + name);
+        return Why.of(tester, path, name, path + " of " + name);
     }
 
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     private UserType existing() {
-        UserType user = scenario.deployment().api().user(name);
+        UserType user = tester.deployment().api().user(name);
         if (user == null) {
             throw new AssertionError("Expected a user " + name + ", but there is none");
         }

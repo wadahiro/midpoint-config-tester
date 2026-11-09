@@ -106,11 +106,11 @@ class DeploymentLoadTest {
         TesterRuntime.get().resetToBaseline();
         deployment.reset();
 
-        Scenario s = new Scenario(deployment);
-        s.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
+        MidPointConfigTester t = new MidPointConfigTester(deployment);
+        t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
                 "startDate", "2020-04-01"));
-        s.task("Reconcile HR").run();
-        s.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").exists()
+        t.task("Reconcile HR").run();
+        t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").exists()
                 .memberOf("cn=sales,ou=groups,dc=example,dc=com");
         deployment.reset();
     }

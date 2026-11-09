@@ -203,6 +203,12 @@ final class DeploymentCache {
                 sha.update(read(target.initialData));
             }
         }
+        for (Map.Entry<String, Path> initial : manifest.initialFiles.entrySet()) {
+            for (Path file : files(initial.getValue())) {
+                update(sha, "initial file " + initial.getKey() + " " + slashed(initial.getValue().relativize(file)));
+                sha.update(read(file));
+            }
+        }
         // the deployment's own Spring beans (ctx-tester.xml imports them): what they do is in the cached database
         try {
             for (org.springframework.core.io.Resource extension

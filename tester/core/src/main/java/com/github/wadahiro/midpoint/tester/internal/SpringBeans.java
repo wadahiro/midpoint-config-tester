@@ -12,6 +12,10 @@ final class SpringBeans {
     }
 
     static <T> T get(ApplicationContext context, Class<T> type) {
+        if (type.isInstance(context)) {
+            // the context itself (Spring resolves it for injection, but it is no bean)
+            return type.cast(context);
+        }
         try {
             return context.getBean(type);
         } catch (NoUniqueBeanDefinitionException e) {

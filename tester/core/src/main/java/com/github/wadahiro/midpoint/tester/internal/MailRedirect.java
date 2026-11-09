@@ -65,6 +65,32 @@ final class MailRedirect {
         return notes.isEmpty() ? new Result(xml, notes) : new Result(Xml.serialize(doc), notes);
     }
 
+    /**
+     * The mail servers of a system configuration that are not the given host (each as {@code item: host}): after the
+     * redirection there must be none.
+     */
+    static List<String> otherServers(String xml, String host) {
+        List<String> out = new ArrayList<>();
+        if (!xml.contains("mail")) {
+            return out;
+        }
+        Element root = Xml.parse(xml).getDocumentElement();
+        for (String parentName : List.of("notificationConfiguration", "messageTransportConfiguration")) {
+            for (Element parent : Xml.children(root, parentName)) {
+                for (Element mail : Xml.children(parent, "mail")) {
+                    for (Element server : Xml.children(mail, "server")) {
+                        Element h = Xml.child(server, "host");
+                        String value = h != null ? h.getTextContent().trim() : "";
+                        if (!value.equals(host)) {
+                            out.add(parentName + "/mail: " + (value.isEmpty() ? "(no host)" : value));
+                        }
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
     private static void redirect(Element config, String host, int port, Path fileDir, List<String> notes) {
         for (Element parent : Xml.children(config, "notificationConfiguration")) {
             redirectTransports(parent, host, port, fileDir, notes);

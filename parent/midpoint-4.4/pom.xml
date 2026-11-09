@@ -161,6 +161,17 @@
                 <artifactId>midpoint-config-tester-4.4</artifactId>
                 <version>${tester.version}</version>
             </dependency>
+            <dependency>
+                <!-- opt-in, for a deployment whose scripts or custom classes use GUI classes (a page's utility, Wicket):
+                     declared without a version by the repository, it is on the test class path as a library; the
+                     tester's Spring context does not load the GUI (README, Classes of the GUI) -->
+                <groupId>com.evolveum.midpoint.gui</groupId>
+                <artifactId>admin-gui</artifactId>
+                <version>${midpoint.version}</version>
+                <!-- the GUI module of this line is a war: its classes are the "classes" jar -->
+                <classifier>classes</classifier>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

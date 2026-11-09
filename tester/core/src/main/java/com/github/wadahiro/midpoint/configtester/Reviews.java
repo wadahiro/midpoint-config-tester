@@ -14,14 +14,14 @@ import com.github.wadahiro.midpoint.tester.Certification;
  */
 public final class Reviews {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final Campaign campaign;
     private final BiPredicate<Certification.WorkItem, Certification.Case> filter;
     private final String description;
 
-    Reviews(Scenario scenario, Campaign campaign, BiPredicate<Certification.WorkItem, Certification.Case> filter,
+    Reviews(MidPointConfigTester tester, Campaign campaign, BiPredicate<Certification.WorkItem, Certification.Case> filter,
             String description) {
-        this.scenario = scenario;
+        this.tester = tester;
         this.campaign = campaign;
         this.filter = filter;
         this.description = description;
@@ -43,15 +43,15 @@ public final class Reviews {
     }
 
     public Reviews forReviewer(UserRef reviewer) {
-        return forReviewer(reviewer.on(scenario.line()));
+        return forReviewer(reviewer.on(tester.line()));
     }
 
     public Reviews forUser(UserRef user) {
-        return forUser(user.on(scenario.line()));
+        return forUser(user.on(tester.line()));
     }
 
     public Reviews forRole(AssignableRef role) {
-        return forRole(role.on(scenario.line()));
+        return forRole(role.on(tester.line()));
     }
 
     /** Items without a decision yet (a decided item stays open until the stage closes; it can be decided again). */
@@ -67,7 +67,7 @@ public final class Reviews {
         for (Certification.Case c : current.cases()) {
             for (Certification.WorkItem w : c.workItems()) {
                 if (w.isOpen() && w.stageNumber() == current.stageNumber() && filter.test(w, c)) {
-                    out.add(new Review(scenario, w));
+                    out.add(new Review(tester, w));
                 }
             }
         }
@@ -103,10 +103,10 @@ public final class Reviews {
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     private Reviews and(BiPredicate<Certification.WorkItem, Certification.Case> more, String what) {
-        return new Reviews(scenario, campaign, filter.and(more), description.isEmpty() ? what : description + ", " + what);
+        return new Reviews(tester, campaign, filter.and(more), description.isEmpty() ? what : description + ", " + what);
     }
 
     private List<Review> all() {
-        return new Reviews(scenario, campaign, (w, c) -> true, "").list();
+        return new Reviews(tester, campaign, (w, c) -> true, "").list();
     }
 }

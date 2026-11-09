@@ -1,0 +1,42 @@
+<!--
+    A resource whose connector has no native names for ConnId's __NAME__ and __UID__ (midPoint shows them as icfs:name
+    and icfs:uid); the target system issues the identifier apart from the name. 4.0 format, so the same file runs on
+    every line. No stored schema: GeneratedUidTest gives the identifier as identifier(icfs:uid).
+-->
+<resource oid="10000000-0000-0000-0000-00000000a004"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfs="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/resource-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>Plain</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.example.PlainConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration/>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <objectClass>ri:AccountObjectClass</objectClass>
+            <attribute>
+                <ref>icfs:name</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source><path>$focus/name</path></source>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:fullName</ref>
+                <outbound>
+                    <source><path>$focus/fullName</path></source>
+                </outbound>
+            </attribute>
+        </objectType>
+    </schemaHandling>
+</resource>

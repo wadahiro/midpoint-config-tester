@@ -4,7 +4,7 @@ Tests for a midPoint configuration, run by a **real midPoint** from JUnit 5. A c
 `post-initial-objects` directory and a manifest) is loaded as a deployment, as midPoint loads it on its first start,
 and tests are operation scenarios over it: an HR record arrives, a user requests a role, a reviewer revokes an
 assignment, the clock moves to a start date; then what midPoint made of it (users, accounts, groups, cases, mails,
-reports) is checked by name. It is not an Evolveum project.
+reports) is checked by name.
 
 - One artifact per midPoint release line (4.0, 4.4, 4.8, 4.9, 4.10). Each starts the line's own midPoint in the test JVM:
   Spring context, Clockwork, provisioning, cases, approvals, certification, reports, task manager, on an in-memory
@@ -31,7 +31,7 @@ pom.xml                         the parent of the line and the repository's coor
 midpoint-config-tester.yaml     the manifest: config directories, target systems, names package
 post-initial-objects/           as deployed to midpoint.home/post-initial-objects
 initial-data/directory.ldif     the LDAP server's initial content
-src/test/java/...               scenario tests
+src/test/java/...               the tests
 ```
 
 ```xml
@@ -68,7 +68,7 @@ line). The parent `midpoint-config-tester-parent-<line>` brings:
 - the generator of typed names, run at `generate-sources` on the manifest (its `names.package`), its output a test
   source root;
 - Surefire: one JVM for all test classes (one midPoint), `-Dtester.forks=N` for more, the manifest as the default of
-  `@MidPointScenarios`, the agent of the file redirection (4.8+), and for 4.0 and 4.4 the tests on a JDK 11 toolchain
+  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and for 4.0 and 4.4 the tests on a JDK 11 toolchain
   (see [JDK 11](#jdk-11-for-40-and-44)) compiled with `--release 11`;
 - Evolveum's repository and the pgmem profiles: the in-memory PostgreSQL
   ([pgmem](https://github.com/shibukawa/pgmem)) is a native binary from `io.github.shibukawa.pgmem:pgmem-native`,
@@ -79,7 +79,7 @@ Properties a repository may set: `tester.manifest.file` (default `midpoint-confi
 `tester.names.skip`, `tester.forks`, and `midpoint.version` (or `midpoint40.version`... of the parent's line) for
 another build of the line's midPoint, a support build or a fork in the local repository: the parent manages midPoint's
 own modules at it (midPoint's BOM does not), so the tests run on those jars with the tester built for the line's
-release. `mvn test` then loads the deployment once per JVM and runs the scenarios; the load
+release. `mvn test` then loads the deployment once per JVM and runs the tests; the load
 report is `target/tester-deployment/<name>/load-report.txt`.
 
 To test one configuration on several lines (an upgrade from 4.4 to 4.8), use one module per line, each with the
@@ -87,9 +87,9 @@ parent of its line, the shared tests (`<testSourceDirectory>../src/test/java</te
 `<tester.manifest.file>${project.basedir}/../midpoint-config-tester.yaml</tester.manifest.file>`; overlays in the
 manifest hold what a line needs differently. midPoint keeps static state, so a JVM holds one line.
 
-## Scenarios
+## Writing tests
 
-The scenario API (`com.github.wadahiro.midpoint.configtester`) targets the LTS lines 4.0, 4.4 and 4.8 first (4.9 and
+The API (`com.github.wadahiro.midpoint.configtester`: `@MidPointConfigTest`, `MidPointConfigTester`) targets the LTS lines 4.0, 4.4 and 4.8 first (4.9 and
 4.10 run it with 4.8's import semantics). The project points the tester at its `post-initial-objects` directory with a manifest,
 `midpoint-config-tester.yaml`:
 
@@ -105,12 +105,16 @@ targets:                                # by resource name; any other resource i
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
 mail: { redirect: true }                # midPoint's mail servers -> the tester's SMTP server
-tasks: { recurring: held }              # imported recurring tasks run only when a scenario runs them
+tasks: { recurring: held }              # imported recurring tasks run only when a test runs them
 ```
 
 A file that midPoint exports, `<object xsi:type="c:RoleType">`, is read as the `<role>` it is (resources moved to
 their stand-ins, typed names, expression places). A task the deployment ships suspended is resumed with
-`s.task(name).resume()` (`mp.resumeTask`), as an operator does.
+`t.task(name).resume()` (`mp.resumeTask`), as an operator does. `t.task(name).stopAfter(n).run()` stops the run after
+n items, as an operator's Suspend stops a task in the middle: midPoint's running task says it cannot go on
+(`canRun()` false) once n items are done (the task's progress, or the items an activity processed on 4.4+), so a
+handler or a script that checks it between items ends there and records what it did; the task itself is left as it
+was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
 
 Once per JVM the tester starts the line's midPoint, imports **the line's initial objects** as midPoint does on its
 first start (system configuration, administrator, End user and Approver roles, default security and password
@@ -123,38 +127,38 @@ failing file fails the load with midPoint's errors), waits for the background wo
 starts from that snapshot.
 
 ```java
-@MidPointScenarios("src/test/resources/midpoint-config-tester.yaml")
+@MidPointConfigTest("src/test/resources/midpoint-config-tester.yaml")
 class HrLifecycleTest {
 
     @Test
-    void joinerMoverLeaver(Scenario s) {
-        s.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
+    void joinerMoverLeaver(MidPointConfigTester t) {
+        t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
                 "startDate", "2020-04-01"));
-        s.task("Reconcile HR").run();
-        s.user("e1001").hasFullName("John Doe").hasRole("Dept Sales").isEnabled().hasAccountOn("LDAP");
-        s.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com")
+        t.task("Reconcile HR").run();
+        t.user("e1001").hasFullName("John Doe").hasRole("Dept Sales").isEnabled().hasAccountOn("LDAP");
+        t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com")
                 .hasAttribute("ou", "Sales").memberOf("cn=sales,ou=groups,dc=example,dc=com").isEnabled();
-        s.mails().to("e1001@example.com").withSubject("Welcome").exactly(1);
+        t.mails().to("e1001@example.com").withSubject("Welcome").exactly(1);
 
-        s.source("HR").modify("1001", "department", "IT");
-        s.task("Reconcile HR").run();
-        s.user("e1001").hasRole("Dept IT").hasNoRole("Dept Sales");
+        t.source("HR").modify("1001", "department", "IT");
+        t.task("Reconcile HR").run();
+        t.user("e1001").hasRole("Dept IT").hasNoRole("Dept Sales");
 
-        s.source("HR").delete("1001");
-        s.task("Reconcile HR").run();
-        s.user("e1001").doesNotExist();
+        t.source("HR").delete("1001");
+        t.task("Reconcile HR").run();
+        t.user("e1001").doesNotExist();
     }
 
     @Test
-    void futureJoiner(Scenario s) {
-        LocalDate start = s.time().today().plusDays(10);
-        s.source("HR").add("1002", Map.of("firstName", "Kate", "lastName", "Smith", "department", "IT",
+    void futureJoiner(MidPointConfigTester t) {
+        LocalDate start = t.clock().today().plusDays(10);
+        t.source("HR").add("1002", Map.of("firstName", "Kate", "lastName", "Smith", "department", "IT",
                 "startDate", start.toString()));
-        s.task("Reconcile HR").run();
-        s.user("e1002").isDisabled().hasNoAccountOn("LDAP");
+        t.task("Reconcile HR").run();
+        t.user("e1002").isDisabled().hasNoAccountOn("LDAP");
 
-        s.time().advanceTo(start).advance("PT1H").runDue();     // validity and trigger scanners, due tasks
-        s.user("e1002").isEnabled().hasRole("Dept IT").hasAccountOn("LDAP");
+        t.clock().advanceTo(start).advance("PT1H").runDue();     // validity and trigger scanners, due tasks
+        t.user("e1002").isEnabled().hasRole("Dept IT").hasAccountOn("LDAP");
     }
 }
 ```
@@ -162,26 +166,26 @@ class HrLifecycleTest {
 Requests, approvals, certification, reports and refusals, by name (`scenarios/access`):
 
 ```java
-s.as("jack").request().assign("Privileged Access");                // as jack, through his End user role
-Case request = s.cases().forUser("jack").forRole("Privileged Access").single();
+t.as("jack").request().assign("Privileged Access");                // as jack, through his End user role
+Case request = t.cases().forUser("jack").forRole("Privileged Access").single();
 request.isOpen().atStage(1);
-s.workItems().assignedTo("role-owner").single().approve(s.as("role-owner"), "ok");
-WorkItem officer = s.workItems().assignedTo("sec-officer").single();   // each Security officer has one
-WorkItem analyst = s.workItems().assignedTo("sec-analyst").single();
-officer.approve(s.as("sec-officer"));                              // also reject, delegate, forward, claim, release
+t.workItems().assignedTo("role-owner").single().approve(t.as("role-owner"), "ok");
+WorkItem officer = t.workItems().assignedTo("sec-officer").single();   // each Security officer has one
+WorkItem analyst = t.workItems().assignedTo("sec-analyst").single();
+officer.approve(t.as("sec-officer"));                              // also reject, delegate, forward, claim, release
 analyst.isCancelled();                                             // firstDecides: closed without a decision
 request.isApproved();
-s.user("jack").hasRole("Privileged Access");
+t.user("jack").hasRole("Privileged Access");
 
-Failure f = s.expectFailure(() -> s.user("ann").assign("Auditor"));  // excluded by Accountant
+Failure f = t.expectFailure(() -> t.user("ann").assign("Auditor"));  // excluded by Accountant
 assertThat(f.isPolicyViolation()).isTrue();
 
-Campaign c = s.certification("Role assignments").start();
-c.reviews().forUser("jack").forRole("Auditor").single().revoke(s.as("sec-officer"), "left the audit");
+Campaign c = t.certification("Role assignments").start();
+c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.as("sec-officer"), "left the audit");
 c.closeStage().remediate();
-s.user("jack").hasNoRole("Auditor");
+t.user("jack").hasNoRole("Auditor");
 
-ReportOutput out = s.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
+ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
 out.hasRows(2).hasRowWith("User", "jack");
 ```
 
@@ -192,20 +196,20 @@ logged in as them (`GuiAuthorizationScenarioTest`, the Help desk role of `scenar
 
 ```java
 // the objects a search finds (the GUI's lists): midPoint narrows it by the user's #read authorizations
-assertThat(s.as(Users.HELPDESK).search(UserType.class))
+assertThat(t.as(Users.HELPDESK).search(UserType.class))
         .containsExactlyInAnyOrder(Users.JACK, Users.ROLE_OWNER, Users.HELPDESK);
-assertThat(s.as(Users.HELPDESK).canSearch(Users.ANN)).isFalse();   // #search: the list shows it
-assertThat(s.as(Users.HELPDESK).canGet(Users.ANN)).isTrue();       // #get: its details open
-assertThat(s.as(Users.HELPDESK).canRead(Users.JACK)).isTrue();     // #read: both
+assertThat(t.as(Users.HELPDESK).canSearch(Users.ANN)).isFalse();   // #search: the list shows it
+assertThat(t.as(Users.HELPDESK).canGet(Users.ANN)).isTrue();       // #get: its details open
+assertThat(t.as(Users.HELPDESK).canRead(Users.JACK)).isTrue();     // #read: both
 
 // a page opens, as the GUI decides it: by its URL, or by the actions of its @PageDescriptor
-assertThat(s.as(Users.HELPDESK).canOpen("/admin/users")).isTrue();
-assertThat(s.as(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();   // #userDetails
-assertThat(s.as(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_ALL_URL,
+assertThat(t.as(Users.HELPDESK).canOpen("/admin/users")).isTrue();
+assertThat(t.as(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();   // #userDetails
+assertThat(t.as(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_ALL_URL,
         AuthorizationConstants.AUTZ_UI_USERS_URL, AuthorizationConstants.AUTZ_UI_USERS_VIEW_URL)).isTrue();
 
 // an object's form: what it shows and what it lets the user change
-Form form = s.as(Users.HELPDESK).form(Users.JACK);
+Form form = t.as(Users.HELPDESK).form(Users.JACK);
 assertThat(form.modifiableItems()).containsExactly("telephoneNumber");
 assertThat(form.canRead("emailAddress")).isTrue();
 ```
@@ -214,6 +218,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
   `#read` allows both. `search(type)` searches as the user through `ModelService` (all objects of the type, as the
   GUI's list does before its own filters) and gives typed refs, equal to the generated names; `canSearch(object)`
   is whether it finds the object, `canGet(object)` whether getting it succeeds, `canRead(object)` both.
+- `collection(name)` is an object collection's list as the user sees it (a "my requests" page): the collection's
+  definition read and compiled privileged, as the GUI does, its filter's expressions evaluated for the user
+  (`midpoint.principalOid`), its base collection, then searched as the user (`CollectionScenarioTest`).
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings
   (`PageUrlMapping` on 4.0 and 4.4, `EndPointsUrlMapping` on 4.8), the actions of all that match together, with
@@ -234,14 +241,14 @@ assertThat(form.canRead("emailAddress")).isTrue();
   (`assignment-target-get`, for the GUI's selection windows): a search finds only what `#read` allows, but every user's
   details open for everyone, and a narrower `#read` shows no more than that. The test shows it; a deployment that
   keeps the role as shipped has it too.
-- The execution phase is not asked on its own: a request or a change through the scenario API goes through both
+- The execution phase is not asked on its own: a request or a change through the API goes through both
   phases, as in the GUI.
 
 The GUI's configuration (`adminGuiConfiguration`) is asked the same way: `guiProfile()` is the user's GUI profile as
 midPoint compiled it at login (`GuiProfileScenarioTest`):
 
 ```java
-GuiProfile manager = s.as(Users.IT_MANAGER).guiProfile();
+GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
 assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
         .containsExactlyInAnyOrder("people", "department-members");   // the system's, the induced role's
 assertThat(manager.view(UserType.COMPLEX_TYPE, "department-members").inMenu()).isTrue();   // 4.4+
@@ -270,11 +277,12 @@ as YAML; the tester checks every cell (one test each) and writes an HTML report 
 and the items of their forms; and what the personas' GUI profiles make of the side menu.
 
 ```java
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
-@AuthzMatrix("classpath:scenarios/access/authz-matrix.yaml")
-class AuthzMatrixScenarioTest extends AuthzMatrixTest {
+@AuthzMatrix("classpath:authz-matrix.yaml")      // loads the project's deployment, as @MidPointConfigTest does
+class AuthzMatrixCheck extends AuthzMatrixTest { // the cells are its tests
 }
 ```
+
+`@AuthzMatrix(value = ..., manifest = "classpath:...")` names another manifest (`AuthzMatrixScenarioTest`).
 
 ```yaml
 spec: authz-matrix/1
@@ -370,7 +378,7 @@ views' collection), and its GUI configuration hides a feature the system configu
 
 ### Mails
 
-`s.mails()` is every mail midPoint sent in the test, as the tester's SMTP server received it: the deployment's own
+`t.mails()` is every mail midPoint sent in the test, as the tester's SMTP server received it: the deployment's own
 notifiers and transport, only the mail server redirected. Narrow by `to(address)`, `from(address)`,
 `withSubject(text)` and `withBodyContaining(text)`; check with `exactly(n)`, `none()`, `single()` (a `Mail`:
 `subject()`, `body()`, `hasBodyContaining(texts...)`, `from()`, `to()`, `attachments()`...), and with
@@ -386,30 +394,30 @@ subject and body from expressions over `event`, `requester`, `requestee`, `assig
 owner has a deadline (`duration` P5D) and a timed action that escalates to her deputy, with a reminder a day before:
 
 ```java
-s.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
-s.mails().to("role-owner@example.com").withSubject("Approval needed: Privileged Access for Jack Sparrow").single()
+t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+t.mails().to("role-owner@example.com").withSubject("Approval needed: Privileged Access for Jack Sparrow").single()
         .hasBodyContaining("Dear Rose Owner,", "Stage 1 waits for your decision.");
-WorkItem owners = s.workItems().assignedTo(Users.ROLE_OWNER).single();
+WorkItem owners = t.workItems().assignedTo(Users.ROLE_OWNER).single();
 Instant deadline = owners.deadline();                              // created + P5D
 
-s.time().advance("P4DT1H").runDue();                               // the trigger scanner runs the timed actions
-s.mails().to("role-owner@example.com").withSubject("Reminder").single().hasBodyContaining("escalated in P1D");
+t.clock().advance("P4DT1H").runDue();                               // the trigger scanner runs the timed actions
+t.mails().to("role-owner@example.com").withSubject("Reminder").single().hasBodyContaining("escalated in P1D");
 
-s.time().advance("P1D").runDue();                                  // past the deadline
-WorkItem escalated = s.workItems().forUser(Users.JACK).single().atEscalationLevel(1).hasAssignee(Users.OWNER_DEPUTY);
-s.mails().to("owner-deputy@example.com").withSubject("Escalated to you").single();
-escalated.approve(s.as(Users.OWNER_DEPUTY));
-s.workItems().assignedTo(Users.SEC_OFFICER).single().approve(s.as(Users.SEC_OFFICER));
+t.clock().advance("P1D").runDue();                                  // past the deadline
+WorkItem escalated = t.workItems().forUser(Users.JACK).single().atEscalationLevel(1).hasAssignee(Users.OWNER_DEPUTY);
+t.mails().to("owner-deputy@example.com").withSubject("Escalated to you").single();
+escalated.approve(t.as(Users.OWNER_DEPUTY));
+t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.as(Users.SEC_OFFICER));
 
-s.mails().to("jack@example.com").withSubject("Request approved: Privileged Access").single()
+t.mails().to("jack@example.com").withSubject("Request approved: Privileged Access").single()
         .hasBodyContaining("approved by Sam Officer");
-assertThat(s.mails().perRecipient()).isEqualTo(Map.of("jack@example.com", 2, "role-owner@example.com", 2,
+assertThat(t.mails().perRecipient()).isEqualTo(Map.of("jack@example.com", 2, "role-owner@example.com", 2,
         "owner-deputy@example.com", 1, "sec-officer@example.com", 1, "sec-analyst@example.com", 1));
 ```
 
 Group approvers are expanded on work item creation, as real deployments do: the sample's second stage (`approverRef`
 to the Security officers role) has `groupExpansion` `onWorkItemCreation`, so each member gets a work item assigned to
-them (`s.workItems().assignedTo(member)`) and a mail, and `evaluationStrategy` `firstDecides`: the first decision
+them (`t.workItems().assignedTo(member)`) and a mail, and `evaluationStrategy` `firstDecides`: the first decision
 counts and closes the other members' work items without a decision (`WorkItem.isCancelled()`; the decided one
 `isApprovedBy(user)` / `isRejectedBy(user)`). What midPoint mails and what it does not (4.0, 4.4 and 4.8 alike): a
 work item is mailed to its assignees (and their deputies); a group approver left unexpanded (the default
@@ -429,17 +437,17 @@ escape hatch, for names the configuration does not have):
 
 ```java
 // before
-s.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
-s.task("Reconcile HR").run();
-s.user("e1001").hasRole("Dept Sales").hasAccountOn("LDAP");
-s.target("LDAP").account(dn).hasAttribute("ou", "Sales");
+t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
+t.task("Reconcile HR").run();
+t.user("e1001").hasRole("Dept Sales").hasAccountOn("LDAP");
+t.target("LDAP").account(dn).hasAttribute("ou", "Sales");
 
 // after: a typo, or a role the configuration no longer has, does not compile
-s.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
+t.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
         .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales"));
-s.task(Tasks.RECONCILE_HR).run();
-s.user("e1001").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP).hasItem(UserExtension.SITE, "Prague");
-s.target(Resources.LDAP).account(dn).hasAttribute(LdapAttrs.OU, "Sales");
+t.task(Tasks.RECONCILE_HR).run();
+t.user("e1001").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP).hasItem(UserExtension.SITE, "Prague");
+t.target(Resources.LDAP).account(dn).hasAttribute(LdapAttrs.OU, "Sales");
 ```
 
 Generated classes: `Resources`, `Roles`, `Orgs`, `Services`, `Archetypes`, `Users` (users the configuration holds),
@@ -447,7 +455,7 @@ Generated classes: `Resources`, `Roles`, `Orgs`, `Services`, `Archetypes`, `User
 schema's attributes, a CSV connector's unique/name/password columns, the header of a CSV file of initial data, the
 attributes of an LDIF of initial data), `UserExtension` (items of `config.schema` that extend users) and `Names` (all
 of them). The names are those of every line together: a name only some lines have (an overlay adds, replaces or
-removes its file) carries its lines (`Reports.USERS_BY_COST_CENTER.existsOn(s.line())`), and using it on another
+removes its file) carries its lines (`Reports.USERS_BY_COST_CENTER.existsOn(t.line())`), and using it on another
 line fails with a clear message. So shared
 test sources compile on every line. An attribute of another resource (`account.hasAttribute(HrAttrs.FIRST_NAME)` on
 LDAP) fails at once. Two names that would make the same constant (`Dept-Sales`, `Dept Sales`) fail the generation.
@@ -513,8 +521,8 @@ that have them:
 | `UserItems` | items of midPoint's user schema for `hasItem`, `values` and `why`: `NAME`, `FULL_NAME`, `GIVEN_NAME`, `FAMILY_NAME`, `EMAIL_ADDRESS`, `TELEPHONE_NUMBER`, `EMPLOYEE_NUMBER`, `COST_CENTER`, `LOCALITY`, `TITLE`, `ORGANIZATION`, `ORGANIZATIONAL_UNIT`, `LIFECYCLE_STATE`, `ADMINISTRATIVE_STATUS` (`activation/administrativeStatus`), `VALID_FROM`, `VALID_TO`, `EFFECTIVE_STATUS`...; `EMPLOYEE_TYPE` (4.0 only), `PERSONAL_NUMBER` (4.8+) |
 
 ```java
-s.user(Users.JACK).hasRole(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
-s.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.oid());
+t.user(Users.JACK).hasRole(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
+t.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.oid());
 ```
 
 A name whose object differs between lines gets one constant per name (`InitialReports.CERTIFICATION_DECISIONS_REPORT`
@@ -534,19 +542,19 @@ typed names:
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.refTo;
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.targeting;
 
-UserType john = s.user("e1001").object();
+UserType john = t.user("e1001").object();
 assertThat(john.getCostCenter()).isEqualTo("Sales");
 assertThat(john.getAssignment()).haveExactly(1, targeting(Roles.DEPT_SALES)).doNotHave(targeting(Roles.DEPT_IT));
 assertThat(john.getRoleMembershipRef()).haveAtLeastOne(refTo(Roles.DEPT_SALES));
 assertThat(john.getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.ENABLED);
 
-Account ldap = s.target(Resources.LDAP).account(dn);
+Account ldap = t.target(Resources.LDAP).account(dn);
 assertThat(ldap.value(LdapAttrs.OU)).isEqualTo("Sales");
 assertThat(ldap.groups()).containsExactly(SALES);
 assertThat(ldap.status()).isEqualTo(Status.ENABLED);
 
-assertThat(s.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
-assertThat(s.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).containsExactly(Users.ROLE_OWNER);
+assertThat(t.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
+assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).containsExactly(Users.ROLE_OWNER);
 ```
 
 | Type | Values |
@@ -556,7 +564,7 @@ assertThat(s.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |
 
-During a scenario test AssertJ shows midPoint's values readably (`assignment of role Dept Sales`, `role Dept Sales`, a
+During a test AssertJ shows midPoint's values readably (`assignment of role Dept Sales`, `role Dept Sales`, a
 polystring as its text, a date as an instant). A test that fails gets explanations appended to the failure (the
 expected and actual values stay for the IDE's diff): the mappings behind the account values it read, and, as
 possibly related, the mappings of the test that set an item of a user whose object it read, when the item's value
@@ -581,7 +589,7 @@ fail with the mappings behind the item they check.
 
 ### Mapping evaluations and times
 
-`s.mappingStats()` counts and times the mapping evaluations of the test so far, for each mapping (by name and owner):
+`t.mappingStats()` counts and times the mapping evaluations of the test so far, for each mapping (by name and owner):
 where an expensive script runs, and how often. The first evaluation of a mapping is far slower (the script's
 compilation, the first search of a target system), so it is shown apart, and the mappings are sorted by the total of
 the evaluations after it (three hires, the HR reconciliation reconciling every row each time, on 4.8):
@@ -613,27 +621,113 @@ damaged or unusable entry is loaded afresh, with a line in the log. `-Dtester.ca
 1; see [Speed](#speed) for when it pays (on a 10-core laptop it does not, for this repository's tests).
 
 A failed assertion says what was expected, what is there and the mappings that set the value in the test;
-`s.user("e1001").why("fullName").print()` and `s.target("LDAP").account(dn).why("cn")` show them on demand (mapping,
+`t.user("e1001").why("fullName").print()` and `t.target("LDAP").account(dn).why("cn")` show them on demand (mapping,
 owner, sources old -> new, condition, output, task and channel). The sample deployments and their tests are
 `tester/core/src/test/resources/scenarios/{hr,hr-mirror,access}` and
 `tester/core/src/test/java/com/github/wadahiro/midpoint/configtester`; what each phase built is in
 [docs/next-design.md](docs/next-design.md).
 
-## The PoC API (`s.midpoint()`)
+### Nested classes: tests that share a prefix
 
-The sections below describe the API of the proof of concept (`com.github.wadahiro.midpoint.tester`: `@MidPointTest`,
-`MidPoint`, `Run`, `Evaluation`, `TargetSystem`...). It stays as the escape hatch of a scenario (`s.midpoint()`, e.g.
-to read an object, drive a call the scenario API has no verb for, or select the evaluations of a run) and as the
-engine under the scenario API, but it is not the product: new tests are scenarios. Its own tests were removed in phase
-4, except the engine tests (`RuntimeTest`, `ResetTest`, `TaskRunsTest`, `ClockTest`, `FilesTest`, `LiveSync*Test`,
-`MembershipTest`, `GoldenTest`); the tests named below as examples or as the pins of a line difference are in git
-history (`git show 1e39281^:tester/core/src/test/java/com/github/wadahiro/midpoint/tester/<Test>.java`).
+A test of a business flow often repeats the same first steps: start a certification campaign, then check the
+reminder; start it again, decide, pass the deadline, check the report; start it again... A `@Nested` class of a
+`@MidPointConfigTest` class shares its prefix: its `@BeforeAll` methods run once, on midPoint reset to the deployment,
+and each of its tests starts from midPoint as the prefix left it (a checkpoint: the database, the target systems, the
+mapped files, the stand-in databases, the clock, moved or stopped, and the mails, notifications, logs and HTTP requests
+seen so far). What one test does is undone for the next. A nested class in a nested class starts from the outer
+prefix and adds its own.
+
+```java
+@MidPointConfigTest
+class CampaignTest {
+    @Nested @TestInstance(Lifecycle.PER_CLASS)          // PER_CLASS: a @BeforeAll on the instance, fields it sets
+    class TheCampaignHasStarted {
+        AccessCertificationCampaignType campaign;
+
+        @BeforeAll void start(MidPointConfigTester t) { campaign = startCampaign(t); }   // once
+
+        @Test void aReminder22DaysBeforeTheDeadline(MidPointConfigTester t) { ... }
+        @Test void anUndecidedCaseStaysAfterTheDeadline(MidPointConfigTester t) { ... }
+
+        @Nested @TestInstance(Lifecycle.PER_CLASS)
+        class ARevocationPastTheDeadline {
+            @BeforeAll void revoke(MidPointConfigTester t) {                            // once, on the started one
+                decide(t, campaign, "revoke");
+                pastTheDeadline(t, campaign);
+            }
+
+            @Test void theCampaignIsClosed(MidPointConfigTester t) { ... }
+            @Test void theReportListsTheRevocation(MidPointConfigTester t) { ... }   // not after the test above
+        }
+    }
+}
+```
+
+- The tests of the top-level class start from the deployment as before. `@BeforeEach` methods run in each test,
+  after the checkpoint: they are part of the test, not of the prefix.
+- Fields the prefix set (`campaign` above) are not checkpointed: they stay as the prefix left them, which is right
+  for what the prefix created; do not change them in a test.
+- What a checkpoint does not cover: midPoint's in-memory state that a reset does not restore either, and a mail
+  recipient rejected with `t.mailServer().reject(...)` (set it in the test that needs it).
+- Saving: a prefix shared by n tests runs once instead of n times; a checkpoint costs a database snapshot and a reset
+  per test. Heavy prefixes (a synchronization, a report import, due tasks after a moved clock) gain most: about a
+  third of a certification flow's time on a 4.10 deployment (5 tests, 35 s to 23 s, as with Kotest); light ones (a
+  reconciliation of one account) little. `NestedPrefixScenarioTest` shows what each test starts from.
+- Steps that continue each other stay one test method (Kotest's `steps` has no counterpart here).
+
+### Kotest specs: the same in Kotlin
+
+`midpoint-config-tester-kotest` (opt-in, Kotlin) runs [Kotest](https://kotest.io) specs over the deployment with the
+same checkpoints: a container's code before its first test is its prefix, run once, and each test of the container
+starts from midPoint as the prefix left it. The tree reads like the flow, values the prefix computed are plain local
+values, and tests are named by sentences.
+
+```kotlin
+@MidPointConfigTest
+class CampaignSpec : MidPointConfigSpec({
+    "the campaign has started" - {
+        val campaign = t.startCampaign()             // once
+        "a reminder 22 days before the deadline" { ... }
+        "an undecided case stays after the deadline" { ... }
+        "a revocation past the deadline" - {
+            t.decide(campaign, "revoke")             // once, on the started campaign
+            t.clock().advanceTo(campaign.deadline).runDue()
+            "the campaign is closed" { ... }
+            "the report lists the revocation" { ... } // from the revocation, not after the test above
+        }
+    }
+    steps("a scenario's steps") {                    // tests that continue each other, stopping at the first failure
+        "hire" { ... }
+        "move" { ... }
+    }
+})
+```
+
+- Each root starts from the deployment, as a JUnit test method does; `t` is its tester. A failed assertion gets the
+  mappings behind the values it read, as in JUnit (`ExplanationSpec`).
+- Work in a container between its tests would be undone after the next test: the next test fails and says so (put it
+  before the first test, in a container of its own, or use `steps`).
+- Kotlin values the prefix computed (`campaign` above) are not checkpointed, as the fields of a nested class are not;
+  the checkpoint covers what it covers for nested classes, and saves as much.
+- Set up: the parent POMs manage Kotlin and Kotest and run `*Spec` classes; a repository adds, as test dependencies,
+  `midpoint-config-tester-kotest`, `io.kotest:kotest-runner-junit5-jvm`, `org.jetbrains.kotlin:kotlin-stdlib` and the
+  `kotlin-maven-plugin` (`examples/kotest-scenarios`, on 4.0 with JDK 11 and on 4.8). IntelliJ needs the Kotest plugin
+  to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name.
+
+## The low-level API (`t.midpoint()`)
+
+The sections below describe the low-level API (`com.github.wadahiro.midpoint.tester`: `MidPoint`, `Run`,
+`Evaluation`, `TargetSystem`...), the engine under `MidPointConfigTester`. A test reaches it with `t.midpoint()` (below
+`mp`): to read an object, drive a call the `MidPointConfigTester` API has no verb for, import a resource with options
+of its own, or select the evaluations of a run. The tester's own engine tests (`RuntimeTest`, `ResetTest`,
+`TaskRunsTest`, `ClockTest`, `FilesTest`, `LiveSync*Test`, `MembershipTest`) use it on a deployment of nothing
+(`scenarios/bare`); the tests named below as examples or as the pins of a line difference are in git history
+(`git show 1e39281^:tester/core/src/test/java/com/github/wadahiro/midpoint/tester/<Test>.java`).
 
 ### Contents
 
 - [Supported lines](#supported-lines)
-- [Quick start](#quick-start)
-- [Test lifecycle](#test-lifecycle)
+- [Resets](#resets)
 - [Configuration and target systems](#configuration-and-target-systems)
 - [Drivers](#drivers)
 - [Selecting evaluations](#selecting-evaluations)
@@ -644,7 +738,6 @@ history (`git show 1e39281^:tester/core/src/test/java/com/github/wadahiro/midpoi
 - [Hooks, notifications and authorizations](#hooks-notifications-and-authorizations)
 - [Mail notifications](#mail-notifications)
 - [HTTP services](#http-services)
-- [Golden results](#golden-results)
 - [Static checks](#static-checks)
 - [Line notes](#line-notes)
 - [Limitations](#limitations)
@@ -673,81 +766,13 @@ between lines is midPoint's behaviour, see [Line notes](#line-notes).
 midPoint keeps static state, so a JVM holds one midPoint line. To test one configuration on two lines, run the same
 tests in two Maven modules (or two runs) with different tester artifacts.
 
-## Quick start
+## Resets
 
-The dependency and its settings are those of [Getting started](#getting-started) (the parents). A PoC test class is
-annotated `@MidPointTest` instead of `@MidPointScenarios` and imports its configuration itself.
-
-### A first test
-
-```java
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.File;
-import java.util.Map;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
-import com.github.wadahiro.midpoint.tester.Evaluation;
-import com.github.wadahiro.midpoint.tester.MidPoint;
-import com.github.wadahiro.midpoint.tester.MidPointTest;
-import com.github.wadahiro.midpoint.tester.Run;
-
-@MidPointTest
-class HrTest {
-
-    static final File CONFIG = new File("config");
-
-    @BeforeAll
-    static void configure(MidPoint mp) {
-        // the resource as deployed; only its connector is replaced by an in-memory target system
-        mp.importResource(new File(CONFIG, "resource-hr.xml"));
-        mp.importObject(new File(CONFIG, "object-template-user.xml"));
-    }
-
-    @Test
-    void familyNameFromHr(MidPoint mp) {
-        mp.target("HR").addAccount("1001", Map.of("fullname", " John  DOE "));
-
-        Run run = mp.importAccount("HR", "1001");          // inbounds, correlation, reactions, template, outbounds
-
-        Evaluation m = run.mapping("hr-familyName");       // the last evaluation of the mapping with this <name>
-        assertThat(m.newValues()).containsExactly("Doe");  // zero + plus; oldValues() = zero + minus
-        assertThat(m.identity()).hasToString(
-                "resource:HR/schemaHandling/objectType[account/default]/attribute[ri:fullname]/inbound[hr-familyName]");
-        assertThat(m.expression().variable("focus")).isNotNull();   // the variables midPoint gave the script
-        assertThat(mp.user("1001").getFamilyName().getOrig()).isEqualTo("Doe");
-    }
-}
-```
-
-`MidPoint` is injected into test methods and static `@BeforeAll` methods. Every driver returns a `Run` with the
-evaluations midPoint ran; when midPoint reports an error, the driver throws `OperationFailed` (an `AssertionError`),
-whose `run()` holds the evaluations up to the failure.
-
-## Test lifecycle
-
-`@MidPointTest` (JUnit extension `MidPointExtension`) starts one midPoint per JVM on first use and shares it between
-all test classes. Isolation comes from resets:
-
-- **Before each class**: back to the baseline, the bare system: a system configuration, the `Superuser` role, the
-  `administrator`, and the objects of the line's initial objects that midPoint's services need (archetypes of cases,
-  approvals, certification, report, validity and trigger scanner tasks, and of the bulk action tasks of asynchronous
-  policy scripts; the Approver and Reviewer roles).
-- **After each test method** (`ResetMode.PER_METHOD`, the default): back to the state after the class's `@BeforeAll`
-  methods. Import the configuration there.
-- `@MidPointTest(reset = ResetMode.PER_CLASS)` keeps changes across the methods of a class (use it with
-  `@TestMethodOrder`).
-
-A reset restores the database snapshot, midPoint's caches, the target systems, the configuration index and midPoint's
+Every test method starts from the deployment as loaded: what a test imported or changed is gone after it. A reset restores the database snapshot, midPoint's caches, the target systems, the configuration index and midPoint's
 clock, and suspends background tasks still running after 10 seconds. It runs no task: Quartz is held until all of it is
 restored, and every recurring task goes back to the schedule it had at the snapshot (its next run one interval after
-its last run); recurring tasks held after `mp.time().advance` fire on their own again. Each test method starts logged
-in as `administrator`, with no notifications.
-
-Test classes run in the order JUnit gives; their methods may be parameterized or repeated (golden results key them by
-method name plus display name).
+its last run); recurring tasks held after `t.clock().advance` fire on their own again. Each test method starts logged in as
+`administrator`, with no notifications.
 
 ## Configuration and target systems
 
@@ -808,10 +833,43 @@ class, computed from the holder's references when they are names or identifiers 
 the schema only. Without a stored schema the mirror has the attributes `schemaHandling` names; one that
 only a script reads (`basic.getAttributeValue(projection, "category")`) is added with
 `ResourceOptions.attribute("AccountObjectClass", "category")` (manifest:
-`attributes: { AccountObjectClass: [category] }`). Classes named by different attributes take one each:
+`attributes: { AccountObjectClass: [category] }`); one multi-valued on the real resource (a list of parameters)
+that `schemaHandling` gives no `limitations/maxOccurs` is made so with
+`ResourceOptions.multiValued("Connection", "parameters")` (manifest: `multiValued: { Connection: [parameters] }`).
+A multi-valued attribute the target system keeps as a map of `key=value` values (Guacamole's connection parameters)
+is declared with its separator, `ResourceOptions.keyedValues("Connection", "parameters", "=")` (manifest:
+`keyedValues: { Connection: { parameters: "=" } }`): a value added replaces the value of its key
+(`disable-paste=false` replaces `disable-paste=true`) and a value removed removes its key, with or without a stored
+schema; a plain multi-valued attribute would keep both values. `keyedValues` is the shortcut of the general form, a
+Groovy expression that makes the values the target system keeps when midPoint writes the attribute:
+`ResourceOptions.store("Connection", "parameters", expression)`, in the manifest
+
+```yaml
+targets:
+  Remote desktops:
+    store:
+      Connection:
+        # values: kept so far (empty on create); add / remove: what midPoint adds and removes (the values it creates
+        # the object with are add); replace: the values it replaces them with, or null; name: the object's name
+        parameters: |
+          def key = { it.split('=')[0] }
+          def kept = (replace ?: values).findAll { v -> !(remove + add).any { key(it) == key(v) } }
+          kept + add
+```
+
+returning the values to keep (what a target system does beyond storing them: one per key, lower case, sorted, a
+default added). An attribute has `keyedValues` or `store`, not both (`StoredValuesTest`).
+Classes named by different attributes take one each:
 `ResourceOptions.namingAttribute("Group", "displayName")` (manifest: `namingAttribute: { User: userName, Group:
-displayName }`). The resources the tester cannot stand in for are reported together, with the manifest's other
-mistakes, in one load failure. `TargetSystem` has the same calls for accounts, groups (the
+displayName }`). An identifier the target system issues on create (a certificate's serial and validity, an
+order number) is made by a Groovy expression of the created object's `name`, its other `attributes` (name -> list of
+values) and `now` (the tester's clock, an `Instant`): `ResourceOptions.identifier("certId", expression)`
+(manifest: `identifier: { attribute: certId, value: "name + '/' + now.toEpochMilli()" }`); without the expression a
+generated identifier is a random UUID. A connector that gives ConnId's `__UID__` no native name (a stored schema
+shows it as `icfs:uid` beside `icfs:name`) may still issue it apart from the name, which the schema does not say:
+`identifier: icfs:uid` (or with a `value`) makes the mirror issue it, so a rename keeps it; without it the
+identifier is the name (`GeneratedIdentifierTest`). The resources the tester cannot stand in for are reported together, with the
+manifest's other mistakes, in one load failure. `TargetSystem` has the same calls for accounts, groups (the
 first non-account object type) and any object class by name (`addObject(objectClass, ...)`, `identifier(...)` for
 references by `__UID__`). Changes made there are seen by midPoint when it next reads the object, and by the next
 live synchronization run: the mirror connector synchronizes as the CSV connector does, a token standing for the
@@ -938,8 +996,18 @@ imported after `advance` does not run in its import; it never ran, so `runDueTas
 the real time as in production (a short interval, or a per-minute cron, then runs between driver calls).
 
 ```java
-mp.time().advance("PT1H");
-Run hourly = mp.time().runDueTasks();     // each recurring task whose next run has come, once (by midPoint's clock)
+t.clock().advance("PT1H").runDue();      // each recurring task whose next run has come, once (by midPoint's clock)
+```
+
+A cron task counts from when its trigger was made, by midPoint's clock, and from the test's start: by default the real
+time, so a cron time of the day between the real time and where the test moves the clock is due (a test that moves to
+tomorrow 1:00 runs today's 23:50 job when it runs at 23:00, not at 23:55). `t.clock().startAt(dateTime)` starts the test
+at a fixed time instead (the clock stopped there): what is due then does not depend on when the test runs.
+
+```java
+LocalDate day = t.clock().today().plusDays(1);
+t.clock().startAt(day.atTime(12, 0));                 // tomorrow at noon, whenever the test runs
+t.clock().stopAt(day.atTime(23, 51)).runDue();       // the 23:50 job has run, once
 ```
 
 ### Scenarios: a source reconciled into a target
@@ -1030,8 +1098,8 @@ assertThat(synced.forFocus("e1001").inbound("LDAP", "ri:telephoneNumber").newVal
 - The query of a live synchronization work definition is not applied by midPoint (only resource, object class, kind
   and intent), so its expressions are never evaluated.
 
-**Steps.** `mp.step("approve")` names the driver calls that follow (until the next step or the end of the test); golden
-results match runs by this name instead of the driver's label (see [Golden results](#golden-results)).
+**Steps.** `mp.step("approve")` names the driver calls that follow (until the next step or the end of the test),
+instead of the driver's label.
 
 ## Selecting evaluations
 
@@ -1070,7 +1138,7 @@ run.select().owner("User template").evaluator("script").path("filter");
   mapping.
 - `owner()`, `identity()`, `location()` (file, line, element path, how it was found), `task()`, `hook()`, `focus()`
   (the focus object the evaluation is about, see below).
-- `toString()` is the normalized text golden results use.
+- `toString()` is the normalized text.
 
 ### One focus among several
 
@@ -1188,10 +1256,10 @@ mp.approvals().claim(orgItem, "it-member");                       // a candidate
 mp.approvals().cancel(mp.approvals().cases().get(0));             // closed without an outcome, nothing executed
 
 // time: midPoint's clock override, then the scanners as tasks
-mp.time().advance("P6D");
-mp.time().runTriggerScanner();                                    // deadlines, timed actions, escalation
-mp.time().runValidityScanner();                                   // activation dates
-mp.time().runDueTasks();                                          // recurring tasks due by the clock
+t.clock().advance("P6D");
+t.clock().runTriggerScanner();                                    // deadlines, timed actions, escalation
+t.clock().runValidityScanner();                                   // activation dates
+t.clock().runDue();                                               // recurring tasks due by the clock
 
 // certification
 String c = mp.certification().createCampaign("role-assignments").oid();
@@ -1199,7 +1267,7 @@ mp.certification().openNextStage(c).select().element("reviewerExpression");
 Certification.WorkItem w = mp.certification().campaign(c).caseOf("kate", "Auditor").workItems().get(0);
 mp.certification().decide(w, "sec-officer", "revoke", null);     // closeCurrentStage, startRemediation, closeCampaign
 mp.certification().reiterateCampaign(c);                          // a closed campaign: unanswered cases, iteration 2
-mp.time().advance("P5D"); mp.time().runTriggerScanner();          // a stage's timedActions: escalate, delegate
+t.clock().advance("P5D").runTriggerScanner();                    // a stage's timedActions: escalate, delegate
 
 // reports: an export task as the GUI's "Run report"
 Reports.Output out = mp.reports().export("users-by-cost-center", Map.of("costCenter", "HR-200"));
@@ -1218,11 +1286,11 @@ Dashboards.Widget widget = mp.dashboards().widget("admin-dashboard", "employees"
 widget.number(); widget.color(); widget.run().select().path("variation").element("condition");
 ```
 
-**Time.** `mp.time()` moves midPoint's clock and the JVM's wall clock (`new Date()`, `Instant.now()`, Groovy's
+**Time.** `t.clock()` moves midPoint's clock and the JVM's wall clock (`new Date()`, `Instant.now()`, Groovy's
 `System.currentTimeMillis()`...), not Quartz, `System.nanoTime()` or the database. See
-[Activation and validity](#activation-and-validity). The moved clock runs on; `s.time().stopAt(instant)` (or a
+[Activation and validity](#activation-and-validity). The moved clock runs on; `t.clock().stopAt(instant)` (or a
 `LocalDateTime` in the JVM's time zone) stops it there, to the millisecond, until the test ends, for a time window
-checked at its bounds (a script that compares `LocalTime.now()` with 22:00): `s.time().stopAt(day.atTime(21, 59, 59,
+checked at its bounds (a script that compares `LocalTime.now()` with 22:00): `t.clock().stopAt(day.atTime(21, 59, 59,
 999_000_000))`, then `advance(Duration.ofMillis(1))` to 22:00:00.000 (`StoppedClockScenarioTest`).
 
 Users who complete work items or decide need the authorization to: the baseline has midPoint's Approver and Reviewer
@@ -1259,7 +1327,9 @@ variable value"); 4.4 fails the export ("Attempt to get single value from item .
 (`ReportTest.severalParameterValues`). A failed export task throws `OperationFailed` with the first message of the
 task's result tree.
 
-**Report import** (`importFrom`) needs a report with `behavior/direction` `import`. The lines are written to
+**Report import** (`importFrom`) needs a report with `behavior/direction` `import`. `importFrom(report, lines,
+username)` imports as that user, as when the user imports in the GUI: the import task is theirs, so the import
+script's `actor` is the user and their authorizations apply (`ReportImportScenarioTest`). The lines are written to
 `<midPoint home>/import/`, a `ReportDataType` points to the file, and the classic report import task runs
 (`ReportManager.importReport` on 4.4; the same activity submitted on 4.8+). midPoint then:
 
@@ -1302,15 +1372,13 @@ A resource provisions the status of its accounts only through the activation sec
 Time passes with midPoint's clock; the scanners do what midPoint's recurring tasks would:
 
 ```java
-Instant end = mp.time().now().plus(Duration.ofDays(1));          // dates relative to midPoint's clock
+Instant end = t.clock().now().plus(Duration.ofDays(1));          // dates relative to midPoint's clock
 mp.addObjectXml("<user ...><name>bob</name>...<activation><validTo>" + end + "</validTo></activation></user>");
-mp.time().advance("P2D");                     // nothing recomputes the user yet: effectiveStatus is still ENABLED
-Run scan = mp.time().runValidityScanner();    // users and assignments whose validFrom / validTo passed, recomputed
+t.clock().advance("P2D");                     // nothing recomputes the user yet: effectiveStatus is still ENABLED
+t.clock().runValidityScanner();               // users and assignments whose validFrom / validTo passed, recomputed
 mp.user("bob").getActivation().getEffectiveStatus();             // DISABLED, validityStatus AFTER
 mp.target("App").enabled("bob");                                 // false
-scan.forFocus("bob").mapping("app-status").task();               // "validity scanner (tester)"
-mp.time().advance("P31D");
-mp.time().runTriggerScanner();                // triggers due: the recompute trigger of a delayed delete
+t.clock().advance("P31D").runTriggerScanner(); // triggers due: the recompute trigger of a delayed delete
 ```
 
 The validity scanner handles the dates of users and of their assignments (an assignment of a role that ended takes the
@@ -1320,7 +1388,7 @@ no status mapping, user and assignment validity) and `ActivationScenarioTest` (s
 delete, delayed delete), which runs on mirrors (`ActivationMirrorTest`) and on the real CSV and LDAP connectors
 (`ActivationRealConnectorsTest`), with the same results on every line but one note (see [Line notes](#line-notes)).
 
-**What moves with `mp.time()`.** `advance` moves midPoint's `Clock` (its test override) and, by the same offset, the
+**What moves with `t.clock()`.** `advance` moves midPoint's `Clock` (its test override) and, by the same offset, the
 JVM's wall clock as code reads it, so a script sees the advanced time however it reads it
 (`ActivationTest.aMappingSeesTheAdvancedTime`, `scriptsSeeTheAdvancedTime`, `ClockTest`); the reset after each test
 sets both back to the real time. With the tester's Java agent (the one of [Files scripts read and
@@ -1338,7 +1406,7 @@ How: Byte Buddy advice adds the offset where the JDK reads the wall clock (`Date
 Locale)`, the calendar provider, `Clock.currentInstant()` on JDK 21 or the system clock's `instant()` on 11 and 17,
 `millis()`), and midPoint's `Clock` keeps its own override at the same offset (it adds it to
 `System.currentTimeMillis()`). At start the tester checks every source on this JVM; if one is not shifted (or there
-is no agent), it prints why and only midPoint's `Clock` moves (`mp.time().shiftsTheJvmClock()` is then false).
+is no agent), it prints why and only midPoint's `Clock` moves (the tester says so at start).
 
 **Quartz keeps the real time.** Its scheduler thread waits on `System.currentTimeMillis()`, so a trigger made on a
 shifted `new Date()` (`startNow()`) would wait for the real time to catch up: Quartz's own reads of `Date` and
@@ -1346,7 +1414,7 @@ shifted `new Date()` (`startNow()`) would wait for the real time to catch up: Qu
 reset the tester holds the regular runs of recurring tasks: a listener vetoes every firing of the standard trigger of a
 loosely bound recurring task (not a pause, which midPoint undoes whenever it synchronizes a task), except the one
 "Run now" re-creates to start the task. A task with a short interval therefore does not run by itself in the middle of
-`runValidityScanner()` or between driver calls; `mp.time().runDueTasks()` runs once each task due by midPoint's clock,
+`runValidityScanner()` or between driver calls; `t.clock().runDue()` runs once each task due by midPoint's clock,
 and `mp.runTask` still runs a task exactly once (`TaskRunsTest.recurringTaskRunsOnItsScheduleByMidPointsClock`,
 `aRecurringTaskRunsOnlyThroughTheDriverOnceTheClockHasMoved`, `aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`).
 Tightly bound tasks (a thread that sleeps between runs) are not held. In production the real time passes for
@@ -1391,14 +1459,11 @@ configuration names to directories of its own, provides the input files there an
 directories are never touched.
 
 ```java
-@BeforeAll
-static void configure(MidPoint mp) {
+@Test
+void export(MidPointConfigTester t) {
+    MidPoint mp = t.midpoint();
     mp.files().map("/opt/midpoint/var")                                    // and everything under it
             .write("/opt/midpoint/var/import/hr.csv", "id,name\n1001,John Doe\n");
-}
-
-@Test
-void export(MidPoint mp) {
     Answer<BulkActionOutput> out = mp.bulkAction(xml);  // new File('/opt/midpoint/var/export/users.csv').withWriter {...}
     WrittenFile users = out.run().fileWritten("/opt/midpoint/var/export/users.csv");
     assertThat(users.lines()).containsExactly("1001;JOHN DOE");
@@ -1413,7 +1478,16 @@ void export(MidPoint mp) {
 | `physical(path)`, `mapped()`, `exportDirectory()` | where a file really is; the mapped directories; midPoint's report output directory |
 | `run.filesWritten()`, `run.fileWritten(path)`, `run.filesDeleted()` | what one driver call created, changed or deleted (`WrittenFile`: `path()`, `name()`, `created()`, `text()`, `lines()`, `bytes()`) |
 
-**How the mapping works.** At its start the tester attaches a Java agent (Byte Buddy) that instruments two JDK
+The directories the deployment's tasks write in, as its volume has them, are mapped by the manifest for every test, with
+the tree they start with (files, and empty directories kept in git by a `.gitkeep`, which is not copied):
+
+```yaml
+files:
+  map: [/opt/midpoint/var]
+  initial: { /var/lib/midpoint: files/var-lib-midpoint }   # also mapped; the tree comes back before every test
+```
+
+**How the mapping works.** At its start the tester attaches a Java agent (Byte Buddy) that instruments three JDK
 classes, so the redirection holds for **any code in the JVM**: Groovy scripts, Java utilities they call (custom jars,
 Apache Commons IO or CSV, midPoint's own code), the test itself.
 
@@ -1424,13 +1498,19 @@ Apache Commons IO or CSV, midPoint's own code), the test itself.
 - Every constructor of `sun.nio.fs.UnixPath`, the default file system's `Path` on Linux and macOS: the same for its
   bytes. `Path.of`, `Paths.get`, `File.toPath`, `Path.resolve` (also from a parent that is not mapped) and thus all of
   `java.nio.file.Files` (streams, channels, directory streams, attributes, `walk`) follow.
+- `java.lang.ProcessBuilder.start()`, which every process the JVM starts goes through (a report's post-report script
+  run by the shell, Groovy's `"...".execute()`, `Runtime.exec`): a mapped directory written in the command's arguments
+  is replaced by the physical one, where it starts a path (at the start of an argument or after a space, a quote, `=`,
+  `;`...). A path the command builds itself (`cd /opt; ls midpoint/var`, a variable or the environment) is not seen,
+  nor is the process's environment rewritten. A mapping in the process itself (a bind mount, a container) would need
+  root or a container runtime; the tester stays at what the JVM starts.
 
 The table of mapped directories lives in a class on the bootstrap class path (`FileRemap`), which the instrumented
 constructors consult: one volatile read when nothing is mapped, a prefix comparison per mapped directory otherwise. Only
 absolute paths under a mapped directory are rewritten, per path segment (`/opt/midpoint/var` does not hold
 `/opt/midpoint/variable`), the innermost mapped directory wins, and a physical path is never rewritten again.
 
-**The agent** (also the one that shifts the JVM's clock for `mp.time()`). Nothing is needed by default: the tester attaches the agent itself (`ByteBuddyAgent.install()`), which
+**The agent** (also the one that shifts the JVM's clock for `t.clock()`). Nothing is needed by default: the tester attaches the agent itself (`ByteBuddyAgent.install()`), which
 works on JDK 11, 17 and 21; JDK 21 prints a warning about a dynamically loaded agent (and a future JDK will refuse it
 without `-XX:+EnableDynamicAgentLoading`). To give it to the JVM instead, add the agent jar of the tester's
 `byte-buddy-agent` dependency to the surefire `argLine`, as the tester's own 4.8+ modules do:
@@ -1527,6 +1607,32 @@ Answer<List<UserType>> visible = mp.as("jdoe").search(UserType.class, null);   /
   authorization filters with no principal at all (an anonymous request has only `ROLE_ANONYMOUS`, a privileged call
   only the unrestricted authorization), so there is no driver for it.
 
+**Channels.** A hook or a script may act on the channel a change came through (`context.getChannel()`: gRPC or REST
+of a service that calls midPoint, a GUI page). `t.inChannel(channelUri, () -> ...)` runs the driver calls of the block
+in that channel (their tasks carry it), e.g.
+`t.inChannel("http://midpoint.evolveum.com/xml/ns/public/model/channels-3#grpc", () -> t.midpoint().modifyAdd(...))`;
+outside a block the calls run in midPoint's default user channel (`ChannelScenarioTest`).
+
+**Calls on a user's behalf.** A service that calls midPoint for its users (a portal over midPoint's API) logs a user
+in, maybe privileged, owns the tasks for them and comes through its channel. `t.callAs(caller, () -> ...)` makes the
+driver calls of the block that way, with a `Caller`: `Caller.user("jdoe")` (the user's own authorizations),
+`.privileged()` (all authorizations on top, as midPoint's `runPrivileged` and a service account's "run privileged"
+option), `.owner("jdoe")` (the owner of the tasks the calls create, the requester of the approvals they start; the
+user by default) and `.channel(uri)`. Hooks, scripts, authorizations, approvals and the audit's initiator then see the
+calls as in production; a call of the block that names its own user (`t.as(...)`) keeps it (`CallerScenarioTest`).
+
+```java
+t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.midpoint().addObjectXml(serviceXml));
+t.callAs(Caller.user("api-client").owner("jdoe"), () -> t.midpoint().bulkAction(script));
+```
+
+**Code of the deployment the test calls itself.** A class of an add-on that midPoint does not run by itself in the
+tester (a service of an API add-on, whose server needs midPoint's web application) is made with midPoint's beans
+injected by `t.midpoint().createBean(type)`, and called as a driver call by `t.midpoint().invoke(label, (task, result)
+-> ...)`: in the call's task (the `callAs` caller's), its evaluations recorded, the background work it starts waited
+for, failing as a driver call fails (`CallerScenarioTest`). The add-on's protocol (how its server authenticates and
+builds the call) stays in the project's tests.
+
 ## Mail notifications
 
 Mail notifiers are tested with the configuration as deployed: midPoint's own mail transport builds each message
@@ -1580,6 +1686,68 @@ adding a system configuration with `addObject(bean)`, is not rewritten.
 - TLS, authentication (basic and OAuth2) and the delivery to a real server are not tested: they are what the tester
   replaces.
 
+**A mail that cannot be sent.** `t.mailServer().reject()` makes the tester's SMTP server refuse every mail from then
+on in the test, `reject("jdoe@example.com")` the mails to those recipients, `accept()` takes them again: the server
+answers `451` to the mail's data, so midPoint's transport (or a script's) fails as with a real server's error, and the
+mail is not in `t.mails()`. The next test's server takes every mail (`ApprovalMailScenarioTest`).
+
+## Logs
+
+`t.logs()` is what the configuration's scripts logged in the test through `log` (`log.info`, `log.warn`,
+`log.error`: INFO and up, with their arguments filled in and the exception logged with them), narrowed like mails:
+
+```java
+t.logs().info().containing("reissued").exactly(1);
+t.logs().errors().none();
+assertThat(t.logs().messages()).containsExactly("reissued: t1/alice for alice");
+```
+
+Scripts' `log` is midPoint's `com.evolveum.midpoint.expression` logger; a custom library's loggers are captured too
+when the manifest names them (`logs: { capture: [com.example.idm] }`). The capture starts again before every test
+(midPoint resets logback when it applies the system configuration's logging); those loggers then also write INFO to
+`target/tester.log` (`LogsScenarioTest`).
+
+## Audit log
+
+midPoint audits to its repository database, as in production (4.0's SQL audit service, the native repository's from
+4.4; the database is in memory): the deployment's own searches of the audit log (audit reports, dashboards, scripts)
+work. `t.audit()` is what midPoint wrote to it in the test, `t.audit(() -> ...)` what it wrote while the code ran
+(and the work the code waited for): the request and execution records of each change, with the target, initiator,
+channel, task, outcome and deltas, narrowed like logs. The fields are those of a row of the audit table
+(`m_audit_event`), by name rather than by number: what an audit report, or another system that reads the table,
+would see.
+
+```java
+AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType("UserType").target("jdoe").single();
+assertThat(deletion.outcome()).isEqualTo("FATAL_ERROR");   // the account could not be deleted; the user is gone
+t.audit(() -> t.task("Delete users").run()).ofType("DELETE_OBJECT").execution().exactly(2);
+t.audit().ofType("MODIFY_OBJECT").initiator("jdoe").none();
+```
+
+The audit table goes back with the rest of the database before every test (`AuditScenarioTest`).
+
+Another system that reads midPoint's database over JDBC (a script of another instance that queries the audit table)
+sees the line's own tables and codes: 4.0 stores the event type and stage as ordinals in `m_audit_event`, 4.4 on as
+names in `ma_audit_event`. `t.repositoryDatabase()` runs that system's query on midPoint's database, so the test fails
+when a midPoint upgrade changes what it reads (read it only: a row written there bypasses midPoint):
+
+```java
+List<Map<String, Object>> rows = t.repositoryDatabase().rows(
+        "SELECT targetOid, outcome FROM m_audit_event WHERE eventType = 3 AND eventStage = 1 AND timestampValue > ?", since);
+```
+
+## midPoint's constants
+
+`<const>` expressions and `midpoint.getConst(...)` read the `<constants>` of midPoint's config.xml, which a deployment
+sets per environment. The manifest gives them for the tests:
+
+```yaml
+constants: { tenantId: "13", portalHost: portal.example.test }
+```
+
+They are set before the import (a resource's configuration may use them) and again before every test
+(`ConstantsScenarioTest`).
+
 ## HTTP services
 
 A script that calls an HTTP service (a webhook of a chat, a REST API) reaches nothing in a test. The manifest's
@@ -1595,7 +1763,7 @@ JVM's proxy selector sends that host to an in-memory HTTP server, which records 
 empty body. A test reads them as the configuration wrote them, since the test began:
 
 ```java
-assertThat(s.httpRequests()).singleElement().satisfies(r -> {      // mp.httpRequests()
+assertThat(t.httpRequests()).singleElement().satisfies(r -> {      // mp.httpRequests()
     assertThat(r.url()).startsWith("https://hooks.example.com/");
     assertThat(r.body()).contains("archived");
 });
@@ -1605,128 +1773,84 @@ The server's port is the JVM's and not in the database (a cached deployment work
 certificate (the copy says `http`). It covers the clients that ask the default `ProxySelector`, `java.net.URL`'s
 connections among them (a Groovy script's `new URL(url).openConnection()`); a client that does not (Apache HttpClient
 by default, the JDK's `HttpClient` without a proxy) reaches the redirected host, which resolves nowhere, and fails.
+Such a client is given the server's own address instead: the system property `tester.http.url`
+(`http://127.0.0.1:<port>`, set before midPoint starts), e.g. `issuer.base-url=${tester.http.url}/issuer` in the
+properties of the deployment's beans (see [Extension beans](#extension-beans)); its requests are recorded with that
+address.
 
-## Golden results
+**Answers.** A test sets what the server answers, for what a script does with a service's error or result:
 
-An opt-in of the PoC API: only `@MidPointTest` classes are recorded, not scenario tests (`@MidPointScenarios`). The
-tester's own cross-line chain over its PoC tests (accepted differences per pair, CI jobs `tester-golden` and
-`tester-cross-line`) was removed in phase 4; `GoldenTest` keeps the machinery working.
-
-Golden results record what every place of the configuration computed in a test suite, to verify it later: after a
-configuration change, or on another midPoint line (the upgrade check). They need no assertions in the tests: every run
-of every `@MidPointTest` method is recorded.
-
-```bash
-# 1. record on the current line
-mvn test -Dgolden.mode=record -Dgolden.dir=$PWD/golden
-# 2. verify, e.g. with the next line's tester artifact (or after a configuration change)
-mvn test -Dgolden.mode=verify -Dgolden.dir=$PWD/golden
-# 3. read the report
-cat target/tester/golden/*.diff.md
+```java
+t.httpServer().on("POST", "https://hooks.example.com/").respond(503, "{\"message\":\"unavailable\"}");
+t.httpServer().on("GET", "/issuer/api/cert").respond(200, "{\"serial\":\"01\"}");
 ```
 
-**Content.** One text file per test class, `<golden.dir>/<fully qualified class name>.golden`, one fact per line,
-indented by test, run and place (identity):
+`on` takes a method and a URL prefix as the configuration has it (with a scheme) or a path prefix (from `/`); the body
+is sent as JSON when it is an object or an array, else as text (null: none). The last answer given for a request
+wins; without one a request gets `200` and no body. The answers are forgotten after the test (`HttpStandInTest`).
 
-```
-line 4.8
+## Other systems' databases and the scripts' environment
 
-test inboundMapping
-  run 1 import account jdoe
-    place resource:HR/schemaHandling/objectType[account/default]/attribute[ri:fullname]/inbound[hr-familyName]
-      count 1
-      out condition true->true new=["Doe"]
-      src input = [" John  DOE "] -> [" John  DOE "]
-      vars account, configuration, focus, operation, projection, resource, shadow, user
-```
+A script may read or write another system's database over JDBC (another midPoint's audit tables, an application's),
+at a URL it reads from an environment variable. The manifest stands in for such a database with an in-memory
+PostgreSQL of its own, created from SQL files (the other system's table definitions), and gives the scripts their
+environment, which may name the stand-in (its URL is known only when the tester runs):
 
-- `out`: the final outcomes: per focus object the outcome of its last evaluation, as a set. A nested place (a search's
-  filter, a function's argument) keeps the outcomes of all its evaluations within the last evaluation of the enclosing
-  one: a search evaluates its filter once per value, in an order that is not stable. An outcome is condition
-  old->new, `new=` (zero + plus), `removed=` (old values no longer there) and, after ` | old=`, the old values when they
-  differ; or `error <class>: <message>`, or `no output`.
-- `all`: intermediate outcomes (earlier projector waves). `count`: number of evaluations. `src`: source values.
-  `vars`: the names of the variables (their values are left out: whole objects, noisy between waves and lines).
-- `flags`: `ordinal` (the identity depends on sibling order), `unlocated`, `baseline` (in one of midPoint's own
-  objects of the runtime baseline, as the baseline has it: an object your tests import with a baseline OID, above
-  all your system configuration, is your configuration, see below).
-- Values are normalized: generated OIDs as `gen:<name>`, `generate` output and protected strings masked, class names
-  without package and `Impl`, references as `ref Type:name(oid)`, containers as one-line JSON (schema beans midPoint cannot
-  serialize by their properties: `RecipientExpressionResult(address="jdoe@example.com")`).
-
-Recording replaces the tests that ran and keeps the others in the file. Both modes write the actual results to
-`<workDir>/tester/golden/<class>.golden`; verifying writes `<class>.diff.md` next to them when something differs:
-
-```
-### RecorderTest.templateMapping - FAILED (1 failing, 0 notes)
-
-Run 1: `import account jdoe`
-
-- **changed** `resource:HR/schemaHandling/objectType[account/default]/attribute[ri:fullname]/inbound[hr-familyName]`
-  - golden: `condition true->true new=["DOE"]`
-  - now: `condition true->true new=["Doe"]`
+```yaml
+databases:
+  audit: { init: [databases/audit.sql] }
+environment:
+  AUDIT_JDBC_URL: "${database.audit.url}"
+  AUDIT_JDBC_USER: "${database.audit.user}"
+  AUDIT_JDBC_PASSWORD: test
 ```
 
-**Policy.** By default (`-Dgolden.failOn=changed,missing,new`) a changed final outcome set, a place no longer
-evaluated and a newly evaluated place fail the test (an `AssertionError` after the test; differences of `@BeforeAll`
-runs fail the class). Everything else is a note in the report:
-
-| Kind | Meaning | Default |
-|---|---|---|
-| `changed` | the set of final outcomes differs | fails |
-| `missing` / `new` | a place evaluated only in the golden results / only now | fails |
-| `old` | only the old values or the old condition differ (same new and removed values) | note |
-| `old state` | with `option new-state` (see below): only what depends on the old state differs (removed values too, or the output under a false new condition) | note |
-| `text` | equal once error messages are cut to their class and container JSON to `{...}` | note |
-| `count` | number of evaluations | note |
-| `inputs` | variable names or source values | note |
-| `run` | runs paired by number because their keys did not match | note |
-| test not recorded | the golden file has no such test | note |
-
-`-Dgolden.failOn=none` only reports; listing more kinds makes them fail. A class without a golden file fails when
-verifying (a wrong `golden.dir` must not pass). A test that failed when recorded, or fails now, turns its differences
-into notes (its own failure is what to read).
-
-**Across lines.** Recording on line A and verifying on line B compares how midPoint A and midPoint B evaluate your
-expressions. It is not an upgrade: each line starts from an empty database, and nothing is migrated. The configuration
-the tests import on B must already be migrated the way the official upgrade guides say (for 4.8 -> 4.10, the 4.8 -> 4.9
-and 4.9 -> 4.10 steps, since only LTS-to-LTS upgrades have a direct guide). What the check then shows are the behaviour
-changes left after that migration: the line you run today against the line you are moving to. Only final outcomes are compared
-(`-Dgolden.outcomes=all` compares intermediate ones too, which differ between lines). Runs are matched by key: the
-step name (`mp.step`), else the driver's label (`modify user:jdoe [locality]`; line-neutral: objects by name, no OIDs or container IDs),
-`#2`... when repeated. Differences at places in midPoint's own baseline objects are notes
-(`-Dgolden.baseline=compare` lets them fail). A place is in a baseline object only when its owner has the OID of a
-baseline object (archetypes, the Approver role...) and your test did not import an object with that OID: your system
-configuration (OID `00000000-0000-0000-0000-000000000001`, with its notifiers, global policy rules, model hooks...) and
-any other initial object you import over the baseline's are your configuration, compared as usual.
-
-**Accepted differences.** A difference that is a real behaviour change of the new line, understood and accepted, goes
-into a file given with `-Dgolden.accepted=<file>`; it is then reported as a note with the reason:
-
-```
-# <kind> | <SimpleClassName>.<test> | <run key> | <identity>  # reason
-changed | RecorderTest.inboundMapping | import account jdoe | resource:HR/*/inbound[hr-familyName]  # pinned in RecorderTest.inboundMapping
+```java
+t.database("audit").execute("INSERT INTO m_audit_event (eventType, targetOid) VALUES (?, ?)", 3, oid);
+assertThat(t.database("audit").rows("SELECT * FROM m_user")).isEmpty();
 ```
 
-`kind` is `changed`, `missing`, `new` or `*`; `*` in a field matches any text. An entry for a test also matches every
-invocation of a repeated or parameterized test (`<test> repetition 1 of 4`). A comment is a `#` at the line start or
-after a blank, followed by a blank: `[#3]` in an identity and `#2` in a run key are fine.
+**Times.** The stand-in is part of the simulated world: a time a test writes for the other system is on the test's
+clock, `t.clock().now()` (an `Instant` parameter is written as a timestamp), because the scripts read that clock too
+(Groovy's `System.currentTimeMillis()`, `new Date()`, `basic.currentDateTime()`), also when they compare with the other
+system's times on purpose without midPoint's clock: what they rely on is one time base for both. The stand-in's own
+`now()`, `CURRENT_TIMESTAMP` and column defaults are the real time: give times as values. Groovy compiled statically
+(`@CompileStatic`, an expression profile with type checking) and Java code read the real `System.currentTimeMillis()`
+and do not follow the test's clock (see [Activation and validity](#activation-and-validity)).
 
-The file can also change how the pair is compared, with options (one per line, each with its reason):
+Each test starts from the init scripts' content. `environment` is what Groovy's `System.getenv(name)` returns (the
+process's environment for other names); Java code reads the process's environment, which Surefire's
+`environmentVariables` sets for fixed values (`DatabaseScenarioTest`).
 
+## Classes of the GUI
+
+midPoint's GUI module is not on the tester's class path: a script or a custom class that uses one of its classes (a
+utility of the GUI, `com.evolveum.midpoint.web.util.ExpressionUtil`, Wicket) fails with `unable to resolve class`.
+Such a repository declares it, without a version (the parents manage it at the line's midPoint version, test scope):
+
+```xml
+<dependency>
+    <groupId>com.evolveum.midpoint.gui</groupId>
+    <artifactId>admin-gui</artifactId>
+</dependency>
 ```
-# the old line evaluates mappings for the old state last: compare what the outcomes leave in the new state
-option new-state  # pinned in RecorderTest.mappingWithError
-# a place whose identity changed with the configuration format: compared at its new identity
-option moved resource:HR/synchronization/objectSynchronization[account/default]/correlation/equal/expression -> resource:HR/schemaHandling/objectType[account/default]/correlation/correlators/filter/ownerFilter/equal/expression  # 4.8 format
-```
 
-- `new-state` (the whole pair): outcome sets equal once each outcome is cut to its new condition and new values (or
-  error), and to the condition alone when it is false, are the note `old state` instead of `changed`. For that pair a
-  value that only one line removes is never a failure: use it where a line evaluates mappings against another old
-  state (4.0 -> 4.4), not to silence differences.
-- `moved <golden identity> -> <identity>`: the golden results of the first place are compared with the results at the
-  second (differences there are marked `moved from ...`), instead of a `missing` and a `new`.
+On 4.0 and 4.4 the GUI module is a war, whose classes are its `classes` jar: add `<classifier>classes</classifier>`.
+
+The GUI is only a library then: classes load when code uses them, and the tester's Spring context (midPoint's own
+context files, named one by one; no Spring Boot auto-configuration) neither scans its packages nor reads its context
+files, so no page, filter or web server starts. It costs about half a second of the JVM's start (a larger class
+path); its `logback.xml` is not taken for the repository's (the tester's logging stays).
+
+## No other machine
+
+A test reaches only the tester's stand-ins, all on this machine (the in-memory database, LDAP server, SMTP and HTTP
+servers). The tester refuses every connection of the test JVM to another machine (`java.net.Socket` and NIO socket
+channels: JavaMail, Apache HttpClient, `java.net.URL`, cloud SDKs) with a `ConnectException`, and fails the test after
+it, also when midPoint or a script only logged the error (a mail notification does), and the load when it happens
+during the import. A deployment that has to reach a host names it: `network: { allow: [ldap.example.com] }` in the
+manifest, or `-Dtester.network.allow=host,...`. After the import the tester also checks that every mail server of the
+stored system configuration is its own (`NetworkGuardScenarioTest`, `ScriptedMailScenarioTest`).
 
 ## Static checks
 
@@ -1740,7 +1864,7 @@ gives evaluations of the same place.
 | `COMPILE` | every Groovy place compiled on the line's classpath (model-impl, notifications, report, workflow, certification; no GUI, connector or custom jars, which `classpath(...)` adds): missing or removed classes, syntax errors. Missing methods are found only at run time | error |
 | `SCHEMA` | prism parsing of each file, strict and in compatibility mode | error / warning |
 | `UPGRADE` | ninja verify's `ObjectUpgradeValidator` per object, each item path located in the file | error for `CRITICAL`, warning for `NECESSARY`; skipped on 4.0, which has no validator |
-| `LINT` | evaluator elements the line does not know; mappings sharing a name in one object; Groovy that reads the JVM's clock rather than midPoint's `Clock` (`jdk-time`: `new Date()`, `Instant.now()`, `basic.fromNow`...: fine with the tester's `mp.time()`, which moves both, not with a clock override of midPoint alone); elements told apart by position only | error / warning / warning / note |
+| `LINT` | evaluator elements the line does not know; mappings sharing a name in one object; Groovy that reads the JVM's clock rather than midPoint's `Clock` (`jdk-time`: `new Date()`, `Instant.now()`, `basic.fromNow`...: fine with the tester's `t.clock()`, which moves both, not with a clock override of midPoint alone); elements told apart by position only | error / warning / warning / note |
 
 ```java
 StaticReport r = StaticCheck.of(Path.of("config")).schemaDir(Path.of("config/schema"))
@@ -1767,7 +1891,7 @@ findings stand. Read them before porting expectations between lines.
 | Difference | 4.0 | 4.4 | 4.8 | 4.9 | 4.10 | Pinned in |
 |---|---|---|---|---|---|---|
 | A report's CSV export | not tested (no object collection reports) | no byte order mark | 4.8.14: starts with a UTF-8 byte order mark (4.8.12: none); `ReportOutput` reads the header without it | not checked | not checked | `ReportScenarioTest` |
-| Template mapping of an added user: the evaluation for the old state (empty sources) | kept: the final outcome is `new=["John Doe"] removed=["null null"] \| old=["null null"]`; a failing script fails there first | an intermediate outcome only | as 4.4 | as 4.4 | as 4.4 | `RecorderTest.mappingWithError`, `GoldenTest` |
+| Template mapping of an added user: the evaluation for the old state (empty sources) | kept: the final outcome is `new=["John Doe"] removed=["null null"] \| old=["null null"]`; a failing script fails there first | an intermediate outcome only | as 4.4 | as 4.4 | as 4.4 | `RecorderTest.mappingWithError` |
 | Hook without `state` | secondary three times, each with the focus | primary, secondary, secondary without focus, final | as 4.4 | as 4.4 | as 4.4 | `ChangeTest.importObjectsIsOneRun` |
 | Correlation | legacy `synchronization` format (fixtures-4.4), no correlation context | as 4.0 | `correlation` in the object type; `correlationContext`, `correlatorState` | as 4.8 | as 4.8 | `RecorderTest.correlationExpression` |
 | `focus` of a correlation or reaction condition without an owner | null | null | an empty pre-focus (`UserType` without a name) | as 4.8 | as 4.8 | `SynchronizationTest.unmatchedStaffIsAdded` |
@@ -1793,7 +1917,7 @@ findings stand. Read them before porting expectations between lines.
 | An expression in a certification scope's `searchFilter` | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | as 4.0 | as 4.0 | evaluated (the stage opens in a search-based activity) | as 4.9 | `CertificationScopeTest.theSearchFilterSelectsTheCertifiedUsers` |
 | Recipient expression returning a string | stays a string | as 4.0 | a `RecipientExpressionResultType` | as 4.8 | as 4.8 | `HookAndNotificationTest.notificationsPerRunAndPerTest` |
 | Mail transports | one, `notificationConfiguration/mail`; `<transport>mail:hr</transport>` is that transport (`TransportRegistry` drops what follows `:`) | as 4.0 | named `messageTransportConfiguration/mail` transports, each with its own servers and `defaultFrom` (an unknown `x:y` falls back to `x`) | as 4.8 | as 4.8 | `MailNotificationTest.htmlMailWithAnAttachmentThroughAnotherTransport` |
-| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (golden results: its properties) | as 4.0 | as 4.0 | a container (golden results: its type only) | as 4.9 | `MailNotificationTest.anAttachmentComputedPerUser` |
+| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | as 4.0 | as 4.0 | a container (normalized text: its type only) | as 4.9 | `MailNotificationTest.anAttachmentComputedPerUser` |
 | Effective status of a user whose lifecycle state is `archived` (MID-9026: `ARCHIVED` deprecated, never an effective status) | `archived` (also for `proposed`, `draft`), `archiveTimestamp` set | as 4.0 | `disabled`, `disableTimestamp` set, no `archiveTimestamp` (a filter on it finds no one) | as 4.8 | as 4.8 | `HrLifecycleScenarioTest.anArchivedUsersEffectiveStatus` (`User.isArchived()`) |
 | A notification handler given as `xsi:type="CustomNotifierType"` (its `expression` builds the message) | run as a custom notifier (`EventHandlerRegistry` dispatches by class) | as 4.0 | every operation that notifies fails (`ClassCastException`: no `EventHandlerType`) | as 4.8 | as 4.8 | `HandlerNotifierTest` |
 | `recipientAddressExpression` of a transport | none | none | the address of a recipient that is a user (e.g. a notifier's default recipient) | as 4.8 | as 4.8 | `TransportRecipientsTest.theMailTransportAddressesTheUser` |
@@ -1885,7 +2009,7 @@ filters evaluated with the owner as `subject` (`AccessTest.taskSearchesWithItsOw
 input (`effectiveStatus`), no status provisioned without a status outbound, `validFrom` / `validTo` of users and
 assignments applied by the validity scanner, a simulated status attribute, disable instead of delete (`disableReason`
 `#deprovision`), the delayed delete's trigger on the shadow and its deletion by the trigger scanner; the JVM's wall
-clock moving with `mp.time()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 11 for 4.0 and
+clock moving with `t.clock()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 11 for 4.0 and
 4.4, JDK 21 for 4.8+).
 
 Other line notes:
@@ -1928,7 +2052,7 @@ Other line notes:
   phase `#modify` narrowed to some items may refuse what the matrix allows. The GUI's list of what may be assigned
   (`getAssignableRoleSpecification`) is not checked either.
 - **Recording gaps.** Metadata mappings are not recorded as mappings (their expressions are). Evaluations of a
-  recurring task that runs between driver calls (before the test's first `mp.time().advance`: after it, recurring
+  recurring task that runs between driver calls (before the test's first `t.clock().advance`: after it, recurring
   tasks run only through driver calls), and of worker threads of multi-threaded tasks, are not attributed to a driver
   call or lack their task's name. Distributed report export has no driver; certification work items are
   delegated and escalated only through timed actions (midPoint has no service call for it).
@@ -1943,7 +2067,7 @@ Other line notes:
   your test module if your scripts need them; their Spring beans, such as hooks, through
   [Extension beans](#extension-beans)), clustering. What such beans call outside midPoint (HTTP services, cloud
   storage) is stood in for only through [HTTP services](#http-services).
-- **Time**: `mp.time()` moves midPoint's clock and the JVM's wall clock, not `System.currentTimeMillis()` called from
+- **Time**: `t.clock()` moves midPoint's clock and the JVM's wall clock, not `System.currentTimeMillis()` called from
   Java, `System.nanoTime()`, Quartz, the database or other processes (see
   [Activation and validity](#activation-and-validity)).
 - **One line per JVM**: run a test suite once per line.
@@ -1957,22 +2081,15 @@ Other line notes:
 | `tester.cache` | `true` | `false`: no deployment cache, every JVM loads its deployments afresh |
 | `tester.cache.dir` | `<tester.workDir>/tester-cache` | the deployment cache (shared by the forks) |
 | `tester.forks` | `1` | test JVMs per line module (this repository's POM; downstream: Surefire `forkCount` plus `tester.forks` and `tester.fork`) |
-| `tester.manifest` | `midpoint-config-tester.yaml` | the manifest of `@MidPointScenarios` without a value |
+| `tester.manifest` | `midpoint-config-tester.yaml` | the manifest of `@MidPointConfigTest` without a value |
 | `tester.taskTimeout` | `60` | seconds a driver call waits for background tasks |
 | `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` (see [Speed](#speed)) |
 | `tester.log` | `target/tester.log` | the log file, when the project has no logback configuration of its own |
 | `pgmem.binary` (or `PGMEM_BINARY`) | from `pgmem-native` | the pgmem binary |
-| `golden.mode` | `off` | `record` or `verify` |
-| `golden.dir` | `src/test/golden` | the golden files |
-| `golden.failOn` | `changed,missing,new` | kinds of differences that fail; `none` |
-| `golden.outcomes` | `final` | `all` compares intermediate outcomes too |
-| `golden.baseline` | `note` | `compare` lets differences in midPoint's baseline objects (not re-imported by the test) fail |
-| `golden.accepted` | none | file of accepted differences and comparison options |
 | `static.dir`, `static.schemaDir` | none | static checks of your configuration (static module) |
 
 | Output | Written by |
 |---|---|
-| `<workDir>/tester/golden/<class>.golden`, `<class>.diff.md` | golden results (record and verify) |
 | `<workDir>/tester/timing.md` | `-Dtester.timing=true`, after the last test class |
 | `<tester.workDir>/tester-cache/<deployment>/<key>/` | the deployment cache |
 | `<tester.workDir>/fork-<n>/...` | everything of `<workDir>` per fork with `tester.forks` above 1 |
@@ -1989,7 +2106,7 @@ Other line notes:
 pom.xml               root POM: midPoint versions, repositories, plugin versions, pgmem profiles
 tester/
   pom.xml             tester parent: adds core/ to every line module, surefire settings
-  core/               line-neutral sources (public API, runtime, recorder, golden) and the shared tests
+  core/               line-neutral sources (public API, runtime, recorder) and the shared tests
   base-4.0/           parent of 4.0 and 4.4 (JDK 11): approvals, certification, script hook, notification transport
   midpoint-4.0/       4.0: dependencies, harness, Spring context, recorder hook, drivers, SQL, baseline objects
   midpoint-4.4/       4.4: likewise
@@ -2000,13 +2117,13 @@ tester/
   static/             static checks (own parent): core/ sources and tests, midpoint-<line>/ per line
 parent/               parents of config repositories: common pom.xml, midpoint-<line>/ per line
 examples/hr-ldap/     an example config repository on the 4.8 parent, tested in the build
-docs/next-design.md   the scenario API: design, decisions, what each phase built
+docs/next-design.md   the `MidPointConfigTester` API: design, decisions, what each phase built
 docs/redesign.md      the PoC: design, decisions, findings
 ```
 
-The tests of a line module (`tester/core/src/test/java`) are the scenario tests (`configtester`: the sample
+The tests of a line module (`tester/core/src/test/java`) are the `@MidPointConfigTest` tests (`configtester`: the sample
 deployments of `tester/core/src/test/resources/scenarios`) and the engine tests of the PoC API (`tester`: reset,
-Quartz hold and task runs, time shift, file redirection, live sync, mirror options, golden results).
+Quartz hold and task runs, time shift, file redirection, live sync, mirror options).
 
 ```bash
 mvn test -pl tester/midpoint-4.8 -am                       # one line
@@ -2033,9 +2150,9 @@ PoC tests): each line module 31-43 s for 117 tests, midPoint's start 6-7 s of it
 - `TaskRunsTest` waits on the real time where it must (a recurring task every 2 s: the held-run check ends at the held
   firing, about 2 s).
 - `-Dtester.timing=true` writes `<workDir>/tester/timing.md` (and prints it) after the last class: count, total, mean and
-  maximum of every phase (startup, resets, snapshots, driver calls and their waits, `@BeforeAll`, golden).
+  maximum of every phase (startup, resets, snapshots, driver calls and their waits, `@BeforeAll`).
 
-Deployment cache (scenario API, on by default): a JVM restores a deployment loaded by an earlier JVM instead of
+Deployment cache (`@MidPointConfigTest`, on by default): a JVM restores a deployment loaded by an earlier JVM instead of
 importing it again. Measured on 4.8 (load time per JVM, midPoint's start not included):
 
 | Deployment | Fresh load | From the cache |
@@ -2058,13 +2175,13 @@ wall time of `mvn test` for the module, peak memory of the test JVMs and pgmem t
 | Tests | forks=1 | forks=2 | forks=4 |
 |---|---|---|---|
 | full suite before phase 4 (458 tests) | 82 s, 6.8 GB, 200 % | 86 s, 7.5 GB, 420 % | 90 s, 7.9 GB, 685 % |
-| scenario tests of phase 3 (21) | 17 s, 2.0 GB, 284 % | 20 s, 2.9 GB, 432 % | 26 s, 5.9 GB, 613 % |
+| tests of phase 3 (21) | 17 s, 2.0 GB, 284 % | 20 s, 2.9 GB, 432 % | 26 s, 5.9 GB, 613 % |
 | 48 joiner/mover/leaver scenarios (probe) | 41 s, 3.6 GB, 224 % | 40 s, 4.2 GB, 478 % | 54 s, 6.5 GB, 764 % |
 
 midPoint already uses about two cores per JVM, and N midPoints starting together take 17-21 s each instead of 7 s: on
 this machine the forks only add heat (the fans run at 4 forks). They pay where the tests wait on the real time or on
-a machine with many more cores. Each fork writes its own `<workDir>/fork-<n>/tester/` (golden verification per class,
-timing of its own classes); golden recording needs every test in one JVM and is refused with `tester.forks` above 1. A downstream project sets `<forkCount>`, `<reuseForks>true` and
+a machine with many more cores. Each fork writes its own `<workDir>/fork-<n>/tester/` (timing
+of its own classes). A downstream project sets `<forkCount>`, `<reuseForks>true` and
 `-Dtester.forks=N -Dtester.fork=${surefire.forkNumber}` in the `argLine` (Surefire replaces the fork number there).
 
 Opt-ins:
@@ -2075,7 +2192,7 @@ Opt-ins:
   versions and the pgmem profile too) plus `tester/core` (shared sources, tests, fixtures, accepted files) for every
   line and static module, the `base-4.0` / `base-4.8` sources for their lines, and `static/core` for the static
   modules. A change in `tester/core` reruns every module; one in `midpoint-4.9` only that one (about 80 s instead of 7
-  minutes; nothing changed: 2 s). The cache does not see `-D` properties, so `golden.mode`, `static.dir`, `static.schemaDir`, `tester.*`, `pgmem.binary` and `-Dtest`
+  minutes; nothing changed: 2 s). The cache does not see `-D` properties, so `static.dir`, `static.schemaDir`, `tester.*`, `pgmem.binary` and `-Dtest`
   switch it off for the build (profiles `no-build-cache-*` of the root POM). A module served from the cache runs no tests, so its `target/tester/` reports
   are not written; the JDK of a toolchain is not part of the key. Only `-Dpgmem.binary` is caught, not the
   `PGMEM_BINARY` environment variable. A project of your own that reads other `-D` properties in its tests needs a
@@ -2110,9 +2227,12 @@ Without a JDK 11, leave those lines out: `-pl '!tester/midpoint-4.0,!tester/midp
 
 1. The tests of all lines (`ci.yml` with `-Pnon-lts`).
 2. The next version from the [Conventional Commits](https://www.conventionalcommits.org/) since the last tag: `fix:`
-   a patch, `feat:` a minor, `BREAKING CHANGE:` a major; nothing for only `build:`, `docs:`, `chore:`, `test:` and the
-   like. Merge `next` into `main` with its commits (no squash into one `chore:` commit). The tag `v0.0.0` is the
-   baseline, so the first release is 0.1.0 (1.0.0 with a breaking change).
+   a patch, `feat:` a minor, and `BREAKING CHANGE:` a minor too while the tester is 0.x (the `releaseRules` of the
+   commit analyzer in `.releaserc.json`; remove the rule to release 1.0.0); nothing for only `build:`, `docs:`,
+   `chore:`, `test:` and the like. `next` goes to `main` as one squashed commit: its message gives the release type
+   and the release notes (`feat:` with the changes in its body and a `BREAKING CHANGE:` footer when there is one, not
+   `chore:`). After the release, `next` is reset to `main`. The tag `v0.0.0` is the baseline, so the first release was
+   0.1.0.
 3. `@terrestris/maven-semantic-release` sets the version in every module and runs `mvn deploy -DskipTests` (all lines,
    through `MAVEN_ARGS`). The example is not published.
 4. The release commit (the versions and `CHANGELOG.md`, `[skip ci]`), the tag `v<version>`, a GitHub release, and a

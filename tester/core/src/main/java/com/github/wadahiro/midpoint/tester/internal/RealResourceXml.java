@@ -97,7 +97,7 @@ final class RealResourceXml {
         properties = new LinkedHashMap<>();
         for (Node n = first; n != null; n = Xml.nextElement(n)) {
             if (propertiesNamespace.equals(n.getNamespaceURI())) {
-                properties.put(n.getLocalName(), n.getTextContent().trim());
+                properties.put(n.getLocalName(), propertyValue((Element) n));
             }
         }
         accountAttributes = new ArrayList<>();
@@ -136,6 +136,23 @@ final class RealResourceXml {
             }
         }
         otherClasses.removeAll(accountClasses);
+        // the stored schema's attributes of the account classes too: a column only a script reads
+        // (basic.getAttributeValue) is not in schemaHandling, but in the file and in the deployed resource's schema
+        Element schema = child(resource, "schema");
+        Element definition = schema != null ? child(schema, "definition") : null;
+        if (definition != null) {
+            for (Element complexType : descendants(definition, "complexType")) {
+                if (!accountClasses.contains(complexType.getAttribute("name"))) {
+                    continue;
+                }
+                for (Element element : descendants(complexType, "element")) {
+                    String name = element.getAttribute("name");
+                    if (!name.isEmpty() && !accountAttributes.contains(name)) {
+                        accountAttributes.add(name);
+                    }
+                }
+            }
+        }
         simulatedActivation = SimulatedActivation.of(resource);
         if (simulatedActivation != null && !accountAttributes.contains(simulatedActivation.attribute)) {
             // a column (CSV) the status is written to, which schemaHandling need not name
@@ -150,6 +167,54 @@ final class RealResourceXml {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(source + ": " + e.getMessage(), e);
         }
+    }
+
+    private static final java.util.regex.Pattern LITERAL =
+            java.util.regex.Pattern.compile("(?s)\\s*(?:return\\s+)?(\"|')((?:\\\\.|(?!\\1).)*)\\1\\s*;?\\s*");
+
+    /**
+     * A connector configuration property's value as deployed: its text, or of an expression the value it has without
+     * evaluating it: a {@code <value>}, or a script that returns a string literal ({@code return "\t"}, Groovy's
+     * escapes). Another expression fails, naming the property.
+     */
+    static String propertyValue(Element property) {
+        Element expression = Xml.child(property, "expression");
+        if (expression == null) {
+            return property.getTextContent().trim();
+        }
+        Element value = Xml.child(expression, "value");
+        if (value != null) {
+            return value.getTextContent();
+        }
+        Element script = Xml.child(expression, "script");
+        Element code = script != null ? Xml.child(script, "code") : null;
+        if (code != null) {
+            java.util.regex.Matcher literal = LITERAL.matcher(code.getTextContent());
+            if (literal.matches()) {
+                return unescape(literal.group(2));
+            }
+        }
+        throw new IllegalArgumentException("cannot tell the value of the connector property " + property.getLocalName()
+                + ": an expression other than a <value> or a script returning a string literal");
+    }
+
+    private static String unescape(String s) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c != '\\' || i + 1 == s.length()) {
+                out.append(c);
+                continue;
+            }
+            char e = s.charAt(++i);
+            switch (e) {
+                case 't': out.append('\t'); break;
+                case 'n': out.append('\n'); break;
+                case 'r': out.append('\r'); break;
+                default: out.append(e);
+            }
+        }
+        return out.toString();
     }
 
     /** The configuration property as deployed, or the default. */

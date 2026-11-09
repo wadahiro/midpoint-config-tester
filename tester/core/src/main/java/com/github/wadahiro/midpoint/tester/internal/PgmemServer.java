@@ -33,12 +33,14 @@ public final class PgmemServer implements AutoCloseable {
     private final BufferedReader out;
     private final Writer in;
     private final int templatePort;
+    private final String database;
     private int seq;
     private String forkId;
     private int forkPort;
 
-    private PgmemServer(Process process) throws IOException {
+    private PgmemServer(Process process, String database) throws IOException {
         this.process = process;
+        this.database = database;
         this.out = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
         this.in = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
         String ready = out.readLine();
@@ -58,7 +60,7 @@ public final class PgmemServer implements AutoCloseable {
             Process process = new ProcessBuilder(binary.toString(), "-database", database, "-user", "postgres")
                     .redirectError(ProcessBuilder.Redirect.INHERIT)
                     .start();
-            PgmemServer server = new PgmemServer(process);
+            PgmemServer server = new PgmemServer(process, database);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 // midPoint shuts down in Spring's hook (task manager, repository) and needs the database until then:
                 // stopped first, a pooled connection checked again at shutdown waits for the pool's timeout (30 s)
@@ -96,7 +98,7 @@ public final class PgmemServer implements AutoCloseable {
     }
 
     public String templateJdbcUrl() {
-        return jdbcUrl(templatePort);
+        return jdbcUrl(templatePort, database);
     }
 
     /** Creates the fork midPoint will use, from the current state of the template. */
@@ -108,7 +110,7 @@ public final class PgmemServer implements AutoCloseable {
     }
 
     public String jdbcUrl() {
-        return jdbcUrl(forkPort);
+        return jdbcUrl(forkPort, database);
     }
 
     public String user() {
@@ -163,8 +165,10 @@ public final class PgmemServer implements AutoCloseable {
         }
     }
 
-    private static String jdbcUrl(int port) {
-        return "jdbc:postgresql://127.0.0.1:" + port + "/midpoint?sslmode=disable";
+    private static String jdbcUrl(int port, String database) {
+        // no named server-side statements: pgmem re-creates them after a reset, but one can go missing and the
+        // driver's next use of it fails ("prepared statement S_n does not exist"), seen on midPoint 4.0
+        return "jdbc:postgresql://127.0.0.1:" + port + "/" + database + "?sslmode=disable&prepareThreshold=0";
     }
 
     private static int port(String json) {

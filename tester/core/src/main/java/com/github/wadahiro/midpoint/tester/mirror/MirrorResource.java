@@ -120,9 +120,69 @@ public final class MirrorResource {
         if (findByName(c, object.name) != null) {
             throw new IllegalStateException("Object " + object.name + " already exists");
         }
-        object.uid = c.generatedUid() ? UUID.randomUUID().toString() : object.name;
+        object.uid = c.uidValue != null ? issuedUid(c, object)
+                : c.generatedUid() ? UUID.randomUUID().toString() : object.name;
+        if (objects.get(c.connIdName).containsKey(object.uid)) {
+            throw new IllegalStateException("Object " + object.uid + " already exists");
+        }
         objects.get(c.connIdName).put(object.uid, object);
         return object.uid;
+    }
+
+    /**
+     * The values of the attribute the target system keeps, as its expression ({@link MirrorAttribute#storeExpression})
+     * makes them of the values kept so far and what midPoint writes.
+     */
+    public List<Object> storedValues(MirrorClass c, MirrorAttribute attribute, String objectName, List<Object> values,
+            List<Object> add, List<Object> remove, List<Object> replace) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("values", new ArrayList<>(values));
+        variables.put("add", new ArrayList<>(add));
+        variables.put("remove", new ArrayList<>(remove));
+        variables.put("replace", replace != null ? new ArrayList<>(replace) : null);
+        variables.put("name", objectName);
+        Object kept = evaluate(attribute.storeExpression, variables, "The store expression of " + c.midPointName
+                + "/" + attribute.name + " failed for " + objectName);
+        List<Object> out = new ArrayList<>();
+        if (kept instanceof java.util.Collection) {
+            out.addAll((java.util.Collection<?>) kept);
+        } else if (kept != null) {
+            out.add(kept);
+        }
+        return out;
+    }
+
+    /** Evaluates the Groovy code with the variables. */
+    private static Object evaluate(String code, Map<String, Object> variables, String failure) {
+        try {
+            // Groovy by reflection: midPoint's, on the test's class path (this class is not in the connector bundle)
+            Class<?> bindingClass = Class.forName("groovy.lang.Binding");
+            Object binding = bindingClass.getConstructor(Map.class).newInstance(variables);
+            Class<?> shellClass = Class.forName("groovy.lang.GroovyShell");
+            Object shell = shellClass.getConstructor(bindingClass).newInstance(binding);
+            return shellClass.getMethod("evaluate", String.class).invoke(shell, code);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            // not IllegalStateException: the connector reports that as an existing object
+            throw new IllegalArgumentException(failure + ": " + e.getCause(), e.getCause());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Groovy is not on the class path", e);
+        }
+    }
+
+    /** The identifier the class's expression makes for the object being created. */
+    private static String issuedUid(MirrorClass c, MirrorObject object) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("name", object.name);
+        variables.put("attributes", new LinkedHashMap<>(object.attributes));
+        variables.put("now", java.time.Instant.now());
+        Object uid = evaluate(c.uidValue, variables, "The identifier expression of " + c.midPointName
+                + " failed for " + object.name);
+        if (uid == null || uid.toString().isEmpty()) {
+            throw new IllegalArgumentException("The identifier expression of " + c.midPointName
+                    + " made no identifier for "
+                    + object.name);
+        }
+        return uid.toString();
     }
 
     public synchronized MirrorObject findByUid(MirrorClass c, String uid) {

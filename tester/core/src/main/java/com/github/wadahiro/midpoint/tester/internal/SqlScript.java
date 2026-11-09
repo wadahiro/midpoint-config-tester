@@ -42,6 +42,23 @@ final class SqlScript {
         }
     }
 
+    /** Runs the script files (UTF-8) statement by statement, in order. */
+    static void runFiles(String jdbcUrl, String user, List<java.nio.file.Path> files) {
+        try (Connection c = DriverManager.getConnection(jdbcUrl, user, "")) {
+            for (java.nio.file.Path file : files) {
+                for (String statement : split(java.nio.file.Files.readString(file, StandardCharsets.UTF_8))) {
+                    try (Statement st = c.createStatement()) {
+                        st.execute(statement);
+                    } catch (SQLException e) {
+                        throw new IllegalStateException("Failed in " + file + ": " + e.getMessage() + "\n" + statement, e);
+                    }
+                }
+            }
+        } catch (SQLException | IOException e) {
+            throw new IllegalStateException("Cannot run " + files + ": " + e.getMessage(), e);
+        }
+    }
+
     /** Splits on {@code ;} outside quotes ('', "", $tag$) and comments. */
     static List<String> split(String sql) {
         List<String> out = new ArrayList<>();

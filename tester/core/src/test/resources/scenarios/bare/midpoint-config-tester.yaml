@@ -1,0 +1,5 @@
+# A deployment of nothing: midPoint as it starts, for the tests of the tester's own mechanisms that import their
+# configuration in the test (resources with different options, fixtures of one test). The reset after each test
+# empties and forgets what a test imported.
+config:
+  dirs: [objects]

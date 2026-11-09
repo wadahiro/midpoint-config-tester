@@ -1,0 +1,9 @@
+# A deployment whose post-initial bulk action configures the mail server (as a deployment that sets it per
+# environment from a script): the tester redirects it after the import too (ScriptedMailScenarioTest). The system
+# configuration (a welcome mail) in the 4.4 format; 4.8: overlays/4.8.
+config:
+  dirs: [post-initial-objects]
+  overlays:
+    "4.8": { dirs: [overlays/4.8] }
+mail: { redirect: true }
+tasks: { recurring: held }

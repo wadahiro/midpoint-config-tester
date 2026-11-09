@@ -26,14 +26,42 @@ import com.sun.net.httpserver.HttpServer;
  * the database (a cached deployment restored in another JVM works as is); HTTPS needs no certificate (the copy says
  * {@code http}). Clients that ask the default {@link ProxySelector} get it: {@code java.net.URL}'s connections, so a
  * Groovy script's {@code new URL(url).openConnection()}; a client that does not (Apache HttpClient by default, the
- * JDK's HttpClient without a proxy) reaches the redirected URL's host, which does not resolve.
+ * JDK's HttpClient without a proxy) reaches the redirected URL's host, which does not resolve. Such a client is given
+ * the server's own address instead: the system property {@value #URL_PROPERTY} ({@code http://127.0.0.1:<port>}, set
+ * before midPoint starts), e.g. {@code issuer.base-url=${tester.http.url}/issuer} in the properties of the
+ * deployment's beans. A test sets the answers ({@link #respond}); without one a request gets {@code 200} and no body.
  */
 public final class HttpStandIn {
 
     /** The tester's host of the redirected URLs (the {@code .invalid} TLD resolves nowhere). */
     public static final String HOST = "tester-http.invalid";
 
+    /** The system property with the server's own address ({@code http://127.0.0.1:<port>}). */
+    public static final String URL_PROPERTY = "tester.http.url";
+
     private static HttpStandIn instance;
+
+    /** An answer of the test: to the requests of the method whose URL or path starts with the prefix. */
+    private static final class Answer {
+        final String method;
+        final String prefix;
+        final int status;
+        final String body;
+
+        Answer(String method, String prefix, int status, String body) {
+            this.method = method;
+            this.prefix = prefix;
+            this.status = status;
+            this.body = body;
+        }
+
+        boolean matches(String method, String url, String path) {
+            return this.method.equalsIgnoreCase(method)
+                    && (prefix.contains("://") ? url.startsWith(prefix) : path.startsWith(prefix));
+        }
+    }
+
+    private final List<Answer> answers = new CopyOnWriteArrayList<>();
 
     private final HttpServer server;
     private final List<HttpRequest> requests = new CopyOnWriteArrayList<>();
@@ -47,13 +75,24 @@ public final class HttpStandIn {
             try (InputStream in = exchange.getRequestBody()) {
                 body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
-            requests.add(new HttpRequest(exchange.getRequestMethod(), original(exchange.getRequestURI()),
-                    exchange.getRequestHeaders(), body));
-            exchange.sendResponseHeaders(200, -1);
+            String url = original(exchange.getRequestURI());
+            requests.add(new HttpRequest(exchange.getRequestMethod(), url, exchange.getRequestHeaders(), body));
+            Answer answer = answer(exchange.getRequestMethod(), url);
+            if (answer == null || answer.body == null) {
+                exchange.sendResponseHeaders(answer == null ? 200 : answer.status, -1);
+            } else {
+                byte[] bytes = answer.body.getBytes(StandardCharsets.UTF_8);
+                String trimmed = answer.body.trim();
+                exchange.getResponseHeaders().set("Content-Type", trimmed.startsWith("{") || trimmed.startsWith("[")
+                        ? "application/json; charset=UTF-8" : "text/plain; charset=UTF-8");
+                exchange.sendResponseHeaders(answer.status, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            }
             exchange.close();
         });
         server.start();
         InetSocketAddress address = server.getAddress();
+        System.setProperty(URL_PROPERTY, "http://" + address.getAddress().getHostAddress() + ":" + address.getPort());
         ProxySelector previous = ProxySelector.getDefault();
         ProxySelector.setDefault(new ProxySelector() {
             @Override
@@ -102,9 +141,54 @@ public final class HttpStandIn {
 
     public void clear() {
         requests.clear();
+        answers.clear();
     }
 
-    /** Clears the requests of the stand-in if a deployment started it (nothing else starts it). */
+    /** The requests received and the answers given so far, to go back to ({@link #restore}): a checkpoint of the test. */
+    static synchronized Object[] captureIfStarted() {
+        return instance == null ? null
+                : new Object[] { instance.requests.size(), new ArrayList<>(instance.answers) };
+    }
+
+    /** Back to what {@link #captureIfStarted} took: the later requests forgotten, the answers as then. */
+    @SuppressWarnings("unchecked")
+    static synchronized void restore(Object[] captured) {
+        if (instance == null || captured == null) {
+            return;
+        }
+        int requests = (Integer) captured[0];
+        while (instance.requests.size() > requests) {
+            instance.requests.remove(instance.requests.size() - 1);
+        }
+        instance.answers.clear();
+        instance.answers.addAll((List<Answer>) captured[1]);
+    }
+
+    /**
+     * Answers the requests of the method whose URL (a prefix with a scheme, as the configuration has it) or path (a
+     * prefix starting with {@code /}) matches: the status and the body ({@code application/json} when it is an object
+     * or an array, else text; null: none), until {@link #clear()}. The last answer given for a request wins.
+     */
+    public void respond(String method, String prefix, int status, String body) {
+        answers.add(0, new Answer(method, prefix, status, body));
+    }
+
+    private Answer answer(String method, String url) {
+        String path;
+        try {
+            path = URI.create(url).getRawPath();
+        } catch (IllegalArgumentException e) {
+            path = url;
+        }
+        for (Answer a : answers) {
+            if (a.matches(method, url, path == null ? "" : path)) {
+                return a;
+            }
+        }
+        return null;
+    }
+
+    /** Clears the requests and answers of the stand-in, if it was started (the runtime starts it before midPoint). */
     static synchronized void clearIfStarted() {
         if (instance != null) {
             instance.clear();
@@ -115,9 +199,16 @@ public final class HttpStandIn {
         return "http://" + HOST + "/" + prefix.replaceFirst("^[A-Za-z][A-Za-z0-9+.-]*://", "");
     }
 
-    /** The request's URL as the configuration has it: the longest redirected prefix it starts with, given back. */
+    /**
+     * The request's URL as the configuration has it: the longest redirected prefix it starts with, given back; a
+     * request made to the server's own address keeps it.
+     */
     private synchronized String original(URI uri) {
-        String url = uri.isAbsolute() ? uri.toString() : "http://" + HOST + uri;
+        if (!uri.isAbsolute()) {
+            // not through the proxy selector: a client given the server's own address
+            return System.getProperty(URL_PROPERTY) + uri;
+        }
+        String url = uri.toString();
         String best = null;
         for (String redirected : originals.keySet()) {
             if (url.startsWith(redirected) && (best == null || redirected.length() > best.length())) {

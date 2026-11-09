@@ -1,5 +1,8 @@
 # Redesign: production evaluation, recorded per expression
 
+> History. The design of the PoC API: its `@MidPointTest` and golden results were removed, and tests use
+> `@MidPointConfigTest` / `MidPointConfigTester`. The README describes the current API.
+
 Status: old layers deleted. The tester covers midPoint 4.0, 4.4, 4.8, 4.9 and 4.10 (golden results verified along
 4.0 -> 4.4 -> 4.8 -> 4.9 -> 4.10, and 4.8 -> 4.10); the `expression/` and `clockwork/` layers were ported (step 6c)
 and deleted (step 6d); 4.9 was added in step 6e; step 6f narrowed the accepted differences. This

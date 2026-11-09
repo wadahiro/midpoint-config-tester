@@ -12,7 +12,7 @@ import com.github.wadahiro.midpoint.tester.Evaluation;
 import com.github.wadahiro.midpoint.tester.Run;
 
 /**
- * How often midPoint evaluated each mapping in the test so far, and how long it took ({@link Scenario#mappingStats()}):
+ * How often midPoint evaluated each mapping in the test so far, and how long it took ({@link MidPointConfigTester#mappingStats()}):
  * where an expensive script runs, and how often (a reconciliation of many users evaluates a mapping that often for
  * each). The first evaluation of a mapping is far slower (its script's compilation, the first search of a target
  * system), so it is shown apart, and the mappings are sorted by the total of the others ({@link Entry#rest()}), the
@@ -90,9 +90,9 @@ public final class MappingStats {
         this.entries = Collections.unmodifiableList(entries);
     }
 
-    static MappingStats of(Scenario scenario) {
+    static MappingStats of(MidPointConfigTester tester) {
         Map<String, Entry> byMapping = new LinkedHashMap<>();
-        for (Run run : scenario.runs()) {
+        for (Run run : tester.runs()) {
             for (Evaluation e : run.evaluations()) {
                 if (!e.isMapping() || e.duration() == null) {
                     continue;

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Each row (name) sets the user's description to the name of the importing user (actor) -->
+<report oid="30000000-0000-0000-0000-00000000c101"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:s="http://midpoint.evolveum.com/xml/ns/public/model/scripting-3">
+    <name>import-descriptions</name>
+    <behavior>
+        <direction>import</direction>
+        <importScript>
+            <s:execute>
+                <s:script>
+                    <code>
+                        import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType
+                        user = midpoint.searchObjectByName(UserType.class, name)
+                        midpoint.modifyObject(midpoint.deltaFor(UserType.class)
+                                .item(UserType.F_DESCRIPTION).replace('imported by ' + actor?.name?.orig)
+                                .asObjectDelta(user.oid))
+                    </code>
+                </s:script>
+                <s:forWholeInput>true</s:forWholeInput>
+            </s:execute>
+        </importScript>
+    </behavior>
+    <fileFormat>
+        <type>csv</type>
+        <csv>
+            <header>true</header>
+            <fieldDelimiter>,</fieldDelimiter>
+        </csv>
+    </fileFormat>
+</report>

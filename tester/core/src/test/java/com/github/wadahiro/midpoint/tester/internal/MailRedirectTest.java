@@ -84,4 +84,15 @@ class MailRedirectTest {
         assertThat(r.notes).containsExactly("messageTransportConfiguration/mail[m]: 0 server(s) redirected to "
                 + "127.0.0.1:2525 (none configured: midPoint sends no mail)");
     }
+
+    @Test
+    void theServersThatAreNotTheTesters() {
+        String xml = "<systemConfiguration xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
+                + "<notificationConfiguration><mail><server><host>127.0.0.1</host></server></mail>"
+                + "</notificationConfiguration>"
+                + "<messageTransportConfiguration><mail><name>m</name><server><host>smtp.example.com</host></server>"
+                + "<server></server></mail></messageTransportConfiguration></systemConfiguration>";
+        org.assertj.core.api.Assertions.assertThat(MailRedirect.otherServers(xml, "127.0.0.1")).containsExactly(
+                "messageTransportConfiguration/mail: smtp.example.com", "messageTransportConfiguration/mail: (no host)");
+    }
 }

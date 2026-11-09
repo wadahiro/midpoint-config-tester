@@ -17,6 +17,14 @@ config:
 targets:
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
+# another system's database that scripts read over JDBC, and their environment (DatabaseScenarioTest)
+databases:
+  audit: { init: [databases/audit.sql] }
+environment:
+  AUDIT_JDBC_URL: "${database.audit.url}"
+  AUDIT_JDBC_USER: "${database.audit.user}"
+# midPoint's constants (<constants> of config.xml), for <const> and midpoint.getConst (ConstantsScenarioTest)
+constants: { hrTenant: t-1001 }
 mail: { redirect: true }
 tasks: { recurring: held }
 # typed names for the tests (NamesGenerator): Resources.HR, Roles.DEPT_SALES, LdapAttrs.OU...

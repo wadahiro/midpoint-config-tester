@@ -90,6 +90,64 @@ public final class FileRemap {
         return null;
     }
 
+    /**
+     * The arguments of a command the JVM starts ({@code ProcessBuilder.start}: a shell script of midPoint, a Groovy
+     * {@code "...".execute()}) with each mapped directory written in them replaced by its physical one; null if none
+     * is. A mapped directory counts where it starts a path (at the start of the argument or after a character that
+     * cannot be part of a path: a space, a quote, {@code =}, {@code ;}...) and ends a path segment.
+     */
+    public static java.util.List<String> remapCommand(java.util.List<String> command) {
+        Table t = table;
+        if (t.logical.length == 0 || command == null) {
+            return null;
+        }
+        java.util.List<String> out = null;
+        for (int i = 0; i < command.size(); i++) {
+            String arg = command.get(i);
+            String mapped = arg != null ? remapText(t, arg) : null;
+            if (mapped != null) {
+                if (out == null) {
+                    out = new java.util.ArrayList<>(command);
+                }
+                out.set(i, mapped);
+            }
+        }
+        return out;
+    }
+
+    private static String remapText(Table t, String text) {
+        StringBuilder out = null;
+        int copied = 0;
+        int i = 0;
+        while (i < text.length()) {
+            if (text.charAt(i) == '/' && (i == 0 || !pathChar(text.charAt(i - 1)))
+                    && (t.area == null || !text.startsWith(t.area, i))) {
+                for (int r = 0; r < t.logical.length; r++) {
+                    String root = t.logical[r];
+                    int end = i + root.length();
+                    if (text.startsWith(root, i) && (end == text.length() || !pathChar(text.charAt(end))
+                            || text.charAt(end) == '/')) {
+                        if (out == null) {
+                            out = new StringBuilder(text.length() + 64);
+                        }
+                        out.append(text, copied, i).append(t.physical[r]);
+                        copied = end;
+                        i = end - 1;
+                        break;
+                    }
+                }
+            }
+            i++;
+        }
+        return out == null ? null : out.append(text, copied, text.length()).toString();
+    }
+
+    /** A character of a path name (not one that ends it in a shell command). */
+    private static boolean pathChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '/' || c == '.' || c == '-' || c == '_' || c == '~' || c == '+'
+                || c == '@' || c == '%' || c == ',' || c == ':' || c > 127;
+    }
+
     private static boolean isAbsolute(String path) {
         char c = path.charAt(0);
         return c == '/' || c == '\\' || path.length() > 2 && path.charAt(1) == ':';

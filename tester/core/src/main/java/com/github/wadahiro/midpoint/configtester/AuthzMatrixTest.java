@@ -46,9 +46,8 @@ import com.github.wadahiro.midpoint.tester.internal.TesterRuntime;
  * ({@code <workDir>/authz-matrix/<file>-<line>.html}).
  *
  * <pre>{@code
- * @MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
- * @AuthzMatrix("classpath:scenarios/access/authz-matrix.yaml")
- * class AuthzMatrixScenarioTest extends AuthzMatrixTest {
+ * @AuthzMatrix("classpath:authz-matrix.yaml")
+ * class AuthzMatrixCheck extends AuthzMatrixTest {
  * }
  * }</pre>
  *
@@ -91,22 +90,22 @@ public abstract class AuthzMatrixTest {
     }
 
     @TestFactory
-    Stream<DynamicNode> guiAuthorizations(Scenario s) {
-        AuthzMatrixSpec spec = AuthzMatrixSpec.read(specFile(), s.line());
-        Map<String, String> users = check(spec, s);
-        spec.warnings.forEach(warning -> System.err.println("Tester: " + warning + " (on " + s.line() + ")"));
-        List<Cell> cells = evaluate(spec, s, users);
-        List<Coverage> coverage = coverage(spec, s, users);
+    Stream<DynamicNode> guiAuthorizations(MidPointConfigTester t) {
+        AuthzMatrixSpec spec = AuthzMatrixSpec.read(specFile(), t.line());
+        Map<String, String> users = check(spec, t);
+        spec.warnings.forEach(warning -> System.err.println("Tester: " + warning + " (on " + t.line() + ")"));
+        List<Cell> cells = evaluate(spec, t, users);
+        List<Coverage> coverage = coverage(spec, t, users);
         List<String> warnings = new ArrayList<>(spec.warnings);
         for (Coverage c : coverage) {
             if (c.warning != null) {
-                System.err.println("Tester: " + c.warning + " (on " + s.line() + ")");
+                System.err.println("Tester: " + c.warning + " (on " + t.line() + ")");
                 warnings.add(c.warning);
             }
         }
         Map<String, String> authorizations = new HashMap<>();
         for (AuthzMatrixSpec.Persona p : spec.personas.values()) {
-            StringBuilder text = new StringBuilder(s.as(users.get(p.id)).authorizations());
+            StringBuilder text = new StringBuilder(t.as(users.get(p.id)).authorizations());
             List<Coverage> own = new ArrayList<>();
             coverage.stream().filter(c -> c.persona.equals(p.id)).forEach(own::add);
             if (!own.isEmpty()) {
@@ -115,9 +114,9 @@ public abstract class AuthzMatrixTest {
             }
             authorizations.put(p.id, text.toString());
         }
-        Path report = AuthzMatrixReport.write(spec, s.line(), cells, authorizations, warnings,
+        Path report = AuthzMatrixReport.write(spec, t.line(), cells, authorizations, warnings,
                 TesterRuntime.get().workDir().resolve("authz-matrix"));
-        System.out.println("Tester: authorization matrix " + spec.file + " on " + s.line() + ": "
+        System.out.println("Tester: authorization matrix " + spec.file + " on " + t.line() + ": "
                 + summary(cells) + ", " + report.toUri());
 
         List<DynamicNode> out = new ArrayList<>();
@@ -219,8 +218,8 @@ public abstract class AuthzMatrixTest {
      * selects and does not, as midPoint selects them for the persona ({@code Access.selectedBy}); the persona's own
      * user is a sample ({@code self}). A warning when no sample is inside or none outside.
      */
-    static List<Coverage> coverage(AuthzMatrixSpec spec, Scenario s, Map<String, String> users) {
-        MidPoint mp = s.midpoint();
+    static List<Coverage> coverage(AuthzMatrixSpec spec, MidPointConfigTester t, Map<String, String> users) {
+        MidPoint mp = t.midpoint();
         List<Coverage> out = new ArrayList<>();
         for (AuthzMatrixSpec.Persona persona : spec.personas.values()) {
             String name = users.get(persona.id);
@@ -230,7 +229,7 @@ public abstract class AuthzMatrixTest {
             for (AuthzMatrixSpec.SampleObject object : spec.objects.values()) {
                 samples.put(object.id, mp.object(type(object.type), object.name));
             }
-            for (CompiledAuthorization compiled : s.as(name).compiledAuthorizations()) {
+            for (CompiledAuthorization compiled : t.as(name).compiledAuthorizations()) {
                 com.evolveum.midpoint.xml.ns._public.common.common_3.AuthorizationType authorization =
                         compiled.authorization();
                 String label = "'" + (authorization.getName() != null ? authorization.getName() : "unnamed")
@@ -307,8 +306,8 @@ public abstract class AuthzMatrixTest {
      * Checks the names, creates the personas' users, adds the auto rows (the GUI's pages, the items, the views,
      * features and menu links of the personas' GUI profiles), checks the rows; the users' names by persona.
      */
-    static Map<String, String> check(AuthzMatrixSpec spec, Scenario s) {
-        MidPoint mp = s.midpoint();
+    static Map<String, String> check(AuthzMatrixSpec spec, MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         for (AuthzMatrixSpec.Persona persona : spec.personas.values()) {
             if (persona.user != null && mp.user(persona.user) == null) {
                 throw spec.error(persona.line, "persona " + persona.id + ": no user " + persona.user);
@@ -337,11 +336,11 @@ public abstract class AuthzMatrixTest {
         for (AuthzMatrixSpec.Persona persona : spec.personas.values()) {
             users.put(persona.id, persona.user != null ? persona.user : create(mp, persona));
         }
-        spec.expand(expander(s, spec, users));
-        Set<String> guiAll = guiAll(s.line());
+        spec.expand(expander(t, spec, users));
+        Set<String> guiAll = guiAll(t.line());
         for (AuthzMatrixSpec.Row row : spec.checks()) {
             if (row.kind == AuthzMatrixSpec.Kind.OPEN) {
-                String url = url(row.argument, spec, s, "00000000-0000-0000-0000-000000000000");
+                String url = url(row.argument, spec, t, "00000000-0000-0000-0000-000000000000");
                 if (GuiPages.of().required(url, guiAll).matches().isEmpty()) {
                     throw spec.error(row.line, "no page of the GUI matches " + row.argument);
                 }
@@ -405,12 +404,12 @@ public abstract class AuthzMatrixTest {
 
     // ---- the cells --------------------------------------------------------------------------------------------
 
-    private static List<Cell> evaluate(AuthzMatrixSpec spec, Scenario s, Map<String, String> users) {
+    private static List<Cell> evaluate(AuthzMatrixSpec spec, MidPointConfigTester t, Map<String, String> users) {
         List<Cell> cells = new ArrayList<>();
         Map<String, GuiProfile> profiles = new HashMap<>();
         for (AuthzMatrixSpec.Persona persona : spec.personas.values()) {
-            Actor actor = s.as(users.get(persona.id));
-            String self = s.midpoint().user(users.get(persona.id)).getOid();
+            Actor actor = t.as(users.get(persona.id));
+            String self = t.midpoint().user(users.get(persona.id)).getOid();
             Map<String, List<ObjectRef>> searches = new HashMap<>();
             Map<String, Boolean> gets = new HashMap<>();
             Map<String, Form> forms = new HashMap<>();
@@ -420,16 +419,16 @@ public abstract class AuthzMatrixTest {
                         spec.critical(row));
                 try {
                     ObjectRef sample = row.object == null ? null
-                            : object(spec, s, row.object, users.get(persona.id));
+                            : object(spec, t, row.object, users.get(persona.id));
                     switch (row.kind) {
                         case OPEN:
-                            String url = url(row.argument, spec, s, self);
+                            String url = url(row.argument, spec, t, self);
                             cell.detail = "opens " + url;
                             cell.actual = yn(actor.canOpen(url));
                             break;
                         case SEARCH:
                             cell.actual = yn(searches.computeIfAbsent(sample.type(),
-                                    t -> actor.search(type(t))).contains(sample));
+                                    k -> actor.search(type(k))).contains(sample));
                             break;
                         case GET:
                             cell.actual = yn(gets.computeIfAbsent(sample.type() + "/" + sample.name(),
@@ -443,8 +442,8 @@ public abstract class AuthzMatrixTest {
                             break;
                         case ASSIGN:
                         case UNASSIGN:
-                            ObjectRef target = object(spec, s, row.argument, users.get(persona.id));
-                            QName relation = relation(row.relation, null, 0, s.midpoint());
+                            ObjectRef target = object(spec, t, row.argument, users.get(persona.id));
+                            QName relation = relation(row.relation, null, 0, t.midpoint());
                             cell.detail = (row.kind == AuthzMatrixSpec.Kind.ASSIGN ? "assigns " : "unassigns ") + target
                                     + (relation == null ? "" : " as " + relation.getLocalPart())
                                     + (row.kind == AuthzMatrixSpec.Kind.ASSIGN ? " to " : " from ") + sample;
@@ -453,7 +452,7 @@ public abstract class AuthzMatrixTest {
                                     : actor.canUnassign(sample, target, relation));
                             break;
                         case READ:
-                            boolean found = searches.computeIfAbsent(sample.type(), t -> actor.search(type(t)))
+                            boolean found = searches.computeIfAbsent(sample.type(), k -> actor.search(type(k)))
                                     .contains(sample);
                             cell.actual = yn(found && gets.computeIfAbsent(sample.type() + "/" + sample.name(),
                                     k -> actor.canGet(sample)));
@@ -535,23 +534,23 @@ public abstract class AuthzMatrixTest {
         }
     }
 
-    private static ObjectRef object(AuthzMatrixSpec spec, Scenario s, String id, String self) {
+    private static ObjectRef object(AuthzMatrixSpec spec, MidPointConfigTester t, String id, String self) {
         if (id.equals("self")) {
-            UserType user = s.midpoint().user(self);
+            UserType user = t.midpoint().user(self);
             return ObjectRef.of("UserType", self, user.getOid());
         }
         AuthzMatrixSpec.SampleObject sample = spec.objects.get(id);
-        ObjectType object = s.midpoint().object(type(sample.type), sample.name);
+        ObjectType object = t.midpoint().object(type(sample.type), sample.name);
         return ObjectRef.of(sample.type, sample.name, object.getOid());
     }
 
     /** The URL with {@code {object}} replaced by the object's OID, {@code {self}} by the persona's. */
-    private static String url(String url, AuthzMatrixSpec spec, Scenario s, String selfOid) {
+    private static String url(String url, AuthzMatrixSpec spec, MidPointConfigTester t, String selfOid) {
         String out = url.replace("{self}", selfOid);
         for (AuthzMatrixSpec.SampleObject object : spec.objects.values()) {
             if (out.contains("{" + object.id + "}")) {
                 out = out.replace("{" + object.id + "}",
-                        s.midpoint().object(type(object.type), object.name).getOid());
+                        t.midpoint().object(type(object.type), object.name).getOid());
             }
         }
         if (out.matches(".*\\{[^}]*}.*")) {
@@ -581,9 +580,9 @@ public abstract class AuthzMatrixTest {
     }
 
     /** The GUI's pages of the line, the items of a type in its schema, what the personas' GUI profiles have. */
-    private static AuthzMatrixSpec.Expander expander(Scenario s, AuthzMatrixSpec spec, Map<String, String> users) {
+    private static AuthzMatrixSpec.Expander expander(MidPointConfigTester t, AuthzMatrixSpec spec, Map<String, String> users) {
         List<GuiProfile> profiles = new ArrayList<>();
-        spec.personas.values().forEach(p -> profiles.add(s.as(users.get(p.id)).guiProfile()));
+        spec.personas.values().forEach(p -> profiles.add(t.as(users.get(p.id)).guiProfile()));
         return new AuthzMatrixSpec.Expander() {
             @Override
             public List<String[]> views() {
@@ -625,7 +624,7 @@ public abstract class AuthzMatrixTest {
             @Override
             public List<String> items(String type) {
                 List<String> out = new ArrayList<>();
-                for (Object item : s.midpoint().prismContext().getSchemaRegistry()
+                for (Object item : t.midpoint().prismContext().getSchemaRegistry()
                         .findObjectDefinitionByCompileTimeClass(type(type)).getDefinitions()) {
                     out.add(((com.evolveum.midpoint.prism.ItemDefinition<?>) item).getItemName().getLocalPart());
                 }

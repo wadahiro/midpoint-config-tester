@@ -1,22 +1,22 @@
 package com.github.wadahiro.midpoint.configtester;
 
 /**
- * A certification definition of the deployment, by name ({@link Scenario#certification}).
+ * A certification definition of the deployment, by name ({@link MidPointConfigTester#certification}).
  *
  * <pre>{@code
- * Campaign c = s.certification("Role assignments").start();
- * c.reviews().forUser("jack").forRole("Auditor").single().revoke(s.as("sec-officer"), "not needed");
+ * Campaign c = t.certification("Role assignments").start();
+ * c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.as("sec-officer"), "not needed");
  * c.closeStage().remediate();
- * s.user("jack").hasNoRole("Auditor");
+ * t.user("jack").hasNoRole("Auditor");
  * }</pre>
  */
 public final class Certification {
 
-    private final Scenario scenario;
+    private final MidPointConfigTester tester;
     private final String definition;
 
-    Certification(Scenario scenario, String definition) {
-        this.scenario = scenario;
+    Certification(MidPointConfigTester tester, String definition) {
+        this.tester = tester;
         this.definition = definition;
     }
 
@@ -31,8 +31,8 @@ public final class Certification {
 
     /** Creates a campaign of the definition, not started yet ({@link Campaign#nextStage()} starts it). */
     public Campaign create() {
-        String oid = scenario.deployment().api().certification().createCampaign(definition).oid();
-        return new Campaign(scenario, oid);
+        String oid = tester.deployment().api().certification().createCampaign(definition).oid();
+        return new Campaign(tester, oid);
     }
 
     public String definition() {

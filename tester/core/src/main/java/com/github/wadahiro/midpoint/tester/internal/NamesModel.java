@@ -232,8 +232,9 @@ public final class NamesModel {
                     }
                 }
                 Element fieldDelimiter = Xml.firstDescendant(configuration, "fieldDelimiter");
-                if (fieldDelimiter != null && !fieldDelimiter.getTextContent().isEmpty()) {
-                    delimiter = fieldDelimiter.getTextContent().substring(0, 1);
+                String value = fieldDelimiter != null ? RealResourceXml.propertyValue(fieldDelimiter) : "";
+                if (!value.isEmpty()) {
+                    delimiter = value.substring(0, 1);
                 }
             }
         }

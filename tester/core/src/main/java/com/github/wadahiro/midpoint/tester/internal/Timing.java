@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * Opt-in time report of the tester's own phases (system property {@code tester.timing=true}): startup, resets,
- * snapshots, the waits for background work, the class set-up and golden results. Written after the last test
+ * snapshots, the waits for background work and the class set-up. Written after the last test
  * class to {@code <workDir>/tester/timing.md} and printed. Off by default: {@link #start()} then returns 0 and
  * {@link #end} does nothing.
  */

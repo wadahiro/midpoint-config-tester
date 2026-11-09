@@ -437,7 +437,7 @@ public final class Evaluation {
         return record.hook;
     }
 
-    /** Normalized text (generated OIDs named, random values masked): what golden comparison will use. */
+    /** Normalized text (generated OIDs named, random values masked). */
     @Override
     public String toString() {
         List<Evaluation> all = new ArrayList<>();

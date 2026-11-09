@@ -16,12 +16,12 @@ import com.github.wadahiro.midpoint.tester.GuiProfile;
  * {@code scenarios/access}: the system configuration's {@code adminGuiConfiguration} for everyone, merged with the
  * Department manager role's, which the manager of IT gets from the org's inducement.
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class GuiProfileScenarioTest {
 
     @Test
-    void everyoneHasTheSystemConfigurations(Scenario s) {
-        GuiProfile jack = s.as(Users.JACK).guiProfile();
+    void everyoneHasTheSystemConfigurations(MidPointConfigTester t) {
+        GuiProfile jack = t.as(Users.JACK).guiProfile();
 
         assertThat(jack.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
                 .containsExactly("people");
@@ -33,8 +33,8 @@ class GuiProfileScenarioTest {
 
     /** The role's configuration after the system configuration's: its view added, its time zone, hidden wins. */
     @Test
-    void theManagerHasTheInducedRolesToo(Scenario s) {
-        GuiProfile manager = s.as(Users.IT_MANAGER).guiProfile();
+    void theManagerHasTheInducedRolesToo(MidPointConfigTester t) {
+        GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
 
         assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
                 .containsExactlyInAnyOrder("people", "department-members");
@@ -52,14 +52,14 @@ class GuiProfileScenarioTest {
      * collections, so no view is in the menu of an end user.
      */
     @Test
-    void theMenuListsTheViewsByTheLinesRule(Scenario s) {
-        GuiProfile manager = s.as(Users.IT_MANAGER).guiProfile();
+    void theMenuListsTheViewsByTheLinesRule(MidPointConfigTester t) {
+        GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
 
         assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::inMenu)
-                .containsOnly(!s.line().equals("4.0"));
+                .containsOnly(!t.line().equals("4.0"));
         // why on 4.0: the manager does not get the views' collection
-        assertThat(s.midpoint().as("it-manager").get(ObjectCollectionType.class, "People").value()).isNull();
+        assertThat(t.midpoint().as("it-manager").get(ObjectCollectionType.class, "People").value()).isNull();
         // the administrator reads everything
-        assertThat(s.as("administrator").guiProfile().view(UserType.COMPLEX_TYPE, "people").inMenu()).isTrue();
+        assertThat(t.as("administrator").guiProfile().view(UserType.COMPLEX_TYPE, "people").inMenu()).isTrue();
     }
 }

@@ -54,8 +54,13 @@ public final class FileUtility {
         }
     }
 
-    /** Whether the path exists on the real file system, asked of a process (the JVM itself sees mapped paths). */
+    /**
+     * Whether the path exists on the real file system, asked of a process (the JVM itself sees mapped paths). The
+     * path goes in an environment variable: the arguments of a started command are mapped too, its environment not.
+     */
     public static boolean existsOutsideTheJvm(String path) throws IOException, InterruptedException {
-        return new ProcessBuilder("test", "-e", path).start().waitFor() == 0;
+        ProcessBuilder test = new ProcessBuilder("sh", "-c", "test -e \"$TESTED_PATH\"");
+        test.environment().put("TESTED_PATH", path);
+        return test.start().waitFor() == 0;
     }
 }

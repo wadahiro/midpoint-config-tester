@@ -42,7 +42,7 @@ public final class TesterRuntime {
     /** Target systems whose content is not in the database (mirrors, CSV files, LDAP servers), by resource OID. */
     private final Map<String, ManagedTarget> targets = new LinkedHashMap<>();
     private final State baseline;
-    /** The runs of the driver calls since {@link #takeJournal()} was called last (golden results). */
+    /** The runs of the driver calls since {@link #takeJournal()} was called last. */
     private final List<Run> journal = new ArrayList<>();
     /** Driver calls journaled since the start, and how often {@link #api()} was handed out ({@link #activity()}). */
     private long driverCalls;
@@ -85,14 +85,23 @@ public final class TesterRuntime {
 
     private TesterRuntime() throws Exception {
         long start = System.currentTimeMillis();
-        checkForks();
         workDir = workDirOfThisJvm();
         Path home = workDir.resolve("midpoint-home");
         Files.createDirectories(home);
         System.setProperty("midpoint.home", home.toString());
         // the directories scripts' files are mapped to, and midPoint's report output directory (<home>/export)
         FileArea.get().init(workDir, home);
+        // the agent is installed now: from here on the JVM reaches no other machine (NetworkGuard)
+        String allowed = System.getProperty("tester.network.allow", "");
+        com.github.wadahiro.midpoint.tester.agent.NetworkGuard.activate(
+                allowed.isBlank() ? new String[0] : allowed.trim().split("\\s*,\\s*"));
 
+        if (Timing.ON) {
+            // written once, when the JVM ends after its last test class (JUnit and Kotest alike)
+            Path report = workDir.resolve("tester");
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> Timing.writeReport(report, LineSupport.LINE),
+                    "tester timing report"));
+        }
         long t = Timing.start();
         pg = PgmemServer.start("midpoint", workDir);
         Timing.end("startup.pgmem", t);
@@ -114,16 +123,29 @@ public final class TesterRuntime {
                 LineSupport.config(pg.jdbcUrl(), pg.user(), schemaDir.toString(), connectorDir.toString()),
                 StandardCharsets.UTF_8);
 
+        // the HTTP stand-in's own address, for the deployment's beans and properties (${tester.http.url})
+        HttpStandIn.get();
+
         t = Timing.start();
         harness = LineSupport.startHarness();
         Timing.end("startup.harness (Spring, initSystem)", t);
-        TaskSchedules.installHold(harness.quartzScheduler());
+        TaskSchedules.installHold(harness.quartzScheduler(),
+                harness.bean(com.evolveum.midpoint.common.Clock.class)::currentTimeMillis);
         api = new MidPointImpl(this, harness);
         harness.loginAs(ADMINISTRATOR);
+        // midPoint's checks as a deployment has them (the defaults): midPoint's test base turns on its consistency,
+        // sanity and read encryption checks, prism monitoring and model profiling, which a deployment does not run
+        // with, so that a configuration that works in production failed here (e.g. a system configuration changing its
+        // PolyString normalizer: its stored labels are "inconsistent" with the new one)
+        com.evolveum.midpoint.schema.internals.InternalsConfig.reset();
         // the logging of a system configuration (the line's initial one, a deployment's) must not replace the
         // tester's: midPoint's own switch for its tests
         com.evolveum.midpoint.schema.internals.InternalsConfig.setAvoidLoggingChange(true);
         // Groovy and prism are loaded now: the JVM's clock follows mp.time() for them too (or not at all)
+        String environment = ScriptEnvironment.installGroovy();
+        if (environment != null) {
+            System.err.println("Tester: " + environment);
+        }
         String clock = TimeAgent.groovy();
         if (clock != null) {
             System.err.println("Tester: only midPoint's clock follows mp.time(): " + clock);
@@ -134,23 +156,6 @@ public final class TesterRuntime {
                 + (System.currentTimeMillis() - start) + " ms");
     }
 
-    /**
-     * With several test JVMs, golden recording, which needs every test of the line in one JVM, is refused. (Golden
-     * verification works per class; the timing report of each fork covers its own classes only.)
-     */
-    private static void checkForks() {
-        if (Integer.getInteger("tester.forks", 1) <= 1) {
-            return;
-        }
-        List<String> refused = new ArrayList<>();
-        if ("record".equalsIgnoreCase(System.getProperty("golden.mode", "").strip())) {
-            refused.add("golden.mode=record");
-        }
-        if (!refused.isEmpty()) {
-            throw new IllegalStateException(String.join(", ", refused) + " needs every test of the line in one JVM:"
-                    + " run it with -Dtester.forks=1");
-        }
-    }
 
     /** {@code tester.workDir} ({@code target} by default): shared by the test forks (the cache is there). */
     static Path baseWorkDir() {
@@ -225,6 +230,22 @@ public final class TesterRuntime {
 
     public State snapshot() {
         return snapshot(false);
+    }
+
+    /**
+     * A snapshot in the middle of a test (a checkpoint): once the background work has finished and with Quartz held,
+     * so that no task writes into it; a reset to it holds the regular runs as they are held now.
+     */
+    State checkpoint() {
+        api.awaitBackgroundWork("the checkpoint");
+        org.quartz.Scheduler scheduler = harness.quartzScheduler();
+        TaskSchedules.hold(scheduler);
+        try {
+            awaitJobs();
+            return snapshot(TaskSchedules.regularRunsHeld());
+        } finally {
+            TaskSchedules.release(scheduler);
+        }
     }
 
     /**
@@ -348,6 +369,14 @@ public final class TesterRuntime {
         login(ADMINISTRATOR);
     }
 
+    String repositoryJdbcUrl() {
+        return pg.jdbcUrl();
+    }
+
+    String repositoryUser() {
+        return pg.user();
+    }
+
     /** Writes the database's data to {@code dir} ({@link PgDump}); midPoint must be idle. */
     void dumpDatabase(Path dir) throws java.io.IOException {
         org.quartz.Scheduler scheduler = harness.quartzScheduler();
@@ -444,6 +473,13 @@ public final class TesterRuntime {
         return initialImport;
     }
 
+    /** How much midPoint was asked to do so far: driver calls, API calls, background task starts. */
+    long activityCount() {
+        synchronized (journal) {
+            return driverCalls + apiCalls + Recorder.backgroundStarts();
+        }
+    }
+
     /** What changes when midPoint may have done something: see {@link #resetToBaseline()}. */
     private long[] activity() {
         int jobs;
@@ -464,12 +500,15 @@ public final class TesterRuntime {
     }
 
     /**
-     * Forgets the notifications and mails sent so far ({@link MidPoint#notifications()} and {@link MidPoint#mails()}
-     * cover one test method).
+     * Forgets the notifications, mails and audit records written so far ({@link MidPoint#notifications()},
+     * {@link MidPoint#mails()} and {@link MidPoint#auditRecords()} cover one test method); the SMTP server takes every
+     * mail again.
      */
     public void clearNotifications() {
         api.drivers().clearNotifications();
+        api.markAuditStart();
         api.drivers().clearMails();
+        api.drivers().rejectMails(null);
         HttpStandIn.clearIfStarted();
     }
 

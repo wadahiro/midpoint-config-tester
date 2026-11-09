@@ -4,21 +4,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.SynchronizationSituationType;
+
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
+import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 
 /**
  * {@link LiveSyncScenarioTest} on the real connectors the line ships: the CSV connector compares the file with its
  * copy of the last run, the LDAP connector reads the change log of the in-memory LDAP server ({@code synchronizationStrategy}
  * {@code auto} finds it in the root DSE).
  */
-@MidPointTest
+@MidPointConfigTest(Fixtures.BARE)
 class LiveSyncRealConnectorsTest extends LiveSyncScenarioTest {
 
-    @BeforeAll
-    static void configure(MidPoint mp) {
+    @BeforeEach
+    void configure(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         configure(mp, ResourceOptions.defaults().realConnector(), ResourceOptions.defaults().realConnector());
         mp.ldap("LDAP").loadLdif(String.join("\n",
                 "dn: ou=people,dc=example,dc=com", "objectClass: organizationalUnit", "ou: people", "",
@@ -33,7 +37,8 @@ class LiveSyncRealConnectorsTest extends LiveSyncScenarioTest {
      * is not seen by live synchronization (the mirror sees it): the shadow stays live and linked.
      */
     @Test
-    void directoryDeletionIsNotInTheChangeLogForTheConnector(MidPoint mp) {
+    void directoryDeletionIsNotInTheChangeLogForTheConnector(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.target("HR").addAccount("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
         mp.importAccounts("HR");
         mp.liveSync("LDAP");                                           // the token
@@ -52,7 +57,8 @@ class LiveSyncRealConnectorsTest extends LiveSyncScenarioTest {
      * entries needs a server with that change log (or reconciliation) for them.
      */
     @Test
-    void directoryRenameFailsTheLiveSync(MidPoint mp) {
+    void directoryRenameFailsTheLiveSync(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
         mp.target("HR").addAccount("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
         mp.importAccounts("HR");
         mp.liveSync("LDAP");                                           // the token

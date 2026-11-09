@@ -21,7 +21,7 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Users;
  * search finds what {@code #read} allows, but a user's details open for everyone, and the Help desk's narrower read
  * shows no more than the End user's get. The tests show both, as a configuration review would find them.</p>
  */
-@MidPointScenarios("classpath:scenarios/access/midpoint-config-tester.yaml")
+@MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class GuiAuthorizationScenarioTest {
 
     /** The users list ({@code PageUsers}) and the roles list ({@code PageRoles}), by their page actions. */
@@ -31,10 +31,10 @@ class GuiAuthorizationScenarioTest {
             AuthorizationConstants.AUTZ_UI_ROLES_URL, AuthorizationConstants.AUTZ_UI_ROLES_VIEW_URL};
 
     @Test
-    void theHelpDeskOpensTheUsersButNotTheRoles(Scenario s) {
-        assertThat(s.as(Users.HELPDESK).canOpen(USERS_PAGE)).isTrue();
-        assertThat(s.as(Users.HELPDESK).canOpen(ROLES_PAGE)).isFalse();
-        assertThat(s.as(Users.JACK).canOpen(USERS_PAGE)).isFalse();
+    void theHelpDeskOpensTheUsersButNotTheRoles(MidPointConfigTester t) {
+        assertThat(t.as(Users.HELPDESK).canOpen(USERS_PAGE)).isTrue();
+        assertThat(t.as(Users.HELPDESK).canOpen(ROLES_PAGE)).isFalse();
+        assertThat(t.as(Users.JACK).canOpen(USERS_PAGE)).isFalse();
     }
 
     /**
@@ -45,45 +45,45 @@ class GuiAuthorizationScenarioTest {
      * of no page is denied.
      */
     @Test
-    void thePagesByUrl(Scenario s) {
-        assertThat(s.as(Users.HELPDESK).canOpen("/admin/users")).isTrue();
-        assertThat(s.as(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();
-        assertThat(s.as(Users.HELPDESK).canOpen("/admin/user")).isTrue();
-        assertThat(s.as(Users.HELPDESK).canOpen("/admin/roles")).isFalse();
-        assertThat(s.as(Users.JACK).canOpen("/admin/users")).isFalse();
-        assertThat(s.as(Users.JACK).canOpen("/admin/user/" + Users.JACK.oid())).isFalse();
-        assertThat(s.as(Users.JACK).canOpen("/self/dashboard")).isTrue();
-        assertThat(s.as(Users.JACK).canOpen("/login")).isTrue();
-        assertThat(s.as(Users.JACK).canOpen("/no/such/page")).isFalse();
+    void thePagesByUrl(MidPointConfigTester t) {
+        assertThat(t.as(Users.HELPDESK).canOpen("/admin/users")).isTrue();
+        assertThat(t.as(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();
+        assertThat(t.as(Users.HELPDESK).canOpen("/admin/user")).isTrue();
+        assertThat(t.as(Users.HELPDESK).canOpen("/admin/roles")).isFalse();
+        assertThat(t.as(Users.JACK).canOpen("/admin/users")).isFalse();
+        assertThat(t.as(Users.JACK).canOpen("/admin/user/" + Users.JACK.oid())).isFalse();
+        assertThat(t.as(Users.JACK).canOpen("/self/dashboard")).isTrue();
+        assertThat(t.as(Users.JACK).canOpen("/login")).isTrue();
+        assertThat(t.as(Users.JACK).canOpen("/no/such/page")).isFalse();
     }
 
     @Test
-    void theHelpDeskFindsTheUsersOfIt(Scenario s) {
-        assertThat(s.as(Users.HELPDESK).search(UserType.class))
+    void theHelpDeskFindsTheUsersOfIt(MidPointConfigTester t) {
+        assertThat(t.as(Users.HELPDESK).search(UserType.class))
                 .containsExactlyInAnyOrder(Users.JACK, Users.ROLE_OWNER, Users.HELPDESK);
     }
 
     /** The End user's {@code #get} of any user: a user the search does not find still opens, for anyone. */
     @Test
-    void everyEndUserGetsAnyUser(Scenario s) {
-        assertThat(s.as(Users.HELPDESK).canSearch(Users.ANN)).isFalse();
-        assertThat(s.as(Users.HELPDESK).canGet(Users.ANN)).isTrue();
-        assertThat(s.as(Users.HELPDESK).canRead(Users.ANN)).isFalse();
-        assertThat(s.as(Users.HELPDESK).canRead(Users.JACK)).isTrue();
-        assertThat(s.as(Users.JACK).canGet(Users.ANN)).isTrue();
-        assertThat(s.as(Users.JACK).form(Users.ANN).canRead("assignment")).isTrue();
+    void everyEndUserGetsAnyUser(MidPointConfigTester t) {
+        assertThat(t.as(Users.HELPDESK).canSearch(Users.ANN)).isFalse();
+        assertThat(t.as(Users.HELPDESK).canGet(Users.ANN)).isTrue();
+        assertThat(t.as(Users.HELPDESK).canRead(Users.ANN)).isFalse();
+        assertThat(t.as(Users.HELPDESK).canRead(Users.JACK)).isTrue();
+        assertThat(t.as(Users.JACK).canGet(Users.ANN)).isTrue();
+        assertThat(t.as(Users.JACK).form(Users.ANN).canRead("assignment")).isTrue();
     }
 
     @Test
-    void anEndUserSeesThemselfAndTheRolesTheyMayRequest(Scenario s) {
-        assertThat(s.as(Users.JACK).search(UserType.class)).containsExactly(Users.JACK);
-        assertThat(s.as(Users.JACK).search(RoleType.class)).contains(Roles.PRIVILEGED_ACCESS, Roles.AUDITOR)
+    void anEndUserSeesThemselfAndTheRolesTheyMayRequest(MidPointConfigTester t) {
+        assertThat(t.as(Users.JACK).search(UserType.class)).containsExactly(Users.JACK);
+        assertThat(t.as(Users.JACK).search(RoleType.class)).contains(Roles.PRIVILEGED_ACCESS, Roles.AUDITOR)
                 .doesNotContain(Roles.ACCOUNTANT, Roles.HELP_DESK);
     }
 
     @Test
-    void theHelpDeskChangesTheTelephoneNumberOnly(Scenario s) {
-        Form form = s.as(Users.HELPDESK).form(Users.JACK);
+    void theHelpDeskChangesTheTelephoneNumberOnly(MidPointConfigTester t) {
+        Form form = t.as(Users.HELPDESK).form(Users.JACK);
 
         assertThat(form.opens()).isTrue();
         assertThat(form.canRead("emailAddress")).isTrue();
@@ -93,8 +93,8 @@ class GuiAuthorizationScenarioTest {
     }
 
     @Test
-    void theHelpDeskChangesNothingOfAUserOutsideIt(Scenario s) {
-        Form form = s.as(Users.HELPDESK).form(Users.ANN);
+    void theHelpDeskChangesNothingOfAUserOutsideIt(MidPointConfigTester t) {
+        Form form = t.as(Users.HELPDESK).form(Users.ANN);
 
         assertThat(form.opens()).isTrue();
         assertThat(form.modifiableItems()).isEmpty();
@@ -102,13 +102,13 @@ class GuiAuthorizationScenarioTest {
 
     /** A failed assertion on what a user sees lists the user's authorizations, by role. */
     @Test
-    void aFailedAssertionShowsTheAuthorizations(Scenario s) {
+    void aFailedAssertionShowsTheAuthorizations(MidPointConfigTester t) {
         AssertionError failure = catchThrowableOfType(() -> {
             try {
-                assertThat(s.as(Users.HELPDESK).search(UserType.class)).contains(Users.ANN);
+                assertThat(t.as(Users.HELPDESK).search(UserType.class)).contains(Users.ANN);
             } catch (AssertionError e) {
                 // what the extension does when the test fails
-                throw ScenarioExtension.withExplanations(e, e.getMessage() + "\n\n" + s.explanations(e));
+                throw MidPointConfigTestExtension.withExplanations(e, e.getMessage() + "\n\n" + t.explanations(e));
             }
         }, AssertionError.class);
         assertThat(failure.getMessage()).contains("Authorizations of helpdesk", "role Help desk:",

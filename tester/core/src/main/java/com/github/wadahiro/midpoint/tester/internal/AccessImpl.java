@@ -53,6 +53,20 @@ final class AccessImpl implements Access {
     }
 
     @Override
+    public Answer<List<ObjectType>> collection(String nameOrOid) {
+        String oid = mp.existing(com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionType.class,
+                nameOrOid).getOid();
+        List<ObjectType> found = new ArrayList<>();
+        Run run = as("collection " + nameOrOid, (task, result) -> {
+            for (PrismObject<? extends ObjectType> object : mp.drivers().searchCollection(oid, task, result)) {
+                found.add(object.asObjectable());
+            }
+            return MidPointImpl.Outcome.NONE;
+        });
+        return new Answer<>(found, checked(run));
+    }
+
+    @Override
     public <O extends ObjectType> Answer<O> get(Class<O> type, String nameOrOid) {
         O existing = mp.existing(type, nameOrOid);
         String oid = existing.getOid();

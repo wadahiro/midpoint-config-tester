@@ -42,8 +42,8 @@ public final class Describe {
         if (value instanceof ObjectReferenceType) {
             ObjectReferenceType ref = (ObjectReferenceType) value;
             String type = ref.getType() != null ? kind(ref.getType().getLocalPart()) : "object";
-            Scenario scenario = Scenario.current();
-            String name = scenario != null ? scenario.nameOf(ref)
+            MidPointConfigTester tester = MidPointConfigTester.current();
+            String name = tester != null ? tester.nameOf(ref)
                     : ref.getTargetName() != null ? ref.getTargetName().getOrig() : ref.getOid();
             return type + " " + name;
         }

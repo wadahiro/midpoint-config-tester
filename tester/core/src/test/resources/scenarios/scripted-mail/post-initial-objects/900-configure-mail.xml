@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the mail server of notificationConfiguration (4.4 format) from a script, as no imported file has it -->
+<scext:executeScript xmlns:scext="http://midpoint.evolveum.com/xml/ns/public/model/scripting/extension-3"
+        xmlns:s="http://midpoint.evolveum.com/xml/ns/public/model/scripting-3"
+        xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <s:action>
+        <s:type>execute-script</s:type>
+        <s:parameter>
+            <s:name>script</s:name>
+            <c:value xsi:type="c:ScriptExpressionEvaluatorType">
+                <c:code>
+                    import com.evolveum.midpoint.xml.ns._public.common.common_3.*
+                    mail = new MailConfigurationType()
+                    mail.server.add(new MailServerConfigurationType().host('smtp.invalid').port(25))
+                    mail.defaultFrom = 'idm@example.com'
+                    midpoint.modifyObject(midpoint.deltaFor(SystemConfigurationType.class)
+                            .item(SystemConfigurationType.F_NOTIFICATION_CONFIGURATION, NotificationConfigurationType.F_MAIL)
+                            .replace(mail)
+                            .asObjectDelta('00000000-0000-0000-0000-000000000001'))
+                </c:code>
+            </c:value>
+        </s:parameter>
+        <s:parameter>
+            <s:name>forWholeInput</s:name>
+            <c:value>true</c:value>
+        </s:parameter>
+    </s:action>
+</scext:executeScript>

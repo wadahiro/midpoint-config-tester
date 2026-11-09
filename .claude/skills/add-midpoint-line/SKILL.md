@@ -101,13 +101,13 @@ exactly one line.
   GreenMail 1.6.x, excluding its `com.sun.mail:jakarta.mail` unless it is the line's own version (4.0 runs it on 1.4.5).
   A line under `base-4.0` declares it in its own POM; `SmtpServer` comes from its base (the anatomy's "Mail" table).
 - **`LineSupport`** is the whole surface the shared code calls:
-  - `LINE` (`"X.Y"`, compared by `Lines.atLeast` and recorded in golden files);
+  - `LINE` (`"X.Y"`, compared by `Lines.atLeast`);
   - `CONFIG_FILE` and `config(jdbcUrl, user, extensionDir, connectorDir)`: midPoint's configuration file, written to
     midPoint home. Copy the repository part from the line's own test configuration (the probe prints its `<type>`):
     4.4 needs `sqale` (its `TestSqaleRepositoryBeanConfig` ignores `native`), 4.8+ accept `native`, 4.0 names a
     `repositoryServiceFactoryClass`. 4.0 always loads `test-config.xml`; 4.4+ take `test.config.file`;
   - `SCHEMA_SCRIPTS`, `BASELINE`: classpath resources (step 3);
-  - `startHarness()`, `drivers(harness)`, `serializeRealValue(value)` (one-line JSON of a bean for golden results;
+  - `startHarness()`, `drivers(harness)`, `serializeRealValue(value)` (one-line JSON of a bean for the normalized text;
     `PrismContext.get()` where it exists, the harness's prism context on 4.0);
   - for `base-4.8` lines also the API adapters its sources call: `outputDefinition` (4.8 `toMutable()`, 4.9+
     `mutator()`), `mappingTargetName` (4.8 `getMappingQName()`, 4.9+ `getTargetItemName()`) and
@@ -271,12 +271,11 @@ version property, its dependency management, the versions its tester POM pins ov
 JDK 11 toolchain) and the module to `parent/pom.xml`. Check it with a config repository on it, e.g. the example
 `examples/hr-ldap` with its parent switched to the new line (not committed).
 
-## 7. Golden chain (removed)
+## 7. Cross-line check
 
-The cross-line golden chain (record on the previous line, verify on the new one, accepted differences per pair) was
-removed in phase 4 of the next API, with the PoC tests whose results it compared: the owner postponed the cross-line
-check until outcome snapshots of the scenarios replace it (docs/next-design.md). The scenario tests passing on the new
-line (step 6) are the check for now. Golden results stay as an opt-in of the PoC API (`golden.mode`, `GoldenTest`).
+The tests of the new line passing (step 6) are the check that the configuration's behaviour holds: they assert the
+use cases' requirements. Golden results (recording every evaluation to compare lines) were removed: on an upgrade the
+configuration changes too, so most differences were noise.
 
 ## 8. Static checks
 
@@ -347,6 +346,4 @@ The static checks run without a runtime, one module per line under `tester/stati
 - Tasks need an owner (cases and certification fail without one): the harness creates tasks owned by the
   administrator; the approval and certification drivers log the acting user in and make them the owner.
 - 4.0 Quartz can fire a recurring task without running it after a reset; the harness does not wait for such a task.
-- The golden comparison only compares lines that both run a test; a test skipped on one line is a note
-  ("not recorded"), not a failure.
 - zsh does not word-split `$OPTS`: `mvn $OPTS` passes one argument. Use an array.

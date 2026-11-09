@@ -32,6 +32,11 @@ final class ReportsImpl implements Reports {
     }
 
     @Override
+    public Import importFrom(String report, List<String> lines, String username) {
+        throw new UnsupportedOperationException("midPoint 4.0 has no report import (4.4+)");
+    }
+
+    @Override
     public Import importFrom(String report, File csv) {
         throw new UnsupportedOperationException("midPoint 4.0 has no report import (4.4+)");
     }
