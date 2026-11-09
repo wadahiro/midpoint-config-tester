@@ -1220,7 +1220,10 @@ widget.number(); widget.color(); widget.run().select().path("variation").element
 
 **Time.** `mp.time()` moves midPoint's clock and the JVM's wall clock (`new Date()`, `Instant.now()`, Groovy's
 `System.currentTimeMillis()`...), not Quartz, `System.nanoTime()` or the database. See
-[Activation and validity](#activation-and-validity).
+[Activation and validity](#activation-and-validity). The moved clock runs on; `s.time().stopAt(instant)` (or a
+`LocalDateTime` in the JVM's time zone) stops it there, to the millisecond, until the test ends, for a time window
+checked at its bounds (a script that compares `LocalTime.now()` with 22:00): `s.time().stopAt(day.atTime(21, 59, 59,
+999_000_000))`, then `advance(Duration.ofMillis(1))` to 22:00:00.000 (`StoppedClockScenarioTest`).
 
 Users who complete work items or decide need the authorization to: the baseline has midPoint's Approver and Reviewer
 roles to assign them. The acting user is given by name; the call runs logged in as that user, in a task owned by them.

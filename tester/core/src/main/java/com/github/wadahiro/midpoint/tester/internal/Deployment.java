@@ -878,6 +878,22 @@ public final class Deployment {
         TimeAgent.sync(clock);
     }
 
+    /**
+     * Stops midPoint's clock (and the JVM's wall clock, see {@code Time}) at the instant, to the millisecond: it says
+     * that instant until the reset; {@link #advanceTo} and {@code Time.advance} move the stopped clock. Holds the
+     * regular runs of recurring tasks as {@link #advanceTo} does. Fails if the instant is not in the future.
+     */
+    public void stopAt(Instant instant) {
+        Clock clock = clock();
+        if (!instant.isAfter(now())) {
+            throw new IllegalArgumentException("Cannot move the clock back: " + instant + " is not after " + now());
+        }
+        TaskSchedules.holdRegularRuns();
+        clock.override(instant.toEpochMilli());
+        clock.overrideOffset(null);
+        TimeAgent.sync(clock);
+    }
+
     private Clock clock() {
         return mp.harness.bean(Clock.class);
     }

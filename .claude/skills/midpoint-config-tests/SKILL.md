@@ -114,7 +114,8 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
   - tasks: `s.task(name).run()`; a task shipped suspended: `.resume().run()`
   - users: `s.user(n).exists().hasItem(path, v).hasRole(r).hasAccountOn(r).isEnabled()/isDisabled()/isArchived()`;
     `values(path)` for extension items
-  - time: `s.time().advance("P31D")`
+  - time: `s.time().advance("P31D")`; a script's time window at its bounds (`LocalTime.now()` against 22:00):
+    `s.time().stopAt(day.atTime(21, 59, 59, 999_000_000))` stops the clock there, to the millisecond
   - functions: `s.midpoint().script("lib.execute('f', [user: u])").variable("u", user).evaluate().value()`
   - files scripts read: `s.midpoint().files().map("/dir").write("/dir/in.tsv", text)`
   - mails `s.mails()`, HTTP `s.httpRequests()`, failures `s.expectFailure(() -> ...)`

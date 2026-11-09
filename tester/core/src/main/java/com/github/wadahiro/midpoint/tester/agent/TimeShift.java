@@ -1,5 +1,6 @@
 package com.github.wadahiro.midpoint.tester.agent;
 
+import java.time.Instant;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -17,19 +18,33 @@ import java.util.stream.Stream;
  * tester holds their regular runs until the reset ({@code TaskSchedules}): {@code runDueTasks} runs what has become
  * due by the shifted clock.
  *
+ * A stopped clock ({@link #stop}) says the same instant until it is set again: the instrumented sources return it
+ * as it is, to the millisecond.
+ *
  * Loaded by the bootstrap class loader (as {@link FileRemap}): the instrumented JDK classes call it. With no offset it
- * costs one volatile read. Not an API.
+ * costs two volatile reads. Not an API.
  */
 public final class TimeShift {
 
+    private static final long RUNNING = Long.MIN_VALUE;
+
     private static volatile long offset;
+
+    private static volatile long stoppedAt = RUNNING;
 
     private TimeShift() {
     }
 
-    /** Sets the offset in milliseconds (0: the real time). */
+    /** Sets the offset in milliseconds (0: the real time); the clock runs. */
     public static void set(long millis) {
+        stoppedAt = RUNNING;
         offset = millis;
+    }
+
+    /** Stops the clock at the instant (epoch milliseconds) until the next {@link #set} or {@code stop}. */
+    public static void stop(long millis) {
+        offset = 0;
+        stoppedAt = millis;
     }
 
     public static long offset() {
@@ -38,17 +53,43 @@ public final class TimeShift {
 
     /** The shifted wall clock, for callers that replace {@code System.currentTimeMillis()}. */
     public static long currentTimeMillis() {
-        return System.currentTimeMillis() + offset;
+        long stopped = stoppedAt;
+        return stopped != RUNNING ? stopped : System.currentTimeMillis() + offset;
     }
 
     /** The offset to add to a time just read from the JDK's wall clock: 0 when the reader is Quartz. */
     public static long shift() {
-        long o = offset;
+        long stopped = stoppedAt;
+        long o = stopped != RUNNING ? stopped - System.currentTimeMillis() : offset;
         if (o == 0) {
             return 0;
         }
+        return quartz() ? 0 : o;
+    }
+
+    /** A time just read from the JDK's wall clock (epoch milliseconds), shifted: as it is for Quartz. */
+    public static long millis(long real) {
+        long stopped = stoppedAt;
+        long o = offset;
+        if (stopped == RUNNING && o == 0 || quartz()) {
+            return real;
+        }
+        return stopped != RUNNING ? stopped : real + o;
+    }
+
+    /** An instant just read from the JDK's wall clock, shifted: as it is for Quartz. */
+    public static Instant instant(Instant real) {
+        long stopped = stoppedAt;
+        long o = offset;
+        if (stopped == RUNNING && o == 0 || quartz()) {
+            return real;
+        }
+        return stopped != RUNNING ? Instant.ofEpochMilli(stopped) : real.plusMillis(o);
+    }
+
+    private static boolean quartz() {
         String caller = StackWalker.getInstance().walk(FIRST_CALLER);
-        return caller != null && caller.startsWith("org.quartz.") ? 0 : o;
+        return caller != null && caller.startsWith("org.quartz.");
     }
 
     private static final Function<Stream<StackWalker.StackFrame>, String> FIRST_CALLER = new FirstCaller();

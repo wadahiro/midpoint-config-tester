@@ -3,12 +3,15 @@ package com.github.wadahiro.midpoint.configtester;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 /**
  * midPoint's clock in a scenario ({@link Scenario#time()}). Moving it moves midPoint's {@code Clock} and, by the same
  * offset, the JVM's wall clock as midPoint and scripts read it ({@code new Date()}, {@code Instant.now()},
- * {@code basic.currentDateTime()}...). It only moves forward; each test starts at the real time.
+ * {@code basic.currentDateTime()}...). It only moves forward; each test starts at the real time. It runs on from where
+ * it was moved to, unless it is stopped ({@link #stopAt}): then it says one instant, to the millisecond, for what
+ * depends on the exact time (a script's time window and its bounds).
  *
  * <p>Nothing runs by itself when the clock moves: {@link #runDue()} runs what midPoint's scheduler would have run by
  * then. From the first move on, recurring tasks run only through {@link #runDue()} or {@link ScenarioTask#run()}.</p>
@@ -16,6 +19,7 @@ import java.time.ZoneId;
  * <pre>{@code
  * s.time().advanceTo(LocalDate.of(2030, 4, 1)).runDue();   // the start date has come
  * s.time().advance("P30D").runDue();                        // thirty days later
+ * s.time().stopAt(LocalDate.of(2030, 4, 1).atTime(22, 0));  // exactly 22:00 from now on
  * }</pre>
  */
 public final class ScenarioTime {
@@ -55,6 +59,20 @@ public final class ScenarioTime {
     /** Moves the clock forward to the start of the day (in the JVM's time zone); fails if it is not in the future. */
     public ScenarioTime advanceTo(LocalDate date) {
         return advanceTo(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    /**
+     * Stops the clock at the instant: midPoint's clock and the JVM's wall clock say it, to the millisecond, until the
+     * test ends; {@link #advance} moves the stopped clock. Fails if the instant is not in the future.
+     */
+    public ScenarioTime stopAt(Instant instant) {
+        scenario.deployment().stopAt(instant);
+        return this;
+    }
+
+    /** Stops the clock at the date and time in the JVM's time zone (what {@code LocalTime.now()} then says). */
+    public ScenarioTime stopAt(LocalDateTime dateTime) {
+        return stopAt(dateTime.atZone(ZoneId.systemDefault()).toInstant());
     }
 
     /**

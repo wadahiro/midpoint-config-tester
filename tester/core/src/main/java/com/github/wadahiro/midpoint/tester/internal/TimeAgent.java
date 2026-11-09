@@ -229,8 +229,8 @@ final class TimeAgent {
     }
 
     /**
-     * Copies midPoint's clock override (its {@code overrideOffset}, the same field on every line) into the JDK shift;
-     * nothing when the JDK's clock is not shifted.
+     * Copies midPoint's clock override (its {@code override}, a stopped clock, and {@code overrideOffset}: the same
+     * fields on every line) into the JDK shift; nothing when the JDK's clock is not shifted.
      */
     static void sync(Object midPointClock) {
         if (failure != null) {
@@ -241,7 +241,15 @@ final class TimeAgent {
             Field field = midPointClock.getClass().getDeclaredField("overrideOffset");
             field.setAccessible(true);
             Object value = field.get(midPointClock);
-            TimeShift.set(value == null ? 0 : ((Number) value).longValue());
+            long offset = value == null ? 0 : ((Number) value).longValue();
+            Field fixed = midPointClock.getClass().getDeclaredField("override");
+            fixed.setAccessible(true);
+            Object stopped = fixed.get(midPointClock);
+            if (stopped != null) {
+                TimeShift.stop(((Number) stopped).longValue() + offset);
+            } else {
+                TimeShift.set(offset);
+            }
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot read midPoint's clock override", e);
         }
@@ -252,16 +260,17 @@ final class TimeAgent {
     static final class DateAdvice {
         @Advice.OnMethodExit
         static void exit(@Advice.FieldValue(value = "fastTime", readOnly = false) long fastTime) {
-            fastTime += TimeShift.shift();
+            fastTime = TimeShift.millis(fastTime);
         }
     }
 
     static final class CalendarAdvice {
         @Advice.OnMethodExit
         static void exit(@Advice.This Calendar calendar) {
-            long shift = TimeShift.shift();
-            if (shift != 0) {
-                calendar.setTimeInMillis(calendar.getTimeInMillis() + shift);
+            long real = calendar.getTimeInMillis();
+            long shifted = TimeShift.millis(real);
+            if (shifted != real) {
+                calendar.setTimeInMillis(shifted);
             }
         }
     }
@@ -269,9 +278,12 @@ final class TimeAgent {
     static final class ProvidedCalendarAdvice {
         @Advice.OnMethodExit
         static void exit(@Advice.Return Calendar calendar) {
-            long shift = TimeShift.shift();
-            if (shift != 0 && calendar != null) {
-                calendar.setTimeInMillis(calendar.getTimeInMillis() + shift);
+            if (calendar != null) {
+                long real = calendar.getTimeInMillis();
+                long shifted = TimeShift.millis(real);
+                if (shifted != real) {
+                    calendar.setTimeInMillis(shifted);
+                }
             }
         }
     }
@@ -279,17 +291,14 @@ final class TimeAgent {
     static final class MillisAdvice {
         @Advice.OnMethodExit
         static void exit(@Advice.Return(readOnly = false) long millis) {
-            millis += TimeShift.shift();
+            millis = TimeShift.millis(millis);
         }
     }
 
     static final class InstantAdvice {
         @Advice.OnMethodExit
         static void exit(@Advice.Return(readOnly = false) Instant instant) {
-            long shift = TimeShift.shift();
-            if (shift != 0) {
-                instant = instant.plusMillis(shift);
-            }
+            instant = TimeShift.instant(instant);
         }
     }
 }
