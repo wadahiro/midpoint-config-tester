@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    HR as deployed: a CSV export, one row per employee keyed by the employee number, with the start and end date of
+    the employment. 4.4 format (correlation and reactions in <synchronization>), which 4.0 and 4.8 read too. A new row
+    becomes a user, a deleted row deletes the user. The tester keeps the CSV connector and points it at a file of its
+    own (targets.HR in the manifest).
+-->
+<resource oid="20000000-0000-0000-0000-00000000a001"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>HR</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.connector.csv.CsvConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration>
+        <icfc:configurationProperties
+                xmlns:csv="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-csv/com.evolveum.polygon.connector.csv.CsvConnector">
+            <csv:filePath>/opt/midpoint/var/hr/employees.csv</csv:filePath>
+            <csv:uniqueAttribute>empno</csv:uniqueAttribute>
+            <csv:readOnly>true</csv:readOnly>
+        </icfc:configurationProperties>
+    </connectorConfiguration>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <objectClass>ri:AccountObjectClass</objectClass>
+            <attribute>
+                <ref>ri:empno</ref>
+                <inbound>
+                    <name>hr-name</name>
+                    <expression><script><code>'e' + input</code></script></expression>
+                    <target><path>name</path></target>
+                </inbound>
+                <inbound>
+                    <name>hr-employeeNumber</name>
+                    <target><path>employeeNumber</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:firstName</ref>
+                <inbound>
+                    <name>hr-givenName</name>
+                    <target><path>givenName</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:lastName</ref>
+                <inbound>
+                    <name>hr-familyName</name>
+                    <expression><script><code>input?.trim()?.toLowerCase()?.capitalize()</code></script></expression>
+                    <target><path>familyName</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:department</ref>
+                <inbound>
+                    <name>hr-costCenter</name>
+                    <target><path>costCenter</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <!-- the office, an extension item of users -->
+                <ref>ri:site</ref>
+                <inbound>
+                    <name>hr-site</name>
+                    <target><path>extension/site</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <!-- yyyy-MM-dd, the first day of the employment -->
+                <ref>ri:startDate</ref>
+                <inbound>
+                    <name>hr-validFrom</name>
+                    <expression><script><code>input ? basic.parseDateTime('yyyy-MM-dd', input) : null</code></script></expression>
+                    <target><path>activation/validFrom</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <!-- yyyy-MM-dd, the day after the last day of the employment (empty: open-ended) -->
+                <ref>ri:endDate</ref>
+                <inbound>
+                    <name>hr-validTo</name>
+                    <expression><script><code>input ? basic.parseDateTime('yyyy-MM-dd', input) : null</code></script></expression>
+                    <target><path>activation/validTo</path></target>
+                </inbound>
+            </attribute>
+        </objectType>
+    </schemaHandling>
+    <synchronization>
+        <objectSynchronization>
+            <kind>account</kind>
+            <intent>default</intent>
+            <focusType>UserType</focusType>
+            <enabled>true</enabled>
+            <correlation>
+                <q:equal>
+                    <q:path>employeeNumber</q:path>
+                    <expression>
+                        <script>
+                            <code>basic.getAttributeValue(shadow, 'empno')</code>
+                        </script>
+                    </expression>
+                </q:equal>
+            </correlation>
+            <reaction>
+                <situation>linked</situation>
+                <synchronize>true</synchronize>
+            </reaction>
+            <reaction>
+                <situation>unlinked</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#link</handlerUri></action>
+            </reaction>
+            <reaction>
+                <situation>unmatched</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#addFocus</handlerUri></action>
+            </reaction>
+            <reaction>
+                <situation>deleted</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#deleteFocus</handlerUri></action>
+            </reaction>
+        </objectSynchronization>
+    </synchronization>
+</resource>

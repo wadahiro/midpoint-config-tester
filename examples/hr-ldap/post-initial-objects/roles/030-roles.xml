@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Department roles: an LDAP account and the membership of the department's group -->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+         xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <role oid="20000000-0000-0000-0000-00000000c001">
+        <name>Dept Sales</name>
+        <inducement>
+            <construction>
+                <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+                <kind>account</kind>
+                <intent>default</intent>
+                <association>
+                    <ref>ri:group</ref>
+                    <outbound>
+                        <name>sales-group</name>
+                        <expression>
+                            <associationTargetSearch>
+                                <filter>
+                                    <q:equal>
+                                        <q:path>attributes/ri:dn</q:path>
+                                        <q:value>cn=sales,ou=groups,{{ldapBase}}</q:value>
+                                    </q:equal>
+                                </filter>
+                                <searchStrategy>onResourceIfNeeded</searchStrategy>
+                            </associationTargetSearch>
+                        </expression>
+                    </outbound>
+                </association>
+            </construction>
+        </inducement>
+    </role>
+    <role oid="20000000-0000-0000-0000-00000000c002">
+        <name>Dept IT</name>
+        <inducement>
+            <construction>
+                <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+                <kind>account</kind>
+                <intent>default</intent>
+                <association>
+                    <ref>ri:group</ref>
+                    <outbound>
+                        <name>it-group</name>
+                        <expression>
+                            <associationTargetSearch>
+                                <filter>
+                                    <q:equal>
+                                        <q:path>attributes/ri:dn</q:path>
+                                        <q:value>cn=it,ou=groups,{{ldapBase}}</q:value>
+                                    </q:equal>
+                                </filter>
+                                <searchStrategy>onResourceIfNeeded</searchStrategy>
+                            </associationTargetSearch>
+                        </expression>
+                    </outbound>
+                </association>
+            </construction>
+        </inducement>
+    </role>
+</objects>

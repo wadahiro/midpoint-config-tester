@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Authorizations · <!--TITLE--></title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #dcdcd6; --head: #efefea;
+  --yes: #1f7a4d; --yes-bg: #e3f2e9; --no: #8a8a84; --bad: #b3261e; --bad-bg: #fbe3e1;
+  --note: #8a5a00; --crit: #6d28d9; --focus: #2563eb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161614; --panel: #1f1f1c; --ink: #ecece6; --muted: #a3a39c; --line: #3a3a35; --head: #282825;
+    --yes: #6fd39d; --yes-bg: #173426; --no: #85857e; --bad: #ff8a80; --bad-bg: #3d1c1a;
+    --note: #f5c35a; --crit: #b79cff; --focus: #7aa7ff;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161614; --panel: #1f1f1c; --ink: #ecece6; --muted: #a3a39c; --line: #3a3a35; --head: #282825;
+  --yes: #6fd39d; --yes-bg: #173426; --no: #85857e; --bad: #ff8a80; --bad-bg: #3d1c1a;
+  --note: #f5c35a; --crit: #b79cff; --focus: #7aa7ff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif; }
+header { padding: 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+h1 { margin: 0 0 4px; font-size: 18px; }
+.meta { color: var(--muted); font-size: 12px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.bar button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.bar button[aria-pressed="true"] { border-color: var(--ink); background: var(--head); font-weight: 600; }
+.bar .count { font-variant-numeric: tabular-nums; font-weight: 600; margin-left: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+main { display: flex; align-items: flex-start; }
+.wrap { overflow: auto; max-height: calc(100vh - 150px); flex: 1; }
+table { border-collapse: separate; border-spacing: 0; }
+th, td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 3px 8px;
+  white-space: nowrap; }
+thead th { position: sticky; background: var(--head); z-index: 2; font-weight: 600; text-align: center; }
+thead tr:nth-child(1) th { top: 0; }
+thead tr:nth-child(2) th { top: 27px; }
+thead th.corner { left: 0; z-index: 3; text-align: left; }
+tbody th { position: sticky; left: 0; background: var(--panel); z-index: 1; text-align: left; font-weight: 400;
+  max-width: 460px; overflow: hidden; text-overflow: ellipsis; }
+tbody tr.group th { font-weight: 600; cursor: pointer; background: var(--head); }
+tbody tr.group td { background: var(--head); color: var(--muted); font-size: 12px; text-align: center; }
+.toggle { display: inline-block; width: 14px; color: var(--muted); }
+.check { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.crit { color: var(--crit); font-size: 11px; font-weight: 700; border: 1px solid var(--crit); border-radius: 4px;
+  padding: 0 4px; margin-left: 6px; }
+td.cell { text-align: center; min-width: 64px; cursor: pointer; font-variant-numeric: tabular-nums; position: relative; }
+td.noted::after { content: "※"; position: absolute; top: 1px; right: 3px; font-size: 10px; color: var(--note); }
+td.cell:focus { outline: 2px solid var(--focus); outline-offset: -2px; }
+td.y { color: var(--yes); background: var(--yes-bg); }
+td.n { color: var(--no); }
+td.na { color: var(--no); }
+td.bad { color: var(--bad); background: var(--bad-bg); font-weight: 700; }
+td.err { color: var(--bad); background: var(--bad-bg); font-weight: 700; }
+td.critical.y { box-shadow: inset 0 0 0 2px var(--crit); font-weight: 700; }
+.sum-bad { color: var(--bad); font-weight: 700; }
+aside { width: 380px; max-width: 45vw; border-left: 1px solid var(--line); background: var(--panel);
+  padding: 12px 16px; max-height: calc(100vh - 150px); overflow: auto; position: sticky; top: 0; }
+aside h2 { font-size: 15px; margin: 0 0 8px; }
+aside dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 12px; }
+aside dt { color: var(--muted); }
+aside dd { margin: 0; word-break: break-word; }
+aside pre { white-space: pre-wrap; font-size: 12px; background: var(--head); padding: 8px; border-radius: 6px; }
+.warnings { margin: 6px 0; padding: 6px 10px 6px 26px; background: var(--bad-bg); color: var(--ink);
+  border-radius: 6px; font-size: 12px; }
+.warnings li { margin: 2px 0; }
+.hidden { display: none; }
+@media (max-width: 800px) { main { flex-direction: column; } aside { width: 100%; max-width: none; } }
+@media print {
+  .bar, aside { display: none; } .wrap { max-height: none; overflow: visible; }
+  thead th, tbody th { position: static; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title"></h1>
+  <div class="meta" id="meta"></div>
+  <ul class="warnings hidden" id="warnings"></ul>
+  <div class="bar" role="toolbar" aria-label="Filters">
+    <button data-filter="all" aria-pressed="true">All rows<span class="count" id="c-all"></span></button>
+    <button data-filter="mismatch" aria-pressed="false">Not as expected<span class="count" id="c-mismatch"></span></button>
+    <button data-filter="noted" aria-pressed="false">With a note<span class="count" id="c-noted"></span></button>
+    <button data-filter="critical" aria-pressed="false">Critical allowed<span class="count" id="c-critical"></span></button>
+    <button data-filter="differ" aria-pressed="false">Personas differ<span class="count" id="c-differ"></span></button>
+    <button id="expand">Expand all</button>
+    <button id="collapse">Collapse all</button>
+  </div>
+  <div class="legend">
+    <span><b style="color:var(--yes)">✓</b> allowed, as expected</span>
+    <span><b style="color:var(--no)">·</b> denied, as expected</span>
+    <span><b style="color:var(--no)">–</b> not applicable (the target is not got)</span>
+    <span><b style="color:var(--bad)">✗</b> not as expected</span>
+    <span><b style="color:var(--note)">※</b> the rule has a note (select the cell)</span>
+    <span><b style="color:var(--bad)">!</b> the check failed</span>
+    <span><span class="crit">critical</span> a framed ✓ is a critical row allowed</span>
+  </div>
+</header>
+<main>
+  <div class="wrap"><table id="matrix"></table></div>
+  <aside id="detail" aria-live="polite"><h2>Details</h2><p class="meta">Select a cell.</p></aside>
+</main>
+<script id="data" type="application/json">/*MATRIX*/null</script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById('data').textContent);
+  var personas = data.personas, cells = data.cells;
+  var filter = 'all';
+  var collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem('authz-matrix-collapsed:' + data.file) || '{}'); } catch (e) {}
+
+  document.getElementById('title').textContent = 'Authorizations: ' + data.file;
+  document.getElementById('meta').textContent = 'midPoint ' + data.line + ' · ' + personas.length + ' personas · '
+      + Object.keys(cells).length + ' cells · generated ' + data.generated;
+
+  var warningList = document.getElementById('warnings');
+  (data.warnings || []).forEach(function (w) {
+    var li = document.createElement('li'); li.textContent = w; warningList.appendChild(li);
+  });
+  if ((data.warnings || []).length) { warningList.classList.remove('hidden'); }
+
+  function cell(p, path) { return cells[p.id + '|' + path]; }
+  function leaves(row, out) {
+    if (row.rows) { row.rows.forEach(function (r) { leaves(r, out); }); } else { out.push(row); }
+    return out;
+  }
+  function symbol(c) {
+    if (c.s === 'error') return '!';
+    if (c.s === 'mismatch') return '✗ ' + c.a;
+    if (c.a === '-') return '–';
+    return c.a === 'Y' ? '✓' : '·';
+  }
+  function cls(c, row) {
+    var k = c.s === 'error' ? 'err' : c.s === 'mismatch' ? 'bad' : c.a === '-' ? 'na' : c.a === 'Y' ? 'y' : 'n';
+    return 'cell ' + k + (row.critical ? ' critical' : '') + (c.ruleNote ? ' noted' : '');
+  }
+  function label(c) {
+    var text = c.s === 'mismatch' ? 'not as expected: expected ' + c.e + ', actual ' + c.a
+        : c.s === 'error' ? 'the check failed'
+        : c.a === '-' ? 'not applicable' : c.a === 'Y' ? 'allowed' : 'denied';
+    return text + (c.ruleNote ? ' (note: ' + c.ruleNote + ')' : '');
+  }
+  function rowState(row) {
+    var states = { mismatch: false, noted: false, critical: false, differ: false };
+    var values = {};
+    personas.forEach(function (p) {
+      var c = cell(p, row.path);
+      if (!c) return;
+      if (c.s === 'mismatch' || c.s === 'error') states.mismatch = true;
+      if (c.ruleNote) states.noted = true;
+      if (row.critical && c.a === 'Y') states.critical = true;
+      values[c.a === '-' ? 'N' : c.a] = true;
+    });
+    states.differ = Object.keys(values).length > 1;
+    return states;
+  }
+  function visible(row) {
+    if (filter === 'all') return true;
+    return rowState(row)[filter];
+  }
+
+  var counts = { all: 0, mismatch: 0, noted: 0, critical: 0, differ: 0 };
+  data.rows.forEach(function (r) {
+    leaves(r, []).forEach(function (row) {
+      counts.all++;
+      var st = rowState(row);
+      Object.keys(st).forEach(function (k) { if (st[k]) counts[k]++; });
+    });
+  });
+  Object.keys(counts).forEach(function (k) { document.getElementById('c-' + k).textContent = counts[k]; });
+
+  function render() {
+    var table = document.getElementById('matrix');
+    var html = '<thead>';
+    // persona groups, merged
+    var groups = [], last = null;
+    personas.forEach(function (p) {
+      var g = p.group || '';
+      if (last && last.name === g) { last.span++; } else { last = { name: g, span: 1 }; groups.push(last); }
+    });
+    html += '<tr><th class="corner" rowspan="2">Row</th>';
+    groups.forEach(function (g) { html += '<th colspan="' + g.span + '">' + esc(g.name) + '</th>'; });
+    html += '</tr><tr>';
+    personas.forEach(function (p) {
+      var title = (p.user ? 'user ' + p.user : 'roles: ' + (p.roles.join(', ') || '-')
+          + (p.orgs.length ? '; orgs: ' + p.orgs.join(', ') : '') + (p.archetype ? '; archetype: ' + p.archetype : ''));
+      html += '<th title="' + esc(title) + '">' + esc(p.label) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    data.rows.forEach(function (r) { html += rows(r, 0); });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.querySelectorAll('tr.group th').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var path = th.parentNode.getAttribute('data-path');
+        collapsed[path] = !collapsed[path];
+        save();
+        render();
+      });
+    });
+    table.querySelectorAll('td.cell').forEach(function (td) {
+      td.addEventListener('click', function () { show(td); });
+      td.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(td); } });
+    });
+  }
+  function rows(row, depth) {
+    var pad = 'padding-left:' + (8 + depth * 16) + 'px';
+    if (!row.rows) {
+      if (!visible(row)) return '';
+      // a page's row is its URL pattern: the URL checked is in the title and the details
+      var inline = row.label !== row.check && row.check.indexOf('open ') !== 0;
+      var out = '<tr><th style="' + pad + '" title="' + esc(row.check + ' (line ' + row.line + ')') + '">'
+          + esc(row.label) + (inline ? '<span class="check">' + esc(row.check) + '</span>' : '')
+          + (row.critical ? '<span class="crit">critical</span>' : '') + '</th>';
+      personas.forEach(function (p) {
+        var c = cell(p, row.path);
+        out += c ? '<td tabindex="0" class="' + cls(c, row) + '" data-p="' + esc(p.id) + '" data-r="' + esc(row.path)
+            + '" aria-label="' + esc(p.label + ', ' + row.label + ': ' + label(c)) + '">' + esc(symbol(c)) + '</td>'
+            : '<td></td>';
+      });
+      return out + '</tr>';
+    }
+    var inner = leaves(row, []).filter(visible);
+    if (!inner.length) return '';
+    var closed = !!collapsed[row.path];
+    var out = '<tr class="group" data-path="' + esc(row.path) + '"><th style="' + pad + '" aria-expanded="' + !closed
+        + '"><span class="toggle">' + (closed ? '▶' : '▼') + '</span>' + esc(row.label)
+        + (closed ? ' <span class="check">(' + inner.length + ' rows)</span>' : '') + '</th>';
+    personas.forEach(function (p) {
+      if (!closed) { out += '<td></td>'; return; }
+      // a collapsed group never hides what is not as expected
+      var y = 0, n = 0, bad = 0;
+      inner.forEach(function (r) {
+        var c = cell(p, r.path);
+        if (!c) return;
+        if (c.s === 'mismatch' || c.s === 'error') bad++;
+        if (c.a === 'Y') y++; else n++;
+      });
+      out += '<td>' + (bad ? '<span class="sum-bad">✗' + bad + '</span> ' : '')
+          + (y === inner.length ? 'all ✓' : n === inner.length ? 'all ·' : y + '/' + inner.length + ' ✓') + '</td>';
+    });
+    out += '</tr>';
+    if (closed) return out;
+    row.rows.forEach(function (r) { out += rows(r, depth + 1); });
+    return out;
+  }
+  function find(rows, path) {
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].path === path) return rows[i];
+      if (rows[i].rows) { var f = find(rows[i].rows, path); if (f) return f; }
+    }
+    return null;
+  }
+  function show(td) {
+    var p = personas.filter(function (x) { return x.id === td.getAttribute('data-p'); })[0];
+    var row = find(data.rows, td.getAttribute('data-r'));
+    var c = cell(p, row.path);
+    var html = '<h2>' + esc(p.label) + ' · ' + esc(row.label) + '</h2><dl>';
+    html += '<dt>Row</dt><dd>' + esc(row.path) + ' (line ' + row.line + ')</dd>';
+    html += '<dt>Check</dt><dd>' + esc(row.check) + (row.object ? ' on ' + esc(row.object) : '') + '</dd>';
+    html += '<dt>Expected</dt><dd>' + esc(c.e) + ' by ' + (c.rule ? 'rule ' + esc(c.rule) + ' (line ' + c.ruleLine + ')'
+        : 'the default') + '</dd>';
+    if (c.ruleNote) html += '<dt>Note</dt><dd>' + esc(c.ruleNote) + '</dd>';
+    html += '<dt>Actual</dt><dd>' + esc(c.a === '-' ? '– (not applicable)' : c.a === '!' ? 'the check failed' : c.a)
+        + '</dd>';
+    html += '<dt>Status</dt><dd>' + esc(c.s === 'match' ? 'as expected' : c.s === 'error' ? 'the check failed'
+        : 'not as expected') + '</dd>';
+    if (c.detail) html += '<dt>Detail</dt><dd>' + esc(c.detail) + '</dd>';
+    html += '<dt>Persona</dt><dd>' + esc(p.user ? 'user ' + p.user : 'roles ' + (p.roles.join(', ') || '-')
+        + (p.orgs.length ? ', orgs ' + p.orgs.join(', ') : '') + (p.archetype ? ', archetype ' + p.archetype : '')) + '</dd>';
+    html += '</dl><h2>Authorizations that applied</h2><pre>' + esc(p.authorizations || '') + '</pre>';
+    document.getElementById('detail').innerHTML = html;
+  }
+  function save() {
+    try { localStorage.setItem('authz-matrix-collapsed:' + data.file, JSON.stringify(collapsed)); } catch (e) {}
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+  }
+  function groupsOf(rows, out) {
+    rows.forEach(function (r) { if (r.rows) { out.push(r.path); groupsOf(r.rows, out); } });
+    return out;
+  }
+  document.querySelectorAll('.bar button[data-filter]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filter = b.getAttribute('data-filter');
+      document.querySelectorAll('.bar button[data-filter]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      render();
+    });
+  });
+  document.getElementById('expand').addEventListener('click', function () { collapsed = {}; save(); render(); });
+  document.getElementById('collapse').addEventListener('click', function () {
+    collapsed = {};
+    groupsOf(data.rows, []).forEach(function (g) { collapsed[g] = true; });
+    save(); render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

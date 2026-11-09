@@ -1,0 +1,21 @@
+<!-- A recurring recomputation of users every 2 seconds, loosely bound (a short interval binds tightly by default) -->
+<task oid="10000000-0000-0000-0000-00000000f023"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>recompute users often</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionState>runnable</executionState>
+    <binding>loose</binding>
+    <schedule>
+        <recurrence>recurring</recurrence>
+        <interval>2</interval>
+    </schedule>
+    <activity>
+        <work>
+            <recomputation>
+                <objects>
+                    <type>UserType</type>
+                </objects>
+            </recomputation>
+        </work>
+    </activity>
+</task>

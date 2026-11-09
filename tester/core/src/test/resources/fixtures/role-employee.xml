@@ -1,0 +1,18 @@
+<role oid="10000000-0000-0000-0000-00000000c001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>Employee</name>
+    <inducement>
+        <construction>
+            <resourceRef oid="10000000-0000-0000-0000-00000000a001" type="ResourceType"/>
+            <kind>account</kind>
+            <intent>default</intent>
+            <attribute>
+                <ref>ri:title</ref>
+                <outbound>
+                    <name>employee-title</name>
+                    <expression><script><code>thisObject.name.orig</code></script></expression>
+                </outbound>
+            </attribute>
+        </construction>
+    </inducement>
+</role>

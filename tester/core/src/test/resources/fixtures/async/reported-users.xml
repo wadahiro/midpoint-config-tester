@@ -1,0 +1,40 @@
+<!-- Users of report-users.xml and dashboard.xml -->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <org oid="10000000-0000-0000-0000-00000000d011">
+        <name>Tokyo</name>
+    </org>
+    <org oid="10000000-0000-0000-0000-00000000d012">
+        <name>Osaka</name>
+    </org>
+    <user>
+        <name>tanaka</name>
+        <givenName>Taro</givenName>
+        <familyName>Tanaka</familyName>
+        <employeeNumber>1</employeeNumber>
+        <costCenter>IT-100</costCenter>
+        <emailAddress>tanaka@example.com</emailAddress>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000d011" type="OrgType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000d012" type="OrgType"/>
+        </assignment>
+    </user>
+    <user>
+        <name>suzuki</name>
+        <givenName>Hanako</givenName>
+        <familyName>Suzuki</familyName>
+        <employeeNumber>2</employeeNumber>
+        <costCenter>HR-200</costCenter>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000d011" type="OrgType"/>
+        </assignment>
+    </user>
+    <user>
+        <name>test-user</name>
+        <givenName>Test</givenName>
+        <familyName>User</familyName>
+        <employeeNumber>3</employeeNumber>
+        <costCenter>IT-100</costCenter>
+    </user>
+</objects>

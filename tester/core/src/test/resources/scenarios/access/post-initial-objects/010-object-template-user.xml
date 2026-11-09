@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The user template: every user is an End user (midPoint's initial role, found by name) and has a full name. -->
+<objectTemplate oid="30000000-0000-0000-0000-00000000b001"
+                xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>Access user template</name>
+    <mapping>
+        <name>user-fullName</name>
+        <strength>strong</strength>
+        <source><path>givenName</path></source>
+        <source><path>familyName</path></source>
+        <expression><script><code>"$givenName $familyName"</code></script></expression>
+        <target><path>fullName</path></target>
+    </mapping>
+    <mapping>
+        <name>end-user</name>
+        <strength>strong</strength>
+        <expression>
+            <assignmentTargetSearch>
+                <targetType>RoleType</targetType>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>End user</q:value>
+                    </q:equal>
+                </filter>
+            </assignmentTargetSearch>
+        </expression>
+        <target><path>assignment</path></target>
+    </mapping>
+</objectTemplate>

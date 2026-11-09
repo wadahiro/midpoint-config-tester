@@ -1,0 +1,29 @@
+<objectTemplate oid="20000000-0000-0000-0000-00000000d002"
+                xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Clock template</name>
+    <!-- the JVM's clock: not midPoint's Clock, which the scanners and time constraints use -->
+    <mapping>
+        <name>end-date</name>
+        <source><path>costCenter</path></source>
+        <expression>
+            <script>
+                <code>
+                    costCenter == 'EXT' ? basic.fromNow('P90D')
+                            : com.evolveum.midpoint.prism.xml.XmlTypeConverter.createXMLGregorianCalendar(new Date())
+                </code>
+            </script>
+        </expression>
+        <target><path>activation/validTo</path></target>
+    </mapping>
+    <!-- midPoint's clock -->
+    <mapping>
+        <name>end-date-from-the-clock</name>
+        <source><path>costCenter</path></source>
+        <expression>
+            <script>
+                <code>costCenter == 'EXT' ? basic.addDuration(basic.currentDateTime(), 'P90D') : null</code>
+            </script>
+        </expression>
+        <target><path>activation/validFrom</path></target>
+    </mapping>
+</objectTemplate>

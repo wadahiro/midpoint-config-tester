@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Users of a cost center (all users without the parameter), with their roles: an object collection report (4.4+). -->
+<report oid="30000000-0000-0000-0000-00000000f020"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>Users by cost center</name>
+    <objectCollection>
+        <collection>
+            <filter>
+                <q:equal>
+                    <q:path>costCenter</q:path>
+                    <expression>
+                        <queryInterpretationOfNoValue>filterAll</queryInterpretationOfNoValue>
+                        <path>$costCenter</path>
+                    </expression>
+                </q:equal>
+            </filter>
+            <baseCollectionRef>
+                <collectionRef oid="30000000-0000-0000-0000-00000000f021" type="ObjectCollectionType"/>
+            </baseCollectionRef>
+        </collection>
+        <parameter>
+            <name>costCenter</name>
+            <type>string</type>
+        </parameter>
+        <view>
+            <type>UserType</type>
+            <column>
+                <name>name</name>
+                <path>name</path>
+                <display><label>User</label></display>
+            </column>
+            <column>
+                <name>fullName</name>
+                <path>fullName</path>
+                <display><label>Full name</label></display>
+                <previousColumn>name</previousColumn>
+            </column>
+            <column>
+                <name>costCenter</name>
+                <path>costCenter</path>
+                <display><label>Cost center</label></display>
+                <previousColumn>fullName</previousColumn>
+            </column>
+            <column>
+                <name>roles</name>
+                <display><label>Roles</label></display>
+                <previousColumn>costCenter</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>report.resolveRoles(object.assignment).collect { it.name.orig }.sort().join(', ')</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+        </view>
+    </objectCollection>
+</report>

@@ -1,0 +1,155 @@
+<!--
+    SCIM service as it would be deployed (SCIM 2 connector): Users named by userName, Groups named by displayName,
+    both identified by a generated id. A Group's members hold the ids of its Users; a User's groups is computed by the
+    service (read-only). The stored <schema> says which attributes are __NAME__ / __UID__; 4.0 format.
+
+    4.0 variant: midPoint 4.0 cannot read back a shadow with an attribute named id (the repository's parser takes it
+    for the container id, a number), so a working SCIM connector on 4.0 exposes the identifier under another name and
+    the definition exported from that midPoint says so: scimId.
+-->
+<resource oid="10000000-0000-0000-0000-00000000a003"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>SCIM</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.scim.ScimConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration
+            xmlns:scim="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-scim/com.evolveum.polygon.scim.ScimConnector">
+        <icfc:configurationProperties>
+            <scim:baseUrl>https://scim.example.com/v2</scim:baseUrl>
+        </icfc:configurationProperties>
+    </connectorConfiguration>
+    <!-- as midPoint stores it after the first connection test (trimmed to the attributes used here) -->
+    <schema>
+        <definition>
+            <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                        xmlns:ra="http://midpoint.evolveum.com/xml/ns/public/resource/annotation-3"
+                        xmlns:a="http://prism.evolveum.com/xml/ns/public/annotation-3"
+                        elementFormDefault="qualified"
+                        targetNamespace="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+                <xsd:import namespace="http://prism.evolveum.com/xml/ns/public/annotation-3"/>
+                <xsd:import namespace="http://midpoint.evolveum.com/xml/ns/public/resource/annotation-3"/>
+                <xsd:complexType name="User">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <ra:resourceObject/>
+                            <ra:identifier>ri:scimId</ra:identifier>
+                            <ra:secondaryIdentifier>ri:userName</ra:secondaryIdentifier>
+                            <ra:displayNameAttribute>ri:userName</ra:displayNameAttribute>
+                            <ra:namingAttribute>ri:userName</ra:namingAttribute>
+                            <ra:nativeObjectClass>User</ra:nativeObjectClass>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                    <xsd:sequence>
+                        <xsd:element name="userName" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:frameworkAttributeName>__NAME__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="scimId" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access><ra:frameworkAttributeName>__UID__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="displayName" type="xsd:string"/>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="groups" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:complexType>
+                <xsd:complexType name="Group">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <ra:resourceObject/>
+                            <ra:identifier>ri:scimId</ra:identifier>
+                            <ra:secondaryIdentifier>ri:displayName</ra:secondaryIdentifier>
+                            <ra:displayNameAttribute>ri:displayName</ra:displayNameAttribute>
+                            <ra:namingAttribute>ri:displayName</ra:namingAttribute>
+                            <ra:nativeObjectClass>Group</ra:nativeObjectClass>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                    <xsd:sequence>
+                        <xsd:element name="displayName" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:frameworkAttributeName>__NAME__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="scimId" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access><ra:frameworkAttributeName>__UID__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="members" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:schema>
+        </definition>
+    </schema>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <objectClass>ri:User</objectClass>
+            <attribute>
+                <ref>ri:userName</ref>
+                <outbound><source><path>name</path></source></outbound>
+                <inbound><target><path>name</path></target></inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:scimId</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:displayName</ref>
+                <outbound><source><path>fullName</path></source></outbound>
+                <inbound><target><path>fullName</path></target></inbound>
+            </attribute>
+            <attribute>
+                <!-- computed by the service: which groups the user is in -->
+                <ref>ri:groups</ref>
+                <inbound><target><path>organization</path></target></inbound>
+            </attribute>
+            <association>
+                <ref>ri:group</ref>
+                <kind>entitlement</kind>
+                <intent>group</intent>
+                <direction>objectToSubject</direction>
+                <associationAttribute>ri:members</associationAttribute>
+                <valueAttribute>ri:scimId</valueAttribute>
+            </association>
+        </objectType>
+        <objectType>
+            <kind>entitlement</kind>
+            <intent>group</intent>
+            <objectClass>ri:Group</objectClass>
+            <attribute>
+                <ref>ri:displayName</ref>
+            </attribute>
+        </objectType>
+    </schemaHandling>
+    <synchronization>
+        <objectSynchronization>
+            <kind>account</kind>
+            <intent>default</intent>
+            <enabled>true</enabled>
+            <correlation>
+                <q:equal>
+                    <q:path>name</q:path>
+                    <expression><path>$account/attributes/ri:userName</path></expression>
+                </q:equal>
+            </correlation>
+            <reaction>
+                <situation>linked</situation>
+                <synchronize>true</synchronize>
+            </reaction>
+            <reaction>
+                <situation>unlinked</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#link</handlerUri></action>
+            </reaction>
+            <reaction>
+                <situation>unmatched</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#addFocus</handlerUri></action>
+            </reaction>
+        </objectSynchronization>
+    </synchronization>
+</resource>

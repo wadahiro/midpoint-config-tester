@@ -1,0 +1,231 @@
+<!--
+    Directory as it would be deployed (LDAP connector): accounts are inetOrgPerson named by DN, groups are groupOfNames
+    whose member attribute holds the account DNs. 4.0 format, so the same file runs on every line. The stored <schema>
+    says which attributes name (ri:dn) and identify (ri:entryUUID) objects; nothing in the tester knows LDAP.
+-->
+<resource oid="10000000-0000-0000-0000-00000000a002"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>LDAP</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.connector.ldap.LdapConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration
+            xmlns:ldap="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-ldap/com.evolveum.polygon.connector.ldap.LdapConnector">
+        <icfc:configurationProperties>
+            <ldap:host>ldap.example.com</ldap:host>
+            <ldap:port>389</ldap:port>
+            <ldap:baseContext>dc=example,dc=com</ldap:baseContext>
+            <ldap:bindDn>cn=admin,dc=example,dc=com</ldap:bindDn>
+        </icfc:configurationProperties>
+        <!-- the server evaluates the filters (its own matching rules, e.g. case insensitive DNs): ConnId must not
+             filter the results again by case, as the 4.0 framework does unless told -->
+        <icfc:resultsHandlerConfiguration>
+            <icfc:enableNormalizingResultsHandler>false</icfc:enableNormalizingResultsHandler>
+            <icfc:enableFilteredResultsHandler>false</icfc:enableFilteredResultsHandler>
+            <icfc:enableAttributesToGetSearchResultsHandler>false</icfc:enableAttributesToGetSearchResultsHandler>
+        </icfc:resultsHandlerConfiguration>
+    </connectorConfiguration>
+    <!-- as midPoint stores it after the first connection test (trimmed to the attributes used here) -->
+    <schema>
+        <definition>
+            <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                        xmlns:ra="http://midpoint.evolveum.com/xml/ns/public/resource/annotation-3"
+                        xmlns:a="http://prism.evolveum.com/xml/ns/public/annotation-3"
+                        elementFormDefault="qualified"
+                        targetNamespace="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+                <xsd:import namespace="http://prism.evolveum.com/xml/ns/public/annotation-3"/>
+                <xsd:import namespace="http://midpoint.evolveum.com/xml/ns/public/resource/annotation-3"/>
+                <xsd:complexType name="inetOrgPerson">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <ra:resourceObject/>
+                            <ra:identifier>ri:entryUUID</ra:identifier>
+                            <ra:secondaryIdentifier>ri:dn</ra:secondaryIdentifier>
+                            <ra:displayNameAttribute>ri:dn</ra:displayNameAttribute>
+                            <ra:namingAttribute>ri:dn</ra:namingAttribute>
+                            <ra:nativeObjectClass>inetOrgPerson</ra:nativeObjectClass>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                    <xsd:sequence>
+                        <xsd:element name="dn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>dn</ra:nativeAttributeName><ra:frameworkAttributeName>__NAME__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="entryUUID" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access><ra:nativeAttributeName>entryUUID</ra:nativeAttributeName><ra:frameworkAttributeName>__UID__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="uid" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>uid</ra:nativeAttributeName><ra:frameworkAttributeName>uid</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="cn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>cn</ra:nativeAttributeName><ra:frameworkAttributeName>cn</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="sn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>sn</ra:nativeAttributeName><ra:frameworkAttributeName>sn</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="mail" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>mail</ra:nativeAttributeName><ra:frameworkAttributeName>mail</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:complexType>
+                <xsd:complexType name="groupOfNames">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <ra:resourceObject/>
+                            <ra:identifier>ri:entryUUID</ra:identifier>
+                            <ra:secondaryIdentifier>ri:dn</ra:secondaryIdentifier>
+                            <ra:displayNameAttribute>ri:dn</ra:displayNameAttribute>
+                            <ra:namingAttribute>ri:dn</ra:namingAttribute>
+                            <ra:nativeObjectClass>groupOfNames</ra:nativeObjectClass>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                    <xsd:sequence>
+                        <xsd:element name="dn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>dn</ra:nativeAttributeName><ra:frameworkAttributeName>__NAME__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="entryUUID" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access><ra:nativeAttributeName>entryUUID</ra:nativeAttributeName><ra:frameworkAttributeName>__UID__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="cn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>cn</ra:nativeAttributeName><ra:frameworkAttributeName>cn</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="member" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>member</ra:nativeAttributeName><ra:frameworkAttributeName>member</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:complexType>
+                <xsd:complexType name="organizationalRole">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <ra:resourceObject/>
+                            <ra:identifier>ri:entryUUID</ra:identifier>
+                            <ra:secondaryIdentifier>ri:dn</ra:secondaryIdentifier>
+                            <ra:displayNameAttribute>ri:dn</ra:displayNameAttribute>
+                            <ra:namingAttribute>ri:dn</ra:namingAttribute>
+                            <ra:nativeObjectClass>organizationalRole</ra:nativeObjectClass>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                    <xsd:sequence>
+                        <xsd:element name="dn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>dn</ra:nativeAttributeName><ra:frameworkAttributeName>__NAME__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element minOccurs="0" name="entryUUID" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><a:access>read</a:access><ra:nativeAttributeName>entryUUID</ra:nativeAttributeName><ra:frameworkAttributeName>__UID__</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="cn" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>cn</ra:nativeAttributeName><ra:frameworkAttributeName>cn</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                        <xsd:element maxOccurs="unbounded" minOccurs="0" name="roleOccupant" type="xsd:string">
+                            <xsd:annotation><xsd:appinfo><ra:nativeAttributeName>roleOccupant</ra:nativeAttributeName><ra:frameworkAttributeName>roleOccupant</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:schema>
+        </definition>
+    </schema>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <objectClass>ri:inetOrgPerson</objectClass>
+            <attribute>
+                <ref>ri:dn</ref>
+                <outbound>
+                    <source><path>name</path></source>
+                    <expression><script><code>'uid=' + name + ',ou=people,dc=example,dc=com'</code></script></expression>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:entryUUID</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:uid</ref>
+                <outbound><strength>strong</strength><source><path>name</path></source></outbound>
+                <inbound><target><path>name</path></target></inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:cn</ref>
+                <outbound><source><path>fullName</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:sn</ref>
+                <outbound><source><path>familyName</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:mail</ref>
+                <outbound>
+                    <strength>strong</strength>
+                    <source><path>name</path></source>
+                    <expression><script><code>name + '@example.com'</code></script></expression>
+                </outbound>
+            </attribute>
+            <association>
+                <ref>ri:group</ref>
+                <kind>entitlement</kind>
+                <intent>group</intent>
+                <direction>objectToSubject</direction>
+                <associationAttribute>ri:member</associationAttribute>
+                <valueAttribute>ri:dn</valueAttribute>
+            </association>
+        </objectType>
+        <objectType>
+            <kind>entitlement</kind>
+            <intent>group</intent>
+            <objectClass>ri:groupOfNames</objectClass>
+            <attribute>
+                <ref>ri:dn</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:cn</ref>
+            </attribute>
+        </objectType>
+        <objectType>
+            <kind>entitlement</kind>
+            <intent>role</intent>
+            <objectClass>ri:organizationalRole</objectClass>
+            <attribute>
+                <ref>ri:dn</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:cn</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:roleOccupant</ref>
+                <limitations><maxOccurs>unbounded</maxOccurs></limitations>
+            </attribute>
+        </objectType>
+    </schemaHandling>
+    <synchronization>
+        <objectSynchronization>
+            <kind>account</kind>
+            <intent>default</intent>
+            <enabled>true</enabled>
+            <correlation>
+                <q:equal>
+                    <q:path>name</q:path>
+                    <expression><path>$account/attributes/ri:uid</path></expression>
+                </q:equal>
+            </correlation>
+            <reaction>
+                <situation>linked</situation>
+                <synchronize>true</synchronize>
+            </reaction>
+            <reaction>
+                <situation>unlinked</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#link</handlerUri></action>
+            </reaction>
+            <reaction>
+                <situation>unmatched</situation>
+                <action><handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/action-3#addFocus</handlerUri></action>
+            </reaction>
+        </objectSynchronization>
+    </synchronization>
+</resource>

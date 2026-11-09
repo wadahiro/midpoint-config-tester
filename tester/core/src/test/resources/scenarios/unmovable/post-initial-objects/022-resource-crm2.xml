@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- No stored schema and no icfs:name in schemaHandling: the mirror cannot tell which attribute names accounts -->
+<resource oid="30000000-0000-0000-0000-00000000d002" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>CRM 2</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <equal xmlns="http://prism.evolveum.com/xml/ns/public/query-3">
+                <path>connectorType</path>
+                <value>com.example.CrmConnector</value>
+            </equal>
+        </filter>
+    </connectorRef>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <objectClass>ri:AccountObjectClass</objectClass>
+            <attribute><ref>ri:login</ref></attribute>
+        </objectType>
+    </schemaHandling>
+</resource>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-base-4.8</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../base-4.8/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>midpoint-config-tester-4.10</artifactId>
+    <name>midPoint Config Tester for midPoint 4.10</name>
+
+    <properties>
+        <tester.names.skip>false</tester.names.skip>
+        <midpoint.version>${midpoint410.version}</midpoint.version>
+    </properties>
+</project>

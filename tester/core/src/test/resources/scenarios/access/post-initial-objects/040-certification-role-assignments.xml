@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Certification of the assignments of the requestable roles, reviewed by the Security officer; automated
+    remediation removes what is revoked.
+-->
+<accessCertificationDefinition oid="30000000-0000-0000-0000-00000000f010"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <name>Role assignments</name>
+    <handlerUri>http://midpoint.evolveum.com/xml/ns/public/certification/handlers-3#direct-assignment</handlerUri>
+    <scopeDefinition xsi:type="AccessCertificationAssignmentReviewScopeType">
+        <objectType>UserType</objectType>
+        <itemSelectionExpression>
+            <script>
+                <code>
+                    // the requestable roles, with the default relation (an owner is not certified here)
+                    def ref = assignment?.targetRef
+                    ref != null &amp;&amp; ref.oid in ['30000000-0000-0000-0000-00000000c001',
+                            '30000000-0000-0000-0000-00000000c002'] &amp;&amp;
+                        (ref.relation == null || ref.relation.localPart == 'default')
+                </code>
+            </script>
+        </itemSelectionExpression>
+    </scopeDefinition>
+    <remediationDefinition>
+        <style>automated</style>
+    </remediationDefinition>
+    <stageDefinition>
+        <number>1</number>
+        <name>security review</name>
+        <reviewerSpecification>
+            <defaultReviewerRef oid="30000000-0000-0000-0000-00000000e004" type="UserType"/>
+        </reviewerSpecification>
+    </stageDefinition>
+</accessCertificationDefinition>

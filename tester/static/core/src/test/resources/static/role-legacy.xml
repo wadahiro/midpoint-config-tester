@@ -1,0 +1,50 @@
+<role oid="20000000-0000-0000-0000-00000000c001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <!-- scripts written for midPoint 4.4: ResourceShadowDiscriminator is gone in 4.8 -->
+    <name>Legacy</name>
+    <inducement>
+        <construction>
+            <resourceRef oid="20000000-0000-0000-0000-00000000a001" type="ResourceType"/>
+            <kind>account</kind>
+            <attribute>
+                <ref>ri:dn</ref>
+                <outbound>
+                    <name>legacy-dn</name>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.ResourceShadowDiscriminator
+                                ResourceShadowDiscriminator rsd = null
+                                'uid=' + focus?.name
+                            </code>
+                        </script>
+                    </expression>
+                </outbound>
+            </attribute>
+        </construction>
+    </inducement>
+    <inducement>
+        <targetRef oid="20000000-0000-0000-0000-00000000c002" type="RoleType"/>
+        <condition>
+            <expression>
+                <script>
+                    <!-- model-impl is on the classpath: the 4.8 name of the Spring holder resolves -->
+                    <code>
+                        import com.evolveum.midpoint.model.impl.expr.SpringApplicationContextHolder
+                        SpringApplicationContextHolder.getApplicationContext() != null
+                    </code>
+                </script>
+            </expression>
+        </condition>
+    </inducement>
+    <inducement>
+        <targetRef oid="20000000-0000-0000-0000-00000000c003" type="RoleType"/>
+        <condition>
+            <expression>
+                <script>
+                    <code>if (true {</code>
+                </script>
+            </expression>
+        </condition>
+    </inducement>
+</role>

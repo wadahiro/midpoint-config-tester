@@ -1,0 +1,25 @@
+<!-- System configuration of the golden results tests (version 2) with a global policy rule: the configuration's own
+     system configuration (OID of the baseline's) is tested configuration, its places are compared -->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>SystemConfiguration</name>
+    <globalPolicyRule>
+        <name>family-name-check</name>
+        <focusSelector>
+            <type>UserType</type>
+        </focusSelector>
+        <policyConstraints>
+            <objectState>
+                <name>family-name-state</name>
+                <expression>
+                    <script>
+                        <code>object?.familyName?.orig == 'Doe'</code>
+                    </script>
+                </expression>
+            </objectState>
+        </policyConstraints>
+    </globalPolicyRule>
+    <defaultObjectPolicyConfiguration>
+        <type>UserType</type>
+        <objectTemplateRef oid="10000000-0000-0000-0000-00000000b201"/>
+    </defaultObjectPolicyConfiguration>
+</systemConfiguration>

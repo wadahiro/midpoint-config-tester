@@ -1,0 +1,4 @@
+<role oid="20000000-0000-0000-0000-00000000c004" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Typo</name>
+    <descripton>misspelled element</descripton>
+</role>

@@ -1,0 +1,16 @@
+<!-- A single-run recomputation of users (runs once when imported, again with each mp.runTask) -->
+<task oid="10000000-0000-0000-0000-00000000f021"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>recompute users once</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionState>runnable</executionState>
+    <activity>
+        <work>
+            <recomputation>
+                <objects>
+                    <type>UserType</type>
+                </objects>
+            </recomputation>
+        </work>
+    </activity>
+</task>

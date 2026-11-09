@@ -1,0 +1,8 @@
+# The access deployment with names that no longer match it (DeploymentLoadTest): a hand-written Names class stands
+# for names generated from an older configuration. Outside scenarios/, so the generator does not overwrite it.
+config:
+  dirs: [../scenarios/access/post-initial-objects]
+  overlays:
+    "4.0": { remove: [050-report-users.xml] }
+tasks: { recurring: held }
+names: { package: com.github.wadahiro.midpoint.configtester.sample.stale }

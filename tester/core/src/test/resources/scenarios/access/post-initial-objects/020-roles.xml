@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Roles users request (requestable: the End user role lets them request these for themselves).
+    - Privileged Access: two approval stages, with notifications (000-system-configuration.xml). The role's owners
+      have five days; a day before the deadline they are reminded, at the deadline the request is escalated to the
+      owner's deputy. Then the Security officers: the group is expanded when the work item is created
+      (groupExpansion onWorkItemCreation), so every member has a work item of their own, assigned to them and mailed;
+      the first decision counts (firstDecides), the other members' work items are closed. Without the expansion the
+      work item would be offered to the group to claim: no assignee, and midPoint mails only assignees.
+    - Auditor: no approval; it excludes Accountant (segregation of duties, enforced).
+    - Accountant: not requestable; only an administrator assigns it.
+    - Help desk: what a help desk sees and changes in the GUI. The users list and a user's details open; a search
+      finds the users of the IT cost center (and the help desk user themself, as an End user); their form shows the
+      contact items and lets the help desk change the telephone number only.
+    - Department manager: the managers of an org, who get it from the org (025-orgs.xml), read its members, and
+      assign them the requestable
+      roles and unassign these (with the default relation only: not as an owner). midPoint authorizes an assignment
+      in two phases: the request (#assign, with the target and the relation), then its execution (#modify).
+      Its adminGuiConfiguration, which midPoint merges after the system configuration's: a "My department" view of
+      the users, the managers' time zone, and the org tree's "expand all" hidden (hidden wins over visible); and
+      #usersView, which the side menu asks for the users' views.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <role oid="30000000-0000-0000-0000-00000000c001">
+        <name>Privileged Access</name>
+        <requestable>true</requestable>
+        <assignment>
+            <policyRule>
+                <name>approve-privileged-access</name>
+                <policyConstraints>
+                    <assignment>
+                        <operation>add</operation>
+                    </assignment>
+                </policyConstraints>
+                <policyActions>
+                    <approval>
+                        <approvalSchema>
+                            <stage>
+                                <number>1</number>
+                                <name>role owner</name>
+                                <duration>P5D</duration>
+                                <approverRelation>org:owner</approverRelation>
+                                <timedActions>
+                                    <name>escalate-to-the-deputy</name>
+                                    <!-- no time: at the deadline -->
+                                    <actions>
+                                        <escalate>
+                                            <approverRef oid="30000000-0000-0000-0000-00000000e005" type="UserType"/>
+                                            <duration>P3D</duration>
+                                            <delegationMethod>replaceAssignees</delegationMethod>
+                                            <notifyBeforeAction>P1D</notifyBeforeAction>
+                                            <escalationLevelName>deputy</escalationLevelName>
+                                        </escalate>
+                                    </actions>
+                                </timedActions>
+                            </stage>
+                            <stage>
+                                <number>2</number>
+                                <name>security</name>
+                                <approverRef oid="30000000-0000-0000-0000-00000000c010" type="RoleType"/>
+                                <evaluationStrategy>firstDecides</evaluationStrategy>
+                                <groupExpansion>onWorkItemCreation</groupExpansion>
+                            </stage>
+                        </approvalSchema>
+                    </approval>
+                </policyActions>
+            </policyRule>
+        </assignment>
+    </role>
+    <role oid="30000000-0000-0000-0000-00000000c002">
+        <name>Auditor</name>
+        <requestable>true</requestable>
+        <assignment>
+            <policyRule>
+                <name>auditor-excludes-accountant</name>
+                <policyConstraints>
+                    <exclusion>
+                        <targetRef oid="30000000-0000-0000-0000-00000000c003" type="RoleType"/>
+                    </exclusion>
+                </policyConstraints>
+                <policyActions>
+                    <enforcement/>
+                </policyActions>
+            </policyRule>
+        </assignment>
+    </role>
+    <role oid="30000000-0000-0000-0000-00000000c003">
+        <name>Accountant</name>
+    </role>
+    <role oid="30000000-0000-0000-0000-00000000c020">
+        <name>Help desk</name>
+        <authorization>
+            <name>gui-users</name>
+            <!-- the users list and a user's details (/admin/user/<oid>, which also opens the new user page) -->
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#users</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#userDetails</action>
+        </authorization>
+        <authorization>
+            <name>read-it-users</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>UserType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>costCenter</q:path>
+                        <q:value>IT</q:value>
+                    </q:equal>
+                </filter>
+            </object>
+            <item>name</item>
+            <item>givenName</item>
+            <item>familyName</item>
+            <item>fullName</item>
+            <item>emailAddress</item>
+            <item>telephoneNumber</item>
+            <item>costCenter</item>
+        </authorization>
+        <authorization>
+            <name>modify-it-users-telephone</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>UserType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>costCenter</q:path>
+                        <q:value>IT</q:value>
+                    </q:equal>
+                </filter>
+            </object>
+            <item>telephoneNumber</item>
+        </authorization>
+    </role>
+    <role oid="30000000-0000-0000-0000-00000000c030">
+        <name>Department manager</name>
+        <authorization>
+            <name>read-members</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>UserType</type>
+                <orgRelation>
+                    <subjectRelation>org:manager</subjectRelation>
+                </orgRelation>
+            </object>
+        </authorization>
+        <authorization>
+            <name>assign-members-requestable-roles</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <phase>request</phase>
+            <object>
+                <type>UserType</type>
+                <orgRelation>
+                    <subjectRelation>org:manager</subjectRelation>
+                </orgRelation>
+            </object>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <relation>org:default</relation>
+        </authorization>
+        <authorization>
+            <name>execute-members-modify</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <type>UserType</type>
+                <orgRelation>
+                    <subjectRelation>org:manager</subjectRelation>
+                </orgRelation>
+            </object>
+        </authorization>
+        <authorization>
+            <name>gui-user-views</name>
+            <description>The side menu's views of the users (and the users list, which also allows #usersView)</description>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersView</action>
+        </authorization>
+        <adminGuiConfiguration>
+            <defaultTimezone>Asia/Tokyo</defaultTimezone>
+            <objectCollectionViews>
+                <objectCollectionView>
+                    <identifier>department-members</identifier>
+                    <display>
+                        <label>My department</label>
+                    </display>
+                    <type>UserType</type>
+                    <collection>
+                        <collectionRef oid="30000000-0000-0000-0000-00000000f021" type="ObjectCollectionType"/>
+                    </collection>
+                </objectCollectionView>
+            </objectCollectionViews>
+            <feature>
+                <identifier>orgTreeExpandAll</identifier>
+                <visibility>hidden</visibility>
+            </feature>
+        </adminGuiConfiguration>
+    </role>
+    <role oid="30000000-0000-0000-0000-00000000c010">
+        <name>Security officers</name>
+    </role>
+</objects>

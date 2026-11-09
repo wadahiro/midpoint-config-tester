@@ -1,0 +1,15 @@
+# An example config repository (README, "Getting started"): HR (a CSV export) feeds users, the user template gives
+# them the role of their department from their start date on, the roles provision LDAP accounts and group memberships,
+# new users get a welcome mail. post-initial-objects/ is what goes to midpoint.home/post-initial-objects.
+config:
+  dirs: [post-initial-objects]
+  properties:
+    ldapBase: dc=example,dc=com
+    mailDomain: example.com
+targets:
+  HR:   { connector: csv }
+  LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
+mail: { redirect: true }
+tasks: { recurring: held }
+# typed names for the tests: Resources.HR, Roles.DEPT_SALES, HrAttrs.FIRST_NAME, LdapAttrs.OU, Tasks.RECONCILE_HR...
+names: { package: com.example.idm.names }

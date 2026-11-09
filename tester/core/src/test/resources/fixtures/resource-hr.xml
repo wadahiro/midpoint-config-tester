@@ -1,0 +1,111 @@
+<!--
+    HR system as it would be deployed (CSV connector, 4.8 format). The tests import it with importResource, which swaps
+    the connector for the in-memory mirror connector; without a stored <schema>, the mirror's schema comes from the
+    attributes schemaHandling uses.
+-->
+<resource oid="10000000-0000-0000-0000-00000000a001"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfs="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/resource-schema-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>HR</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.connector.csv.CsvConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration>
+        <icfc:configurationProperties
+                xmlns:csv="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-csv/com.evolveum.polygon.connector.csv.CsvConnector">
+            <csv:filePath>/opt/midpoint/var/hr.csv</csv:filePath>
+            <csv:uniqueAttribute>login</csv:uniqueAttribute>
+        </icfc:configurationProperties>
+    </connectorConfiguration>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <delineation>
+                <objectClass>ri:AccountObjectClass</objectClass>
+            </delineation>
+            <focus>
+                <type>UserType</type>
+            </focus>
+            <attribute>
+                <ref>icfs:name</ref>
+                <outbound>
+                    <name>hr-name-out</name>
+                    <source><path>name</path></source>
+                </outbound>
+                <inbound>
+                    <name>hr-name</name>
+                    <target><path>name</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:fullname</ref>
+                <inbound>
+                    <name>hr-givenName</name>
+                    <expression><script><code>input?.trim()?.split(/\s+/)?.getAt(0)</code></script></expression>
+                    <target><path>givenName</path></target>
+                </inbound>
+                <inbound>
+                    <name>hr-familyName</name>
+                    <expression>
+                        <script>
+                            <code>
+                                def last = input?.trim()?.split(/\s+/)?.getAt(1)
+                                last ? last.toLowerCase().capitalize() : null
+                            </code>
+                        </script>
+                    </expression>
+                    <target><path>familyName</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:location</ref>
+                <outbound>
+                    <name>hr-location</name>
+                    <strength>strong</strength>
+                    <source><path>locality</path></source>
+                    <expression><script><code>locality?.orig?.toUpperCase()</code></script></expression>
+                </outbound>
+            </attribute>
+            <attribute>
+                <!-- set by role constructions; listed so that the attribute is part of the (mirror) schema -->
+                <ref>ri:title</ref>
+            </attribute>
+            <correlation>
+                <correlators>
+                    <filter>
+                        <ownerFilter>
+                            <q:equal>
+                                <q:path>name</q:path>
+                                <expression><path>$projection/attributes/icfs:name</path></expression>
+                            </q:equal>
+                        </ownerFilter>
+                    </filter>
+                </correlators>
+            </correlation>
+            <synchronization>
+                <reaction>
+                    <situation>linked</situation>
+                    <actions><synchronize/></actions>
+                </reaction>
+                <reaction>
+                    <situation>unlinked</situation>
+                    <actions><link/></actions>
+                </reaction>
+                <reaction>
+                    <situation>unmatched</situation>
+                    <actions><addFocus/></actions>
+                </reaction>
+            </synchronization>
+        </objectType>
+    </schemaHandling>
+</resource>

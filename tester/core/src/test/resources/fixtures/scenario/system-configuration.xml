@@ -1,0 +1,8 @@
+<!-- The scenario's users get the scenario's template (fixtures/scenario/object-template-user.xml) -->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>SystemConfiguration</name>
+    <defaultObjectPolicyConfiguration>
+        <type>UserType</type>
+        <objectTemplateRef oid="10000000-0000-0000-0000-00000000b501"/>
+    </defaultObjectPolicyConfiguration>
+</systemConfiguration>

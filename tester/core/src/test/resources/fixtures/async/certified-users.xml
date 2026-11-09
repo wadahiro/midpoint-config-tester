@@ -1,0 +1,40 @@
+<!-- Users and roles certified by certification-role-assignments.xml -->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-00000000c030">
+        <name>Plain</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-00000000c031">
+        <name>Auditor</name>
+        <inducement>
+            <focusMappings>
+                <mapping>
+                    <name>auditor-description</name>
+                    <strength>strong</strength>
+                    <expression>
+                        <value>auditor</value>
+                    </expression>
+                    <target>
+                        <path>description</path>
+                    </target>
+                </mapping>
+            </focusMappings>
+        </inducement>
+    </role>
+    <user oid="10000000-0000-0000-0000-00000000a011">
+        <name>kate</name>
+        <costCenter>IT-100</costCenter>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000c030" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000c031" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-00000000a012">
+        <name>ext</name>
+        <costCenter>EXT</costCenter>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-00000000c030" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

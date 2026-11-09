@@ -1,0 +1,17 @@
+<role oid="20000000-0000-0000-0000-00000000c003" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:q="http://midpoint.evolveum.com/xml/ns/public/query-3">
+    <name>Searcher</name>
+    <inducement>
+        <targetRef type="OrgType">
+            <!-- an evaluator of a later line -->
+            <filter>
+                <q:equal>
+                    <q:path>name</q:path>
+                    <expression>
+                        <shadowOwnerReferenceSearch/>
+                    </expression>
+                </q:equal>
+            </filter>
+        </targetRef>
+    </inducement>
+</role>

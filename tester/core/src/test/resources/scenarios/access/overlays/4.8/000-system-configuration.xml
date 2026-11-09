@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The system configuration for 4.8: the same, with the mail server as a named transport (messageTransportConfiguration) -->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>SystemConfiguration</name>
+    <description>Access deployment</description>
+    <globalSecurityPolicyRef oid="00000000-0000-0000-0000-000000000120"/>
+    <defaultObjectPolicyConfiguration>
+        <type>UserType</type>
+        <objectTemplateRef oid="30000000-0000-0000-0000-00000000b001"/>
+    </defaultObjectPolicyConfiguration>
+    <notificationConfiguration>
+        <handler>
+            <category>workflowProcessEvent</category>
+            <operation>add</operation>
+            <simpleWorkflowNotifier>
+                <name>request-submitted</name>
+                <recipientExpression>
+                    <script><code>requester?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>'Request submitted: ' + midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig</code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        "Your request for $role for ${requestee?.fullName?.orig} waits for approval."
+                    </code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+        <handler>
+            <category>workItemLifecycleEvent</category>
+            <operation>add</operation>
+            <simpleWorkflowNotifier>
+                <name>approval-needed</name>
+                <recipientExpression>
+                    <script><code>assignee?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        "Approval needed: $role for ${requestee?.fullName?.orig}"
+                    </code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        "Dear ${assignee?.fullName?.orig},\n\n${requester?.fullName?.orig} requests $role for " +
+                            "${requestee?.fullName?.orig} (${requestee?.name?.orig}). Stage ${workItem.stageNumber} waits for your decision."
+                    </code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+        <handler>
+            <category>workItemAllocationEvent</category>
+            <operation>modify</operation>
+            <simpleWorkflowNotifier>
+                <name>deadline-reminder</name>
+                <recipientExpression>
+                    <script><code>assignee?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        "Reminder: $role for ${requestee?.fullName?.orig}"
+                    </code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>
+                        "Dear ${assignee?.fullName?.orig},\n\nthe request of ${requestee?.fullName?.orig} still waits for " +
+                            "your decision. It will be escalated in ${event.timeBefore} (deadline ${workItem.deadline})."
+                    </code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+        <handler>
+            <category>workItemAllocationEvent</category>
+            <operation>add</operation>
+            <expressionFilter>
+                <script><code>event.operationKind?.value() == 'escalate'</code></script>
+            </expressionFilter>
+            <simpleWorkflowNotifier>
+                <name>escalated</name>
+                <recipientExpression>
+                    <script><code>assignee?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        "Escalated to you: $role for ${requestee?.fullName?.orig}"
+                    </code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>
+                        "Dear ${assignee?.fullName?.orig},\n\nthe request of ${requestee?.fullName?.orig} was not decided " +
+                            "by its deadline. It is escalated to you (level ${workItem.escalationLevel?.number}, " +
+                            "${workItem.escalationLevel?.name})."
+                    </code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+        <handler>
+            <category>workflowProcessEvent</category>
+            <operation>delete</operation>
+            <simpleWorkflowNotifier>
+                <name>request-decided</name>
+                <recipientExpression>
+                    <script><code>requester?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        (event.approved ? 'Request approved: ' : 'Request rejected: ') + role
+                    </code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>
+                        def role = midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig
+                        def decided = event.case.workItem.findAll { it.output != null }
+                        def last = decided.isEmpty() ? null : decided.last()
+                        def by = last?.performerRef != null ? midpoint.resolveReferenceIfExists(last.performerRef)?.fullName?.orig : null
+                        "Your request for $role has been " + (event.approved ? 'approved' : 'rejected') +
+                            (by != null ? " by $by" : '') + (last?.output?.comment ? ": ${last.output.comment}" : '.')
+                    </code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+    </notificationConfiguration>
+    <messageTransportConfiguration>
+        <mail>
+            <name>corp</name>
+            <server>
+                <host>smtp.example.com</host>
+                <port>587</port>
+                <transportSecurity>starttlsRequired</transportSecurity>
+            </server>
+            <defaultFrom>idm@example.com</defaultFrom>
+        </mail>
+    </messageTransportConfiguration>
+    <adminGuiConfiguration>
+        <defaultTimezone>UTC</defaultTimezone>
+        <additionalMenuLink>
+            <targetUrl>https://servicedesk.example.com</targetUrl>
+            <label>Service desk</label>
+        </additionalMenuLink>
+        <objectCollectionViews>
+            <objectCollectionView>
+                <identifier>people</identifier>
+                <display>
+                    <label>People</label>
+                </display>
+                <type>UserType</type>
+                <collection>
+                    <collectionRef oid="30000000-0000-0000-0000-00000000f021" type="ObjectCollectionType"/>
+                </collection>
+            </objectCollectionView>
+        </objectCollectionViews>
+        <feature>
+            <identifier>orgTreeExpandAll</identifier>
+            <visibility>visible</visibility>
+        </feature>
+    </adminGuiConfiguration>
+</systemConfiguration>

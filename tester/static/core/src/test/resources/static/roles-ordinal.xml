@@ -1,0 +1,29 @@
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="20000000-0000-0000-0000-00000000c002">
+        <name>Mailer</name>
+        <!-- two inducements nothing tells apart (focus mappings of the same target, no description): their identities
+             depend on their order -->
+        <inducement>
+            <focusMappings>
+                <mapping>
+                    <expression><script><code>'mail user'</code></script></expression>
+                    <target><path>description</path></target>
+                </mapping>
+            </focusMappings>
+        </inducement>
+        <inducement>
+            <focusMappings>
+                <mapping>
+                    <expression><script><code>'mail admin'</code></script></expression>
+                    <target><path>description</path></target>
+                </mapping>
+            </focusMappings>
+        </inducement>
+    </role>
+    <role oid="20000000-0000-0000-0000-00000000c005">
+        <name>Reader</name>
+        <inducement>
+            <targetRef oid="20000000-0000-0000-0000-00000000c002" type="RoleType"/>
+        </inducement>
+    </role>
+</objects>

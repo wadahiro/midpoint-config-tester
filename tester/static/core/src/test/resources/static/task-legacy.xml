@@ -1,0 +1,9 @@
+<task oid="20000000-0000-0000-0000-00000000b001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <!-- a task in the 4.0 form: category and recurrence are gone -->
+    <name>Recompute users</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionStatus>runnable</executionStatus>
+    <category>Recomputation</category>
+    <handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/synchronization/task/recompute/handler-3</handlerUri>
+    <recurrence>single</recurrence>
+</task>

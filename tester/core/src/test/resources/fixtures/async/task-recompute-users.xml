@@ -1,0 +1,20 @@
+<!-- A recurring recomputation of users (runs once when imported, then every hour) -->
+<task oid="10000000-0000-0000-0000-00000000f020"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>recompute users</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionState>runnable</executionState>
+    <schedule>
+        <recurrence>recurring</recurrence>
+        <interval>3600</interval>
+    </schedule>
+    <activity>
+        <work>
+            <recomputation>
+                <objects>
+                    <type>UserType</type>
+                </objects>
+            </recomputation>
+        </work>
+    </activity>
+</task>

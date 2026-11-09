@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- People: users with a cost center (not the administrator). The base collection of the report. -->
+<objectCollection oid="30000000-0000-0000-0000-00000000f021"
+                  xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                  xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>People</name>
+    <type>UserType</type>
+    <filter>
+        <q:not>
+            <q:equal>
+                <q:path>costCenter</q:path>
+            </q:equal>
+        </q:not>
+    </filter>
+</objectCollection>

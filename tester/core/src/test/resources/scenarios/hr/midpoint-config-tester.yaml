@@ -1,0 +1,23 @@
+# The sample deployment of the scenario tests (HrLifecycleScenarioTest): HR (a CSV export) feeds users, the user
+# template gives them the role of their department from their start date on, the roles provision LDAP accounts and
+# group memberships. Written in the 4.4 format, which 4.0, 4.4 and 4.8 all read; the overlays hold what a line needs
+# differently.
+config:
+  dirs: [post-initial-objects]
+  # the extension schema of the tester's tests (users' extension/site), as in midPoint's schema directory
+  schema: ../../schema
+  properties:
+    ldapBase: dc=example,dc=com
+    mailDomain: example.com
+  overlays:
+    # 4.0 has no activities: the reconciliation task with the handler of 4.0
+    "4.0": { dirs: [overlays/4.0] }
+    # 4.8 sends mail through named transports (messageTransportConfiguration)
+    "4.8": { dirs: [overlays/4.8] }
+targets:
+  HR:   { connector: csv }
+  LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
+mail: { redirect: true }
+tasks: { recurring: held }
+# typed names for the tests (NamesGenerator): Resources.HR, Roles.DEPT_SALES, LdapAttrs.OU...
+names: { package: com.github.wadahiro.midpoint.configtester.sample.hr }

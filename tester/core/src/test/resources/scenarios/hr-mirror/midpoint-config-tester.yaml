@@ -1,0 +1,18 @@
+# The HR sample deployment (scenarios/hr) with both resources on the tester's mirror connector, the stand-in of every
+# resource the manifest does not put on a real connector (MirrorTargetScenarioTest). Neither resource has a stored
+# schema: the mirror takes the attributes from schemaHandling, and the naming attributes from here.
+config:
+  dirs: [../hr/post-initial-objects]
+  schema: ../../schema
+  properties:
+    ldapBase: dc=example,dc=com
+    mailDomain: example.com
+  overlays:
+    "4.0": { dirs: [../hr/overlays/4.0] }
+    "4.8": { dirs: [../hr/overlays/4.8] }
+targets:
+  # accounts named by the unique column, as the CSV connector names them
+  HR:   { connector: mirror, namingAttribute: empno }
+  LDAP: { connector: mirror, namingAttribute: dn, referentialIntegrity: true }
+mail: { redirect: true }
+tasks: { recurring: held }

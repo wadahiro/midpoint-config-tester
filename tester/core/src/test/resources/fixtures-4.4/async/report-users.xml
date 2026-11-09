@@ -1,0 +1,134 @@
+<!-- The report of fixtures/async for 4.4: no resultHandling of subreports (4.6+); a subreport's variable is its list -->
+<report oid="10000000-0000-0000-0000-00000000f001"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>users-by-cost-center</name>
+    <objectCollection>
+        <collection>
+            <!-- employees with the cost center given as a parameter (all employees without one) -->
+            <filter>
+                <q:equal>
+                    <q:path>costCenter</q:path>
+                    <expression>
+                        <queryInterpretationOfNoValue>filterAll</queryInterpretationOfNoValue>
+                        <path>$costCenter</path>
+                    </expression>
+                </q:equal>
+            </filter>
+            <baseCollectionRef>
+                <collectionRef oid="10000000-0000-0000-0000-00000000f002" type="ObjectCollectionType"/>
+            </baseCollectionRef>
+        </collection>
+        <condition>
+            <script>
+                <code>!object.name.orig.startsWith('test')</code>
+            </script>
+        </condition>
+        <parameter>
+            <name>costCenter</name>
+            <type>string</type>
+        </parameter>
+        <subreport>
+            <!-- one row per organization -->
+            <name>org</name>
+            <order>1</order>
+            <expression>
+                <script>
+                    <code>
+                        import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType
+                        object.parentOrgRef.collect { midpoint.getObject(OrgType.class, it.oid) }
+                    </code>
+                </script>
+            </expression>
+        </subreport>
+        <subreport>
+            <!-- leavers are not reported -->
+            <name>status</name>
+            <order>2</order>
+            <expression>
+                <script>
+                    <code>object.costCenter == 'LEFT' ? null : 'current'</code>
+                </script>
+            </expression>
+        </subreport>
+        <subreport>
+            <!-- kept as a collection: no resultHandling -->
+            <name>contacts</name>
+            <order>3</order>
+            <expression>
+                <script>
+                    <code>[object.emailAddress, object.telephoneNumber].findAll { it != null }</code>
+                </script>
+            </expression>
+        </subreport>
+        <view>
+            <type>UserType</type>
+            <column>
+                <name>name</name>
+                <path>name</path>
+            </column>
+            <column>
+                <name>fullName</name>
+                <previousColumn>name</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>object.givenName.orig + ' ' + object.familyName.orig</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+            <column>
+                <name>costCenter</name>
+                <path>costCenter</path>
+                <previousColumn>fullName</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>input?.toLowerCase()</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+            <column>
+                <name>org</name>
+                <previousColumn>costCenter</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>org?.name?.orig</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+            <column>
+                <name>contacts</name>
+                <previousColumn>org</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>contacts?.join(', ')</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+            <column>
+                <name>roles</name>
+                <previousColumn>contacts</previousColumn>
+                <export>
+                    <expression>
+                        <script>
+                            <code>report.resolveRoles(object.assignment).collect { it.name.orig }</code>
+                        </script>
+                    </expression>
+                </export>
+            </column>
+            <column>
+                <name>assignments</name>
+                <path>assignment</path>
+                <previousColumn>roles</previousColumn>
+                <displayValue>number</displayValue>
+            </column>
+        </view>
+    </objectCollection>
+</report>

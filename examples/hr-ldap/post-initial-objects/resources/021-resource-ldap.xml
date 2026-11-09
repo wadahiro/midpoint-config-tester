@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The directory as deployed (LDAP connector): accounts are inetOrgPerson under ou=people, department groups are
+    groupOfNames under ou=groups whose member attribute holds the account DNs. The generic LDAP connector has no
+    activation: the status is simulated in employeeType ("active" / "disabled"), following the user's effective status
+    (so an account is disabled when the user's end date has passed). 4.0 format, read by every line.
+    The tester keeps the LDAP connector and points it at an in-memory server (targets.LDAP in the manifest).
+-->
+<resource oid="20000000-0000-0000-0000-00000000a002"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:cap="http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>LDAP</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.connector.ldap.LdapConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration
+            xmlns:ldap="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-ldap/com.evolveum.polygon.connector.ldap.LdapConnector">
+        <icfc:configurationProperties>
+            <ldap:host>ldap.{{mailDomain}}</ldap:host>
+            <ldap:port>389</ldap:port>
+            <ldap:connectionSecurity>starttls</ldap:connectionSecurity>
+            <ldap:baseContext>{{ldapBase}}</ldap:baseContext>
+            <ldap:bindDn>cn=idm,ou=services,{{ldapBase}}</ldap:bindDn>
+            <ldap:bindPassword><t:clearValue>production secret</t:clearValue></ldap:bindPassword>
+        </icfc:configurationProperties>
+        <!-- the server evaluates the filters (case insensitive DNs): ConnId must not filter the results again -->
+        <icfc:resultsHandlerConfiguration>
+            <icfc:enableNormalizingResultsHandler>false</icfc:enableNormalizingResultsHandler>
+            <icfc:enableFilteredResultsHandler>false</icfc:enableFilteredResultsHandler>
+            <icfc:enableAttributesToGetSearchResultsHandler>false</icfc:enableAttributesToGetSearchResultsHandler>
+        </icfc:resultsHandlerConfiguration>
+    </connectorConfiguration>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <objectClass>ri:inetOrgPerson</objectClass>
+            <attribute>
+                <ref>ri:dn</ref>
+                <outbound>
+                    <name>ldap-dn</name>
+                    <source><path>name</path></source>
+                    <expression><script><code>'uid=' + name + ',ou=people,{{ldapBase}}'</code></script></expression>
+                </outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:uid</ref>
+                <outbound><name>ldap-uid</name><strength>strong</strength><source><path>name</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:cn</ref>
+                <outbound><name>ldap-cn</name><strength>strong</strength><source><path>fullName</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:sn</ref>
+                <outbound><name>ldap-sn</name><strength>strong</strength><source><path>familyName</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:givenName</ref>
+                <outbound><name>ldap-givenName</name><strength>strong</strength><source><path>givenName</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:employeeNumber</ref>
+                <outbound><name>ldap-employeeNumber</name><strength>strong</strength><source><path>employeeNumber</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:ou</ref>
+                <outbound><name>ldap-ou</name><strength>strong</strength><source><path>costCenter</path></source></outbound>
+            </attribute>
+            <attribute>
+                <ref>ri:mail</ref>
+                <outbound><name>ldap-mail</name><strength>strong</strength><source><path>emailAddress</path></source></outbound>
+            </attribute>
+            <association>
+                <ref>ri:group</ref>
+                <kind>entitlement</kind>
+                <intent>group</intent>
+                <direction>objectToSubject</direction>
+                <associationAttribute>ri:member</associationAttribute>
+                <valueAttribute>ri:dn</valueAttribute>
+            </association>
+            <activation>
+                <administrativeStatus>
+                    <outbound>
+                        <name>ldap-status</name>
+                        <strength>strong</strength>
+                    </outbound>
+                </administrativeStatus>
+            </activation>
+        </objectType>
+        <objectType>
+            <kind>entitlement</kind>
+            <intent>group</intent>
+            <objectClass>ri:groupOfNames</objectClass>
+            <attribute>
+                <ref>ri:dn</ref>
+            </attribute>
+            <attribute>
+                <ref>ri:cn</ref>
+            </attribute>
+        </objectType>
+    </schemaHandling>
+    <capabilities>
+        <configured>
+            <cap:activation>
+                <cap:status>
+                    <cap:attribute>ri:employeeType</cap:attribute>
+                    <cap:enableValue>active</cap:enableValue>
+                    <cap:disableValue>disabled</cap:disableValue>
+                </cap:status>
+            </cap:activation>
+        </configured>
+    </capabilities>
+</resource>

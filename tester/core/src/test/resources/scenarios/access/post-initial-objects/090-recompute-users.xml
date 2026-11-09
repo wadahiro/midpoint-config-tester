@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    A bulk action at the end of the post-initial import: every user is recomputed, so the user template gives them its
+    roles also where the import did not apply it (4.0's post-initial import is raw).
+-->
+<s:executeScript xmlns:s="http://midpoint.evolveum.com/xml/ns/public/model/scripting-3"
+                 xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <s:pipeline>
+        <s:search>
+            <s:type>c:UserType</s:type>
+        </s:search>
+        <s:action>
+            <s:type>recompute</s:type>
+        </s:action>
+    </s:pipeline>
+</s:executeScript>

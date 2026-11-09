@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The IT department: jack is a member (030-users.xml). Its managers get the Department manager role from it (an
+    inducement to the relation manager only): no one is assigned the role itself, its members do not get it.
+-->
+<org oid="30000000-0000-0000-0000-00000000d001"
+     xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+     xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <name>IT</name>
+    <displayName>IT department</displayName>
+    <inducement>
+        <targetRef oid="30000000-0000-0000-0000-00000000c030" type="RoleType"/>
+        <orderConstraint>
+            <order>1</order>
+            <relation>org:manager</relation>
+        </orderConstraint>
+    </inducement>
+</org>

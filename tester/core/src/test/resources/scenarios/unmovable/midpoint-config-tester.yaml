@@ -1,0 +1,6 @@
+# A deployment with two resources the mirror cannot stand in for and a target of no resource (DeploymentLoadTest):
+# the load reports all three at once
+config:
+  dirs: [post-initial-objects]
+targets:
+  Nowhere: { namingAttribute: login }

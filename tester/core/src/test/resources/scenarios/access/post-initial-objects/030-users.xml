@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The users as in production. The approvers and the reviewer have midPoint's initial Approver and Reviewer roles,
+    which let them complete their work items. Their mail addresses are where the approval notifications go
+    (000-system-configuration.xml); owner-deputy, sec-analyst, helpdesk and it-manager have no cost center (the
+    report counts the users with one).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <user oid="30000000-0000-0000-0000-00000000e001">
+        <name>jack</name>
+        <givenName>Jack</givenName>
+        <familyName>Sparrow</familyName>
+        <costCenter>IT</costCenter>
+        <emailAddress>jack@example.com</emailAddress>
+        <assignment>
+            <!-- a member of the IT department (025-orgs.xml) -->
+            <targetRef oid="30000000-0000-0000-0000-00000000d001" type="OrgType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e002">
+        <name>ann</name>
+        <givenName>Ann</givenName>
+        <familyName>Lee</familyName>
+        <costCenter>Finance</costCenter>
+        <assignment>
+            <targetRef oid="30000000-0000-0000-0000-00000000c003" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e003">
+        <name>role-owner</name>
+        <givenName>Rose</givenName>
+        <familyName>Owner</familyName>
+        <costCenter>IT</costCenter>
+        <emailAddress>role-owner@example.com</emailAddress>
+        <assignment>
+            <!-- owner of Privileged Access: approves its requests in stage 1 -->
+            <targetRef oid="30000000-0000-0000-0000-00000000c001" type="RoleType" relation="org:owner"/>
+        </assignment>
+        <assignment>
+            <!-- midPoint's Approver role (initial object) -->
+            <targetRef oid="00000000-0000-0000-0000-00000000000a" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e004">
+        <name>sec-officer</name>
+        <givenName>Sam</givenName>
+        <familyName>Officer</familyName>
+        <costCenter>Security</costCenter>
+        <emailAddress>sec-officer@example.com</emailAddress>
+        <assignment>
+            <targetRef oid="30000000-0000-0000-0000-00000000c010" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="00000000-0000-0000-0000-00000000000a" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <!-- midPoint's Reviewer role (initial object): reviews in the certification campaigns -->
+            <targetRef oid="00000000-0000-0000-0000-00000000000b" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e005">
+        <name>owner-deputy</name>
+        <givenName>Olga</givenName>
+        <familyName>Deputy</familyName>
+        <emailAddress>owner-deputy@example.com</emailAddress>
+        <assignment>
+            <!-- the role owner's deputy: a Privileged Access request the owner leaves past its deadline goes to her -->
+            <targetRef oid="00000000-0000-0000-0000-00000000000a" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e006">
+        <name>sec-analyst</name>
+        <givenName>Sue</givenName>
+        <familyName>Analyst</familyName>
+        <emailAddress>sec-analyst@example.com</emailAddress>
+        <assignment>
+            <!-- the second Security officer -->
+            <targetRef oid="30000000-0000-0000-0000-00000000c010" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="00000000-0000-0000-0000-00000000000a" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e007">
+        <name>helpdesk</name>
+        <givenName>Hal</givenName>
+        <familyName>Desk</familyName>
+        <assignment>
+            <!-- what the GUI shows a help desk: GuiAuthorizationScenarioTest -->
+            <targetRef oid="30000000-0000-0000-0000-00000000c020" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="30000000-0000-0000-0000-00000000e008">
+        <name>it-manager</name>
+        <givenName>Ida</givenName>
+        <familyName>Manager</familyName>
+        <assignment>
+            <!-- the manager of the IT department, who gets the Department manager role from it: assigns its
+                 members the requestable roles (AssignAuthorizationScenarioTest) -->
+            <targetRef oid="30000000-0000-0000-0000-00000000d001" type="OrgType" relation="org:manager"/>
+        </assignment>
+    </user>
+</objects>

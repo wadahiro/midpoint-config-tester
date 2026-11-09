@@ -1,0 +1,19 @@
+<!-- The user template with one more mapping, whose script fails (for the error test). -->
+<objectTemplate oid="10000000-0000-0000-0000-00000000b001"
+                xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>User template</name>
+    <mapping>
+        <name>fullName</name>
+        <strength>strong</strength>
+        <source><path>givenName</path></source>
+        <source><path>familyName</path></source>
+        <expression><script><code>"$givenName $familyName"</code></script></expression>
+        <target><path>fullName</path></target>
+    </mapping>
+    <mapping>
+        <name>employee-number</name>
+        <source><path>costCenter</path></source>
+        <expression><script><code>throw new IllegalStateException('no number for ' + costCenter)</code></script></expression>
+        <target><path>employeeNumber</path></target>
+    </mapping>
+</objectTemplate>

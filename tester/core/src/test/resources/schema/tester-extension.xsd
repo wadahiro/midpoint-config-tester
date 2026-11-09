@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The extension schema of the tester's own tests, as a deployment has it in midPoint's schema directory: the tester
+    runs midPoint with -Dtester.extensionSchemaDir (tester/pom.xml points it here). One string item per use in the
+    extension tests: the same items extend users, roles and assignments, so that midPoint's merge of extensions into
+    the `assignment` variable of a construction shows which one wins.
+-->
+<xsd:schema elementFormDefault="qualified"
+            targetNamespace="http://example.com/xml/ns/tester-extension"
+            xmlns:tns="http://example.com/xml/ns/tester-extension"
+            xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+            xmlns:a="http://prism.evolveum.com/xml/ns/public/annotation-3"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+    <xsd:import namespace="http://midpoint.evolveum.com/xml/ns/public/common/common-3"/>
+
+    <xsd:complexType name="UserExtensionType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <a:extension ref="c:UserType"/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="site" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="badge" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="grade" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="note" type="xsd:string" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="RoleExtensionType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <a:extension ref="c:RoleType"/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="site" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="badge" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="grade" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="note" type="xsd:string" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="AssignmentExtensionType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <a:extension ref="c:AssignmentType"/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="site" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="badge" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="grade" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="note" type="xsd:string" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>

@@ -1,0 +1,25 @@
+<!--
+    The HR live synchronization as deployed: recurring (hourly here, so that it runs only when a test runs it; deployed
+    every few minutes), on the HR resource of fixtures/scenario. Its first run, at its import, only fetches the token.
+-->
+<task oid="10000000-0000-0000-0000-00000000f511"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Live sync HR</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionState>runnable</executionState>
+    <schedule>
+        <recurrence>recurring</recurrence>
+        <interval>3600</interval>
+    </schedule>
+    <activity>
+        <work>
+            <liveSynchronization>
+                <resourceObjects>
+                    <resourceRef oid="10000000-0000-0000-0000-00000000a501" type="ResourceType"/>
+                    <kind>account</kind>
+                    <intent>default</intent>
+                </resourceObjects>
+            </liveSynchronization>
+        </work>
+    </activity>
+</task>

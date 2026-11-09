@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Maven Build Cache (opt-in: -Dmaven.build.cache.enabled=true): a module whose inputs did not change since a passing
+    build is not built and tested again. Inputs: the module's src/ and effective POM (dependencies, so also the midPoint
+    version and the pgmem profile), plus what tester/pom.xml, tester/base-*/pom.xml and tester/static/pom.xml add with
+    maven.build.cache.input.* (tester/core, the base module, static/core). The cache does not see -D properties: the
+    tester's own (golden.*, static.*, tester.*, -Dtest) switch it off for the build
+    (profile no-build-cache in the root POM).
+-->
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>false</enabled>
+        <hashAlgorithm>XX</hashAlgorithm>
+        <remote enabled="false"/>
+        <local>
+            <maxBuildsCached>3</maxBuildsCached>
+        </local>
+    </configuration>
+    <input>
+        <global>
+            <glob>{*}</glob>
+            <includes>
+                <include>src/</include>
+            </includes>
+        </global>
+    </input>
+    <executionControl>
+        <reconcile>
+            <plugins>
+                <plugin artifactId="maven-surefire-plugin" goal="test">
+                    <reconciles>
+                        <reconcile propertyName="skip" skipValue="true"/>
+                        <reconcile propertyName="skipExec" skipValue="true"/>
+                        <reconcile propertyName="skipTests" skipValue="true"/>
+                        <reconcile propertyName="test"/>
+                        <reconcile propertyName="excludedGroups"/>
+                        <reconcile propertyName="groups"/>
+                    </reconciles>
+                </plugin>
+            </plugins>
+        </reconcile>
+    </executionControl>
+</cache>

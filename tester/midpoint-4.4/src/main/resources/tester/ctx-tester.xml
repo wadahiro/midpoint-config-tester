@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Spring context of the tester runtime (4.4): the imports of midPoint's model-intest, plus approvals (ctx-workflow
+    holds the case engine on 4.4), certification and reports, plus the recorder hooks.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:context="http://www.springframework.org/schema/context"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd"
+        default-lazy-init="false">
+    <context:annotation-config/>
+    <context:spring-configured/>
+    <!-- records mapping and expression evaluations (see RecorderInstaller) -->
+    <bean class="com.github.wadahiro.midpoint.tester.internal.RecorderInstaller"/>
+    <import resource="classpath:ctx-model.xml"/>
+    <import resource="classpath:ctx-model-test.xml"/>
+    <import resource="classpath:ctx-model-common.xml"/>
+    <import resource="classpath*:ctx-repository-test.xml"/>
+    <import resource="classpath:ctx-repo-cache.xml"/>
+    <import resource="classpath:ctx-configuration-test.xml"/>
+    <import resource="classpath:ctx-provisioning.xml"/>
+    <import resource="classpath:ctx-repo-common.xml"/>
+    <import resource="classpath:ctx-common.xml"/>
+    <import resource="classpath:ctx-security.xml"/>
+    <import resource="classpath:ctx-security-enforcer.xml"/>
+    <import resource="classpath:ctx-task.xml"/>
+    <import resource="classpath:ctx-audit.xml"/>
+    <import resource="classpath:ctx-notifications.xml"/>
+    <import resource="classpath:ctx-report.xml"/>
+    <import resource="classpath:ctx-workflow.xml"/>
+    <import resource="classpath:ctx-certification.xml"/>
+    <!-- the deployment's own Spring beans (hooks, services of its jars), from the test classpath: none by default -->
+    <import resource="classpath*:tester/ctx-extension*.xml"/>
+</beans>

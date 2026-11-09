@@ -1,0 +1,43 @@
+<!-- The task of fixtures/files for 4.0: no activities (4.4+), the scripting handler with the script in the extension -->
+<task oid="10000000-0000-0000-0000-00000000f0f1"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:s="http://midpoint.evolveum.com/xml/ns/public/model/scripting-3"
+      xmlns:se="http://midpoint.evolveum.com/xml/ns/public/model/scripting/extension-3">
+    <name>export user names</name>
+    <extension>
+        <se:executeScript>
+            <s:pipeline>
+                <s:search>
+                    <s:type>c:UserType</s:type>
+                </s:search>
+                <s:action>
+                    <s:type>execute-script</s:type>
+                    <s:parameter>
+                        <s:name>script</s:name>
+                        <c:value>
+                            <c:code><![CDATA[
+def out = new File('/opt/midpoint/var/export/user-names.txt')
+out.parentFile.mkdirs()
+out.withWriter('UTF-8') { w ->
+    input.data.collect { it.value.asObjectable().name.orig }.sort().each { w << it << '\n' }
+}
+// one plain value: 4.0 records a returned list as one value, 4.4+ as its items
+'written'
+]]></c:code>
+                        </c:value>
+                    </s:parameter>
+                    <s:parameter>
+                        <s:name>forWholeInput</s:name>
+                        <c:value>true</c:value>
+                    </s:parameter>
+                </s:action>
+            </s:pipeline>
+        </se:executeScript>
+    </extension>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionStatus>runnable</executionStatus>
+    <handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/scripting/handler-3</handlerUri>
+    <recurrence>single</recurrence>
+    <binding>loose</binding>
+</task>

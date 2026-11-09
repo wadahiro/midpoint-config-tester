@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The system configuration: users get the user template; a new user gets a welcome mail through the named mail
+    transport. The tester redirects the mail server to its own.
+-->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001"
+        xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+        xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3">
+    <name>SystemConfiguration</name>
+    <defaultObjectPolicyConfiguration>
+        <type>UserType</type>
+        <objectTemplateRef oid="20000000-0000-0000-0000-00000000b001"/>
+    </defaultObjectPolicyConfiguration>
+    <notificationConfiguration>
+        <handler>
+            <operation>add</operation>
+            <simpleUserNotifier>
+                <name>welcome</name>
+                <recipientExpression>
+                    <script><code>requestee?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>'Welcome ' + requestee?.fullName?.orig</code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>'Your account ' + requestee?.name?.orig + ' has been created.'</code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleUserNotifier>
+        </handler>
+    </notificationConfiguration>
+    <messageTransportConfiguration>
+        <mail>
+            <name>corp</name>
+            <server>
+                <host>smtp.{{mailDomain}}</host>
+                <port>587</port>
+                <username>midpoint</username>
+                <password><t:clearValue>production secret</t:clearValue></password>
+                <transportSecurity>starttlsRequired</transportSecurity>
+            </server>
+            <defaultFrom>midpoint@{{mailDomain}}</defaultFrom>
+        </mail>
+    </messageTransportConfiguration>
+</systemConfiguration>

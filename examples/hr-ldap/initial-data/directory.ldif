@@ -1,0 +1,15 @@
+dn: ou=people,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+dn: cn=sales,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: sales
+
+dn: cn=it,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: it

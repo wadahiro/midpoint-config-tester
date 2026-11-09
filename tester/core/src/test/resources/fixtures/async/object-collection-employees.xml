@@ -1,0 +1,14 @@
+<objectCollection oid="10000000-0000-0000-0000-00000000f002"
+                  xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                  xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>employees</name>
+    <description>Users with an employee number (base collection of report-users.xml and dashboard.xml).</description>
+    <type>UserType</type>
+    <filter>
+        <q:not>
+            <q:equal>
+                <q:path>employeeNumber</q:path>
+            </q:equal>
+        </q:not>
+    </filter>
+</objectCollection>

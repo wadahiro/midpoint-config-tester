@@ -1,0 +1,41 @@
+<objectTemplate oid="10000000-0000-0000-0000-00000000b001"
+                xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>User template</name>
+    <mapping>
+        <name>fullName</name>
+        <strength>strong</strength>
+        <source><path>givenName</path></source>
+        <source><path>familyName</path></source>
+        <expression><script><code>"$givenName $familyName"</code></script></expression>
+        <target><path>fullName</path></target>
+    </mapping>
+    <mapping>
+        <name>assign-employee-role</name>
+        <strength>strong</strength>
+        <expression>
+            <value>
+                <targetRef oid="10000000-0000-0000-0000-00000000c001" type="RoleType"/>
+            </value>
+        </expression>
+        <target><path>assignment</path></target>
+    </mapping>
+    <mapping>
+        <name>assign-department-role</name>
+        <strength>strong</strength>
+        <source><path>costCenter</path></source>
+        <condition><script><code>costCenter != null</code></script></condition>
+        <expression>
+            <assignmentTargetSearch>
+                <targetType>RoleType</targetType>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <expression><script><code>'Dept ' + costCenter</code></script></expression>
+                    </q:equal>
+                </filter>
+            </assignmentTargetSearch>
+        </expression>
+        <target><path>assignment</path></target>
+    </mapping>
+</objectTemplate>

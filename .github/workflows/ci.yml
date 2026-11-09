@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    # main is tested by the release workflow, which calls this one
+    branches-ignore: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      all-lines:
+        description: also the lines after 4.8 (-Pnon-lts), as the release publishes them
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    # Builds every module from the root: the tester's LTS lines 4.0, 4.4 and 4.8 (each runs the shared tests in its own
+    # JVM, on a real midPoint with an in-memory PostgreSQL, pgmem) and the static checks; 4.9 and 4.10 only with
+    # -Pnon-lts. Maven runs on the matrix JDK; 4.0 and 4.4 run their tests on JDK 11 through Maven toolchains
+    # (setup-java registers every installed JDK), 4.8 on the matrix JDK.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [17, 21]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # the last one becomes JAVA_HOME for Maven itself
+          java-version: |
+            11
+            ${{ matrix.java }}
+          cache: maven
+      - run: mvn -B test ${{ inputs.all-lines && '-Pnon-lts' || '' }}

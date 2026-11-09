@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the modules inherit url and scm as they are (by default Maven appends the module's path) -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         child.project.url.inherit.append.path="false">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.wadahiro.midpoint</groupId>
+    <artifactId>midpoint-config-tester-root</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>midPoint Config Tester (root)</name>
+    <description>Tests of a midPoint deployment's configuration in JUnit, on a real midPoint without the GUI</description>
+    <url>https://github.com/wadahiro/midpoint-config-tester</url>
+
+    <licenses>
+        <license>
+            <name>EUPL-1.2</name>
+            <url>https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>wadahiro</id>
+            <name>Hiroyuki Wada</name>
+            <url>https://github.com/wadahiro</url>
+        </developer>
+    </developers>
+
+    <scm child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false"
+         child.scm.url.inherit.append.path="false">
+        <connection>scm:git:https://github.com/wadahiro/midpoint-config-tester.git</connection>
+        <developerConnection>scm:git:git@github.com:wadahiro/midpoint-config-tester.git</developerConnection>
+        <url>https://github.com/wadahiro/midpoint-config-tester</url>
+    </scm>
+
+    <!--
+        tester/ is the midPoint tester (see README.md and docs/next-design.md): tester/core holds the line-neutral sources
+        and the shared tests, base-<line>/ the parts shared by the lines from <line> on, and midpoint-<line>/ one module
+        per line. Each line module compiles the shared sources against its own midPoint BOM and runs the shared tests in
+        its own JVM (midPoint keeps static singletons, so two versions can never share a classpath). tester/static holds
+        the static checks, without a runtime. parent/ holds the parents of config repositories (one per line) and
+        examples/ a config repository built on one of them.
+    -->
+    <modules>
+        <module>tester</module>
+        <!-- the parents of config repositories, one per line (midpoint-config-tester-parent-<line>) -->
+        <module>parent</module>
+        <!-- an example config repository on the 4.8 parent, built and tested with the tester -->
+        <module>examples/hr-ldap</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Patch versions can be overridden from the command line, e.g. -Dmidpoint48.version=4.8.11 -->
+        <midpoint40.version>4.0.3</midpoint40.version>
+        <midpoint44.version>4.4.11</midpoint44.version>
+        <midpoint48.version>4.8.14</midpoint48.version>
+        <midpoint49.version>4.9.9</midpoint49.version>
+        <midpoint410.version>4.10.3</midpoint410.version>
+        <!-- tester/ for the modules outside it; tester/pom.xml and tester/static/pom.xml set it from their modules'
+             places (maven.multiModuleProjectDirectory is the reactor's, not this repository's, in another reactor) -->
+        <tester.dir>${maven.multiModuleProjectDirectory}/tester</tester.dir>
+        <!-- Byte Buddy of the file redirection (mp.files()): new enough for the class files of JDK 21 -->
+        <bytebuddy.version>1.15.4</bytebuddy.version>
+        <!-- in-memory PostgreSQL of the tester; the classifier is set by the os profiles below -->
+        <pgmem.version>1.18.2</pgmem.version>
+        <pgmem.classifier>linux-x86_64</pgmem.classifier>
+        <!-- in-memory LDAP server for resources kept on the real LDAP connector -->
+        <unboundid.version>7.0.3</unboundid.version>
+        <!-- test JVMs per line module (-Dtester.forks=N): each restores the cached deployments (README, Speed) -->
+        <tester.forks>1</tester.forks>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>evolveum</id>
+            <name>Evolveum Public Releases</name>
+            <url>https://nexus.evolveum.com/nexus/repository/public/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <profiles>
+        <!--
+            The Maven Build Cache (opt-in, .mvn/maven-build-cache-config.xml) keys a module on its inputs, not on -D
+            properties: with one of the tester's properties (or -Dtest) given, a module is always built and tested.
+        -->
+        <profile>
+            <id>no-build-cache-golden.mode</id>
+            <activation><property><name>golden.mode</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-static.dir</id>
+            <activation><property><name>static.dir</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-static.schemaDir</id>
+            <activation><property><name>static.schemaDir</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.timing</id>
+            <activation><property><name>tester.timing</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.taskTimeout</id>
+            <activation><property><name>tester.taskTimeout</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.workDir</id>
+            <activation><property><name>tester.workDir</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.extensionSchemaDir</id>
+            <activation><property><name>tester.extensionSchemaDir</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.log</id>
+            <activation><property><name>tester.log</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.forks</id>
+            <activation><property><name>tester.forks</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.cache</id>
+            <activation><property><name>tester.cache</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.cache.dir</id>
+            <activation><property><name>tester.cache.dir</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-tester.manifest</id>
+            <activation><property><name>tester.manifest</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-pgmem.binary</id>
+            <activation><property><name>pgmem.binary</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-test</id>
+            <activation><property><name>test</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <profile>
+            <id>no-build-cache-it.test</id>
+            <activation><property><name>it.test</name></property></activation>
+            <properties><maven.build.cache.enabled>false</maven.build.cache.enabled></properties>
+        </profile>
+        <!--
+            Publishing to Maven Central (README, Publishing): the release workflow runs mvn deploy -P release on main;
+            by hand, with the Central Portal token as server "central" in settings.xml and a GPG key. The version must
+            not be a SNAPSHOT. The example is not published.
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals><goal>jar-no-fork</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.11.2</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <quiet>true</quiet>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals><goal>jar</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <configuration>
+                            <!-- the passphrase from MAVEN_GPG_PASSPHRASE, without a pinentry (CI) -->
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.8.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <excludeArtifacts>
+                                <artifact>hr-ldap-config</artifact>
+                            </excludeArtifacts>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>pgmem-darwin-arm64</id>
+            <activation><os><family>mac</family><arch>aarch64</arch></os></activation>
+            <properties><pgmem.classifier>darwin-arm64</pgmem.classifier></properties>
+        </profile>
+        <profile>
+            <id>pgmem-linux-arm64</id>
+            <activation><os><family>unix</family><name>linux</name><arch>aarch64</arch></os></activation>
+            <properties><pgmem.classifier>linux-arm64</pgmem.classifier></properties>
+        </profile>
+        <profile>
+            <id>pgmem-windows-x86_64</id>
+            <activation><os><family>windows</family><arch>amd64</arch></os></activation>
+            <properties><pgmem.classifier>windows-x86_64</pgmem.classifier></properties>
+        </profile>
+    </profiles>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>3.6.0</version>
+                </plugin>
+                <plugin>
+                    <!-- runs the generator of typed names (NamesGenerator) -->
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

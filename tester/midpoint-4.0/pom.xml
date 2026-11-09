@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-base-4.0</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../base-4.0/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>midpoint-config-tester-4.0</artifactId>
+    <name>midPoint Config Tester for midPoint 4.0</name>
+
+    <properties>
+        <tester.names.skip>false</tester.names.skip>
+        <tester.gui.skip>false</tester.gui.skip>
+        <midpoint.version>${midpoint40.version}</midpoint.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- before the midPoint BOM: its Spring Boot 2.1 BOM would pin JUnit 5.3 -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>5.10.2</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint</groupId>
+                <artifactId>midpoint</artifactId>
+                <version>${midpoint.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+            <!-- the file redirection's version wins over midPoint's (Hibernate, Mockito): it must read JDK 21 classes -->
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy-agent</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+    </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>model-test</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>model-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>notifications-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <!-- approvals; on 4.0 workflow-impl also holds the case engine (ctx-workflow.xml) -->
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>workflow-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>certification-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.provisioning</groupId>
+            <artifactId>provisioning-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.provisioning</groupId>
+            <artifactId>ucf-impl-builtin</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>task-quartz-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>audit-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>security-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>security-enforcer-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-sql-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-sql-impl-test</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-test-util</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>system-init</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.infra</groupId>
+            <artifactId>test-util</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories; not needed here -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <!-- the mirror connector (the version midPoint uses) -->
+            <groupId>net.tirasa.connid</groupId>
+            <artifactId>connector-framework</artifactId>
+            <version>1.5.0.10</version>
+        </dependency>
+        <dependency>
+            <!-- the in-memory LDAP server of resources kept on the real LDAP connector -->
+            <groupId>com.unboundid</groupId>
+            <artifactId>unboundid-ldapsdk</artifactId>
+            <version>${unboundid.version}</version>
+        </dependency>
+        <dependency>
+            <!-- the CSV connector the line ships (a ConnId bundle: its libraries are inside, midPoint finds it on the
+                 classpath); used by resources imported with ResourceOptions.realConnector() -->
+            <groupId>com.evolveum.polygon</groupId>
+            <artifactId>connector-csv</artifactId>
+            <version>2.3</version>
+            <scope>runtime</scope>
+            <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+        </dependency>
+        <dependency>
+            <!-- the LDAP connector the line ships, as the CSV connector -->
+            <groupId>com.evolveum.polygon</groupId>
+            <artifactId>connector-ldap</artifactId>
+            <version>2.4.1</version>
+            <scope>runtime</scope>
+            <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint</groupId>
+            <artifactId>midpoint-localization</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <!-- the 4.0 BOM does not manage these; versions of midPoint 4.0.3 -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>6.14.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>5.1.9.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aspects</artifactId>
+            <version>5.1.9.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <version>2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.8</version>
+        </dependency>
+        <dependency>
+            <!--
+                in-memory SMTP server for mail notifications (javax.mail line: GreenMail 1.6); it runs on midPoint's
+                javax.mail:mail 1.4.5 instead of its com.sun.mail:jakarta.mail 1.6.7 (same packages)
+            -->
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail</artifactId>
+            <version>1.6.15</version>
+            <exclusions>
+                <exclusion><groupId>com.sun.mail</groupId><artifactId>jakarta.mail</artifactId></exclusion>
+                <exclusion><groupId>junit</groupId><artifactId>junit</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.github.shibukawa.pgmem</groupId>
+            <artifactId>pgmem-native</artifactId>
+            <version>${pgmem.version}</version>
+            <classifier>${pgmem.classifier}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- compile scope: midPoint's test base classes expose AssertJ types -->
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
+        </dependency>
+        <dependency>
+            <!-- the file redirection of mp.files(): an agent instrumenting java.io.File and the NIO paths -->
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy-agent</artifactId>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <!-- midPoint's initial objects of this line, from the GUI module that ships them (InitialDataImport
+                     reads them from its classpath; 4.8+ has them in system-init): only the files, not the GUI on the
+                     classpath. The tester imports them before a deployment's post-initial import (InitialImport). -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex), not on the classpath -->
+                        <id>gui-jars</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/gui</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.gui</groupId>
+                                    <artifactId>admin-gui</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <classifier>classes</classifier>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>initial-objects</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.gui</groupId>
+                                    <artifactId>admin-gui</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <classifier>classes</classifier>
+                                    <type>jar</type>
+                                    <includes>initial-objects/**</includes>
+                                    <outputDirectory>${project.build.outputDirectory}/tester</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

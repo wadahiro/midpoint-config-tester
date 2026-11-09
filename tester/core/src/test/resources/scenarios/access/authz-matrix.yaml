@@ -1,0 +1,152 @@
+# What midPoint lets each kind of user do in the access sample (AuthzMatrixScenarioTest): every user is an End user (the
+# user template), the help desk has the Help desk role too (020-roles.xml), the approvers the Approver role, the IT
+# manager manages the IT org, which gives its managers the Department manager role (025-orgs.xml). The rows are every page of the GUI and
+# every action, assignment and item on sample objects (auto); what is not allowed below is N.
+spec: authz-matrix/1
+
+personas:
+  end-user:  {label: End user, group: Self-service}
+  approver:  {label: Approver, group: Self-service, roles: [Approver]}
+  help-desk: {label: Help desk, group: Operations, roles: [Help desk]}
+  it-manager:                    # the Department manager role from the org, to its managers
+    label: IT manager
+    group: Operations
+    orgs: [{org: IT, relation: manager}]
+
+objects:
+  it-user: {user: jack, label: A user of IT (costCenter IT)}
+  other-user: {user: ann, label: A user of another cost center}
+  requestable-role: {role: Auditor, label: A requestable role}
+  other-role: {role: Accountant, label: A role not requestable}
+  it-org: {org: IT, label: The IT department}
+
+# what the assign and unassign rows assign: the roles (the requestable one as its owner too), the IT org
+assignment-targets: [requestable-role, {object: requestable-role, relation: owner}, other-role, it-org]
+
+rows:
+  - {group: pages, label: Pages, auto: pages}
+  - {group: gui, label: GUI configuration, auto: [views, features, menu-links]}
+  - {group: self, label: Their own user, object: self, auto: [search, get, modify, delete, assign, unassign, items]}
+  - {group: it-user, label: A user of IT (jack), object: it-user, auto: [search, get, add, modify, delete, assign, unassign, items]}
+  - group: other-user
+    label: A user of another cost center (ann)
+    object: other-user
+    auto: [search, get, modify, delete, assign, unassign, items]
+  - {group: requestable-role, label: A requestable role (Auditor), object: requestable-role, auto: [search, get, modify]}
+  - {group: other-role, label: A role not requestable (Accountant), object: other-role, auto: [search, get, modify]}
+
+default: N
+
+rules:
+  - name: self-service
+    for: "*"
+    rows: [pages/self, pages/identityRecovery, pages/resetPassword, pages/PasswordQuestions, self/search, self/get,
+           self/items/read, requestable-role/search, requestable-role/get]
+    value: Y
+    note: the End user role's self-service pages (#selfAll), their own user, the roles they may request
+  - name: post-authentication-is-a-login-step
+    for: "*"
+    rows: [pages/self/postAuthentication]
+    value: N
+    note: "#postAuthentication only, not in #selfAll: the page of an unfinished login"
+  - name: end-user-gets-anyone
+    for: "*"
+    rows: [it-user/get, it-user/items/read, other-user/get, other-user/items/read, other-role/get]
+    value: Y
+    note: >-
+      midPoint's initial End user role gets any user, role, org and service with all items (assignment-target-get,
+      for the GUI's selection windows; the role itself calls it too broad for production): a user's details do not
+      open (#userDetails), the data is readable
+  - name: end-user-role-details
+    for: "*"
+    rows: [pages/admin/role, pages/admin/role-any, pages/admin/roleNew*]
+    value: Y
+    note: >-
+      the End user role's #roleDetails (requestable-role-details) opens a role's details, and the new role page
+      too: the GUI's /admin/role/** matches /admin/role (4.4 has the new GUI's roleNew beside them)
+  - name: help-desk-users
+    for: [help-desk]
+    rows: [pages/admin/users, pages/admin/user-any, it-user/search, it-user/items/modify/telephoneNumber]
+    value: Y
+    note: the users of IT, their contact items; the telephone number is all they change
+  - name: users-opens-shadows
+    for: [help-desk]
+    rows: [pages/admin/shadows]
+    value: Y
+    note: "#users opens the shadows list too: PageShadows lists #usersAll, #users, #usersView"
+  - name: user-details-opens-new-user
+    for: [help-desk, approver]
+    rows: [pages/admin/user, pages/admin/userNew*]
+    value: Y
+    note: >-
+      #userDetails opens the new user page too: the GUI's /admin/user/** matches /admin/user (adding needs #add);
+      4.4 has the new GUI's userNew beside them
+  - name: approver-gui
+    for: [approver]
+    rows: [pages/admin/myWorkItems*, pages/admin/claimableWorkItems*, pages/admin/workItem, pages/admin/workItem-any,
+           pages/admin/user-any, pages/admin/org-any, pages/admin/org-tree, pages/admin/org-unit-any,
+           pages/admin/org-unit, pages/admin/service, pages/admin/service-any, pages/admin/serviceNew,
+           pages/admin/previewChanges-any]
+    value: Y
+    note: >-
+      midPoint's initial Approver role (gui-approver-access): their work items, and the details of users, roles,
+      orgs and services to decide on requests (on 4.0 the pages' URLs end with /**: myWorkItems-any; and the
+      preview of the changes)
+  - name: service-details-per-line
+    for: [approver]
+    rows: [pages/admin/service-any]
+    value: {default: Y, "4.8": N}
+    note: >-
+      a service's details (/admin/service/<oid>): on 4.0 the page's own descriptor (#service); on 4.8 the GUI's URL
+      mapping asks #serviceDetails, which the Approver role has not
+  - name: approver-sees-requests
+    for: [approver]
+    rows: [it-user/search, other-user/search, other-role/search]
+    value: Y
+    note: midPoint's initial Approver role finds any user and role (names only) to decide on requests
+  - name: self-assign-requestable
+    for: "*"
+    rows: [self/assign/requestable-role]
+    value: Y
+    note: >-
+      the End user role assigns the user the requestable roles (#assign in the request, with the default relation),
+      and its #modify of their own user lets the change execute; it unassigns nothing
+  - name: managers-assign-members
+    for: [it-manager]
+    rows: [it-user/search, it-user/assign/requestable-role, it-user/unassign/requestable-role,
+           self/unassign/requestable-role]
+    value: Y
+    note: >-
+      the Department manager role, which the IT org gives its managers: the members of the orgs the user manages (orgRelation manager; the manager is in
+      IT too) are found, and assigned and unassigned the requestable roles, with the default relation only (not as
+      an owner); the execution's #modify of them lets the change execute
+  - name: system-gui-configuration
+    for: "*"
+    rows: [gui/features/orgTreeExpandAll, gui/menu-links/Service-desk]
+    value: Y
+    note: >-
+      the system configuration's adminGuiConfiguration, every user's GUI profile: the Service desk link in the
+      side menu, the org tree's "expand all" visible
+  - name: managers-hide-expand-all
+    for: [it-manager]
+    rows: [gui/features/orgTreeExpandAll]
+    value: N
+    note: the Department manager role hides it; when midPoint merges the profiles, hidden wins over visible
+  - name: managers-user-views
+    for: [it-manager]
+    rows: [pages/admin/users, pages/admin/shadows]
+    value: Y
+    note: >-
+      the Department manager role's #usersView (for the users' views in the side menu) opens the users list and the
+      shadows list too: their pages allow #usersAll, #users, #usersView
+  - name: managers-see-the-views
+    for: [it-manager]
+    rows: [gui/views/UserType/*]
+    value: {default: Y, "4.0": N}
+    note: >-
+      the side menu lists a type's views to whom it allows #usersAll or #usersView (not #users: the help desk opens
+      the users list but sees no views): the system's People and the Department manager role's My department. On
+      4.0 the menu also gets the view's collection as the user, which the End user role does not read
+
+critical: [it-user/items/modify/assignment, other-user/items/modify/assignment, it-user/delete, other-user/delete,
+           '*/assign/other-role', '*/assign/*-owner']

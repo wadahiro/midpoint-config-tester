@@ -1,0 +1,16 @@
+# The sample deployment of the access scenarios (AccessRequestScenarioTest, ApprovalMailScenarioTest,
+# CertificationScenarioTest, ReportScenarioTest, InitialObjectsScenarioTest): no resources; users, roles with an
+# approval policy (one with a deadline and an escalation) and a segregation of duties rule, notifications of the
+# approvals by mail, a certification definition and a report, on top of midPoint's initial objects (the End user role
+# every user gets from the template, the default security and password policies). Written in the 4.4 format, which
+# 4.0, 4.4 and 4.8 all read; the overlays hold what a line needs differently.
+config:
+  dirs: [post-initial-objects]
+  overlays:
+    # 4.0 has no object collection reports (its reports are Jasper reports)
+    "4.0": { remove: [050-report-users.xml] }
+    # 4.8 sends mail through named transports (messageTransportConfiguration)
+    "4.8": { dirs: [overlays/4.8] }
+tasks: { recurring: held }
+# typed names for the tests (NamesGenerator): Resources.HR, Roles.DEPT_SALES, LdapAttrs.OU...
+names: { package: com.github.wadahiro.midpoint.configtester.sample.access }

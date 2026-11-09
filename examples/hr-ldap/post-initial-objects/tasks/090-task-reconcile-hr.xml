@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The HR reconciliation as deployed: recurring every hour -->
+<task oid="20000000-0000-0000-0000-00000000f001"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Reconcile HR</name>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionState>runnable</executionState>
+    <schedule>
+        <recurrence>recurring</recurrence>
+        <interval>3600</interval>
+    </schedule>
+    <activity>
+        <work>
+            <reconciliation>
+                <resourceObjects>
+                    <resourceRef oid="20000000-0000-0000-0000-00000000a001" type="ResourceType"/>
+                    <kind>account</kind>
+                    <intent>default</intent>
+                </resourceObjects>
+            </reconciliation>
+        </work>
+    </activity>
+</task>

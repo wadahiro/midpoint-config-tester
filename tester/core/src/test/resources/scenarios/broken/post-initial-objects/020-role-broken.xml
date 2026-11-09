@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- No such item in a role: midPoint cannot parse the object -->
+<role oid="30000000-0000-0000-0000-00000000c002" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Broken</name>
+    <costCentre>misspelled</costCentre>
+</role>

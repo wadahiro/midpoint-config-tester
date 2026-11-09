@@ -1,0 +1,20 @@
+<!-- The task of fixtures/livesync for 4.0: no activities (4.4+), the live sync handler on the resource -->
+<task oid="10000000-0000-0000-0000-00000000f511"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:mext="http://midpoint.evolveum.com/xml/ns/public/model/extension-3">
+    <name>Live sync HR</name>
+    <extension>
+        <mext:kind>account</mext:kind>
+        <mext:intent>default</mext:intent>
+    </extension>
+    <ownerRef oid="00000000-0000-0000-0000-000000000002" type="UserType"/>
+    <executionStatus>runnable</executionStatus>
+    <handlerUri>http://midpoint.evolveum.com/xml/ns/public/model/synchronization/task/live-sync/handler-3</handlerUri>
+    <objectRef oid="10000000-0000-0000-0000-00000000a501" type="ResourceType"/>
+    <recurrence>recurring</recurrence>
+    <!-- loose: a new thread per run (4.0 binds tightly by default, its thread would not end) -->
+    <binding>loose</binding>
+    <schedule>
+        <interval>3600</interval>
+    </schedule>
+</task>

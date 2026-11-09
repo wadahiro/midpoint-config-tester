@@ -1,0 +1,118 @@
+<!--
+    HR as it would be deployed (a CSV export of the HR system), 4.8 format: one row per employee, keyed by the employee
+    number. Inbounds create and update users, correlation by employee number, reactions: an unmatched employee becomes
+    a user, a deleted row deletes the user. The source is read only. No stored <schema>: the mirror takes the attributes
+    schemaHandling uses (named by ri:empno: ResourceOptions.namingAttribute); the real CSV connector reads them from the
+    file's header.
+    fixtures-4.4 holds the same in the 4.4 (and 4.0) format.
+-->
+<resource oid="10000000-0000-0000-0000-00000000a501"
+          xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+          xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+          xmlns:icfs="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/resource-schema-3"
+          xmlns:icfc="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/connector-schema-3"
+          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>HR</name>
+    <connectorRef type="ConnectorType">
+        <filter>
+            <q:equal>
+                <q:path>connectorType</q:path>
+                <q:value>com.evolveum.polygon.connector.csv.CsvConnector</q:value>
+            </q:equal>
+        </filter>
+    </connectorRef>
+    <connectorConfiguration>
+        <icfc:configurationProperties
+                xmlns:csv="http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/com.evolveum.polygon.connector-csv/com.evolveum.polygon.connector.csv.CsvConnector">
+            <csv:filePath>/opt/midpoint/var/hr/employees.csv</csv:filePath>
+            <csv:uniqueAttribute>empno</csv:uniqueAttribute>
+            <csv:readOnly>true</csv:readOnly>
+        </icfc:configurationProperties>
+    </connectorConfiguration>
+    <schemaHandling>
+        <objectType>
+            <kind>account</kind>
+            <intent>default</intent>
+            <default>true</default>
+            <delineation>
+                <objectClass>ri:AccountObjectClass</objectClass>
+            </delineation>
+            <focus>
+                <type>UserType</type>
+            </focus>
+            <attribute>
+                <!-- the employee number: the unique column, ConnId's __UID__ and __NAME__ (shown by its column name) -->
+                <ref>ri:empno</ref>
+                <inbound>
+                    <name>hr-name</name>
+                    <expression><script><code>'e' + input</code></script></expression>
+                    <target><path>name</path></target>
+                </inbound>
+                <inbound>
+                    <name>hr-employeeNumber</name>
+                    <target><path>employeeNumber</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:firstName</ref>
+                <inbound>
+                    <name>hr-givenName</name>
+                    <target><path>givenName</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:lastName</ref>
+                <inbound>
+                    <name>hr-familyName</name>
+                    <expression><script><code>input?.trim()?.toLowerCase()?.capitalize()</code></script></expression>
+                    <target><path>familyName</path></target>
+                </inbound>
+            </attribute>
+            <attribute>
+                <ref>ri:department</ref>
+                <inbound>
+                    <name>hr-costCenter</name>
+                    <target><path>costCenter</path></target>
+                </inbound>
+            </attribute>
+            <correlation>
+                <correlators>
+                    <filter>
+                        <ownerFilter>
+                            <q:equal>
+                                <q:path>employeeNumber</q:path>
+                                <expression>
+                                    <script>
+                                        <code>basic.getAttributeValue(shadow, 'empno')</code>
+                                    </script>
+                                </expression>
+                            </q:equal>
+                        </ownerFilter>
+                    </filter>
+                </correlators>
+            </correlation>
+            <synchronization>
+                <reaction>
+                    <name>hr-linked</name>
+                    <situation>linked</situation>
+                    <actions><synchronize/></actions>
+                </reaction>
+                <reaction>
+                    <name>hr-unlinked</name>
+                    <situation>unlinked</situation>
+                    <actions><link/></actions>
+                </reaction>
+                <reaction>
+                    <name>hr-unmatched</name>
+                    <situation>unmatched</situation>
+                    <actions><addFocus/></actions>
+                </reaction>
+                <reaction>
+                    <name>hr-deleted</name>
+                    <situation>deleted</situation>
+                    <actions><deleteFocus/></actions>
+                </reaction>
+            </synchronization>
+        </objectType>
+    </schemaHandling>
+</resource>

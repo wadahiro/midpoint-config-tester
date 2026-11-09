@@ -1,0 +1,3 @@
+# A deployment whose second file cannot be imported (DeploymentLoadTest)
+config:
+  dirs: [post-initial-objects]

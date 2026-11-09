@@ -1,0 +1,22 @@
+<!-- template-v1.xml changed: fullName in upper case, nickName removed, title with a source, locality added -->
+<objectTemplate oid="10000000-0000-0000-0000-00000000b201" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Golden template</name>
+    <mapping>
+        <name>fullName</name>
+        <source><path>givenName</path></source>
+        <source><path>familyName</path></source>
+        <expression><script><code>"$givenName $familyName".toUpperCase()</code></script></expression>
+        <target><path>fullName</path></target>
+    </mapping>
+    <mapping>
+        <name>title</name>
+        <source><path>familyName</path></source>
+        <expression><value>Employee</value></expression>
+        <target><path>title</path></target>
+    </mapping>
+    <mapping>
+        <name>locality</name>
+        <expression><value>Tokyo</value></expression>
+        <target><path>locality</path></target>
+    </mapping>
+</objectTemplate>
