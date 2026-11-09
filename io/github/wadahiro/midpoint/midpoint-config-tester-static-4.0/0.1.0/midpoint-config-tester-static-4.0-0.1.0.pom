@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-static-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-static-4.0</artifactId>
+    <name>midPoint Config Tester static checks for midPoint 4.0</name>
+
+    <properties>
+        <midpoint.version>${midpoint40.version}</midpoint.version>
+        <maven.compiler.release>11</maven.compiler.release>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- before the midPoint BOM: its Spring Boot 2.1 BOM would pin JUnit 5.3 -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>5.10.2</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint</groupId>
+                <artifactId>midpoint</artifactId>
+                <version>${midpoint.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!--
+        What Groovy scripts compile against: the model and its services as in production (no Spring context is
+        started). The reporting libraries are excluded (dead http repositories, as in the tester): a script using Jasper
+        classes fails to compile here.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>model-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>notifications-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>report-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>workflow-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>certification-impl</artifactId>
+            <version>${midpoint.version}</version>
+            <exclusions>
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion><groupId>com.sleepycat</groupId><artifactId>je</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <!-- the 4.0 BOM does not manage these; versions of midPoint 4.0.3 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- midPoint 4.0 runs on JDK 11 (toolchain) -->
+                    <jdkToolchain>
+                        <version>11</version>
+                    </jdkToolchain>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

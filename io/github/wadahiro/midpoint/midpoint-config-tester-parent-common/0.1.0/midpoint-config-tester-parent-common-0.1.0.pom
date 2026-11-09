@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-root</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-parent-common</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester parent of config repositories (common)</name>
+
+    <!--
+        What every config repository needs, whatever its line: the typed names generated from its manifest
+        (NamesGenerator, a main class of the tester artifact, run by exec-maven-plugin, its output a test source root),
+        Surefire (one JVM per line by default, -Dtester.forks=N, the manifest of the repository) and, from the root POM,
+        Evolveum's repository and the pgmem classifier profiles. A repository uses one of the per-line parents
+        (midpoint-<line>/), which add the tester artifact of the line, its dependency management and its JVM settings:
+
+            <parent>
+                <groupId>io.github.wadahiro.midpoint</groupId>
+                <artifactId>midpoint-config-tester-parent-4.8</artifactId>
+                <version>0.1.0-SNAPSHOT</version>
+            </parent>
+
+        Properties a repository may set: tester.manifest.file (default midpoint-config-tester.yaml next to the POM),
+        tester.names.skip, tester.forks.
+    -->
+    <modules>
+        <module>midpoint-4.0</module>
+        <module>midpoint-4.4</module>
+        <module>midpoint-4.8</module>
+    </modules>
+
+    <profiles>
+        <profile>
+            <!-- the lines after 4.8 (not LTS): built and tested only with -Pnon-lts -->
+            <id>non-lts</id>
+            <modules>
+                <module>midpoint-4.9</module>
+                <module>midpoint-4.10</module>
+            </modules>
+        </profile>
+    </profiles>
+
+    <properties>
+        <!-- the parent's version, not the repository's: a config repository has a version of its own -->
+        <tester.version>${project.parent.version}</tester.version>
+        <!-- the repository's manifest: the generator reads its names.package, the tests load it -->
+        <tester.manifest.file>${project.basedir}/midpoint-config-tester.yaml</tester.manifest.file>
+        <tester.names.dir>${project.build.directory}/generated-test-sources/midpoint-names</tester.names.dir>
+        <tester.names.skip>false</tester.names.skip>
+        <!-- the per-line parents set it -->
+        <tester.argLine>-Xmx3g</tester.argLine>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>3.7.0</version>
+                </plugin>
+                <plugin>
+                    <!-- the typed names of the manifest's names.package (Resources, Roles, <Resource>Attrs...); declared by the
+                         per-line parents, which have the tester artifact on their class path -->
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <?m2e execute onConfiguration,onIncremental?>
+                            <id>midpoint-names</id>
+                            <!-- generate-sources: the IDE's "generate sources" runs it too -->
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>java</goal>
+                            </goals>
+                            <configuration>
+                                <mainClass>com.github.wadahiro.midpoint.configtester.names.NamesGenerator</mainClass>
+                                <classpathScope>test</classpathScope>
+                                <skip>${tester.names.skip}</skip>
+                                <arguments>
+                                    <argument>${tester.names.dir}</argument>
+                                    <argument>${tester.manifest.file}</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>midpoint-names-source</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${tester.names.dir}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- ${net.bytebuddy:byte-buddy-agent:jar}: the file redirection's agent, for the argLine of 4.8+ -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>agent-path</id>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- one JVM (one midPoint) for all test classes; -Dtester.forks=N: N JVMs, each its own midPoint,
+                         the first to need a deployment loads and caches it, the others restore it -->
+                    <forkCount>${tester.forks}</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>${tester.argLine}</argLine>
+                    <systemPropertyVariables>
+                        <tester.manifest>${tester.manifest.file}</tester.manifest>
+                        <tester.forks>${tester.forks}</tester.forks>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
