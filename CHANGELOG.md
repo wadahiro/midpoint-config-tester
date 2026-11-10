@@ -1,3 +1,15 @@
+# [0.3.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.2.1...v0.3.0) (2026-11-10)
+
+
+* feat!: Kotlin-friendly names, and no JDK 11 toolchain unless Maven needs one ([3e6f695](https://github.com/wadahiro/midpoint-config-tester/commit/3e6f695392fc001f78446b99d9141be8400ea862))
+
+
+### BREAKING CHANGES
+
+* as(user) is now actor(user); User.object() and
+Shadow.object() are now asObject(); MidPoint.object(type, nameOrOid)
+and TargetSystem.object(objectClass, name) are now find(...).
+
 ## [0.2.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.2.0...v0.2.1) (2026-11-10)
 
 
