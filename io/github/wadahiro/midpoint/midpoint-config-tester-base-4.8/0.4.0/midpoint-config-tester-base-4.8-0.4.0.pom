@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-parent</artifactId>
+        <version>0.4.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-base-4.8</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester (base for 4.8+)</name>
+
+    <!--
+        Parent of the midPoint 4.8+ lines (native repository): harness, Spring context, recorder hooks and drivers are
+        compiled from src/ here into each line module, which adds its LineSupport, SQL and baseline objects (and the
+        classes whose midPoint API differs). A line sets midpoint.version; the default only lets this POM build alone.
+    -->
+    <properties>
+        <!-- Maven Build Cache: this base's sources are inputs of its line modules -->
+        <maven.build.cache.input.2>${tester.dir}/base-4.8/src</maven.build.cache.input.2>
+        <midpoint.version>${midpoint48.version}</midpoint.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.evolveum.midpoint</groupId>
+                <artifactId>midpoint</artifactId>
+                <version>${midpoint.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+            <!-- the file redirection's version wins over midPoint's (Hibernate, Mockito): it must read JDK 21 classes -->
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy-agent</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+    </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>model-test</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>model-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>notifications-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>report-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <!-- cases, approvals and certification (ctx-cases.xml, ctx-workflow.xml, ctx-certification.xml) -->
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>cases-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>workflow-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>certification-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.provisioning</groupId>
+            <artifactId>provisioning-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.provisioning</groupId>
+            <artifactId>ucf-impl-builtin</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>task-quartz-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>audit-log-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>security-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>security-enforcer-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <!-- provides ctx-repository-test.xml (wires the native repository for tests) -->
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-sql-impl-test</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-sqale</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>repo-test-util</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.repo</groupId>
+            <artifactId>system-init</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <!-- the mirror connector (the version midPoint uses) -->
+            <groupId>net.tirasa.connid</groupId>
+            <artifactId>connector-framework</artifactId>
+        </dependency>
+        <dependency>
+            <!-- the in-memory LDAP server of resources kept on the real LDAP connector -->
+            <groupId>com.unboundid</groupId>
+            <artifactId>unboundid-ldapsdk</artifactId>
+            <version>${unboundid.version}</version>
+        </dependency>
+        <dependency>
+            <!-- the CSV connector the line ships (a ConnId bundle: its libraries are inside, midPoint finds it on the
+                 classpath); used by resources imported with ResourceOptions.realConnector() -->
+            <groupId>com.evolveum.polygon</groupId>
+            <artifactId>connector-csv</artifactId>
+            <scope>runtime</scope>
+            <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+        </dependency>
+        <dependency>
+            <!-- the LDAP connector the line ships, as the CSV connector -->
+            <groupId>com.evolveum.polygon</groupId>
+            <artifactId>connector-ldap</artifactId>
+            <scope>runtime</scope>
+            <exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint</groupId>
+            <artifactId>midpoint-localization</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.infra</groupId>
+            <artifactId>test-util</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aspects</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <!-- in-memory SMTP server for mail notifications (Jakarta Mail: GreenMail 2.1, on midPoint's Angus Mail) -->
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail</artifactId>
+            <version>2.1.15</version>
+            <exclusions>
+                <!-- midPoint's org.eclipse.angus:jakarta.mail holds the API too -->
+                <exclusion><groupId>jakarta.mail</groupId><artifactId>jakarta.mail-api</artifactId></exclusion>
+                <exclusion><groupId>junit</groupId><artifactId>junit</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.github.shibukawa.pgmem</groupId>
+            <artifactId>pgmem-native</artifactId>
+            <version>${pgmem.version}</version>
+            <classifier>${pgmem.classifier}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <!-- compile scope: midPoint's test base classes expose AssertJ types -->
+            <artifactId>assertj-core</artifactId>
+        </dependency>
+        <dependency>
+            <!-- the file redirection of mp.files(): an agent instrumenting java.io.File and the NIO paths -->
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy-agent</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-base-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${tester.dir}/base-4.8/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-base-resources</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${tester.dir}/base-4.8/src/main/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

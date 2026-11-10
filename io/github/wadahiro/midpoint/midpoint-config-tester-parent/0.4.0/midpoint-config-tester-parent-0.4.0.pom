@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-root</artifactId>
+        <version>0.4.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-parent</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester (parent)</name>
+
+    <!--
+        Real midPoint computes, the tester drives it through production entry points and records every expression
+        evaluation (docs/redesign.md). core/ holds the line-neutral sources and the tests (not a module: every line
+        module compiles them against its own midPoint BOM and runs the tests), base-<line>/ the parts shared by the
+        lines from <line> on, midpoint-<line>/ what only that line has (LineSupport, SQL, baseline objects).
+    -->
+    <properties>
+        <!-- tester/, from the module's own place (every child of this POM is one level below tester/): so a reactor
+             that is not this repository's (a config repository that builds the tester with its tests) has it too -->
+        <tester.dir>${project.basedir}/..</tester.dir>
+        <!-- Maven Build Cache (opt-in, .mvn/maven-build-cache-config.xml): the shared sources and tests are inputs of
+             every line module -->
+        <maven.build.cache.input.1>${tester.dir}/core</maven.build.cache.input.1>
+        <!-- the parents have no classes to run the generator from: the line modules set it to false -->
+        <tester.names.skip>true</tester.names.skip>
+        <!-- the index of the GUI's pages (GuiPagesIndex): the LTS line modules copy the GUI's jars and set it to false -->
+        <tester.gui.skip>true</tester.gui.skip>
+    </properties>
+
+    <modules>
+        <module>base-4.0</module>
+        <module>midpoint-4.0</module>
+        <module>midpoint-4.4</module>
+        <module>base-4.8</module>
+        <module>midpoint-4.8</module>
+        <!-- static checks without a runtime (own parent: no runtime sources) -->
+        <module>static</module>
+    </modules>
+
+    <profiles>
+        <profile>
+            <!-- the lines after 4.8 (not LTS): built and tested only with -Pnon-lts -->
+            <id>non-lts</id>
+            <modules>
+                <module>midpoint-4.9</module>
+                <module>midpoint-4.10</module>
+            </modules>
+        </profile>
+    </profiles>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- every jar carries LICENSE: the copies of midPoint's initial objects are EUPL, as the tester -->
+                        <id>add-license</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${tester.dir}/..</directory>
+                                    <targetPath>META-INF</targetPath>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-core-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${tester.dir}/core/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-core-resources</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${tester.dir}/core/src/main/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-core-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${tester.dir}/core/src/test/java</source>
+                                <source>${project.build.directory}/generated-test-sources/midpoint-names</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-core-test-resources</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>add-test-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${tester.dir}/core/src/test/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- the typed names of the sample deployments (names.package of their manifests), from the module's
+                     own classes: a downstream project runs the same main class from the tester artifact -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>midpoint-names</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.github.wadahiro.midpoint.configtester.names.NamesGenerator</mainClass>
+                            <classpathScope>compile</classpathScope>
+                            <skip>${tester.names.skip}</skip>
+                            <arguments>
+                                <argument>${project.build.directory}/generated-test-sources/midpoint-names</argument>
+                                <argument>${tester.dir}/core/src/test/resources/scenarios</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!-- the GUI's pages and the actions they need, from the jars the line module copies to
+                             target/gui (the jars are not on the classpath): Actor.canOpen(url) -->
+                        <id>gui-pages</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.github.wadahiro.midpoint.tester.internal.GuiPagesIndex</mainClass>
+                            <classpathScope>compile</classpathScope>
+                            <skip>${tester.gui.skip}</skip>
+                            <arguments>
+                                <argument>${project.build.outputDirectory}/tester/gui-pages.tsv</argument>
+                                <argument>${project.build.directory}/gui</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- ${net.bytebuddy:byte-buddy-agent:jar}: the agent jar of the file redirection, for the argLine -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.7.0</version>
+                <executions>
+                    <execution>
+                        <id>agent-path</id>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- one JVM for all test classes (default): they share one midPoint. The file redirection's agent
+                         (mp.files()) is given here; without it the tester attaches it itself (the 4.0 and 4.4 lines
+                         do, see base-4.0), which JDK 21 warns about. -->
+                    <!-- -Dtester.forks=N: N JVMs, each with its own midPoint, pgmem, ports and target/fork-<n>; the test
+                         classes go to the next free one. The first JVM to need a deployment loads and caches it, the
+                         others restore it (DeploymentCache). -->
+                    <forkCount>${tester.forks}</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en --add-exports java.management/sun.management=ALL-UNNAMED -javaagent:${net.bytebuddy:byte-buddy-agent:jar}</argLine>
+                    <systemPropertyVariables>
+                        <!-- the fixtures of the shared tests (Fixtures.dir) -->
+                        <tester.fixtures>${tester.dir}/core/src/test/resources/fixtures</tester.fixtures>
+                        <!-- the tester's sources and the parents of config repositories (ParentPomTest) -->
+                        <tester.dir>${tester.dir}</tester.dir>
+                        <!-- the extension schema of the shared tests, as a deployment's midPoint schema directory
+                             (ExtensionTest); a line module may point it elsewhere -->
+                        <tester.extensionSchemaDir>${tester.dir}/core/src/test/resources/schema</tester.extensionSchemaDir>
+                        <!-- RuntimeTest: the line must match the release the module is built against -->
+                        <tester.midpointVersion>${midpoint.version}</tester.midpointVersion>
+                        <!-- the fork's working directory (TesterRuntime.workDirOfThisJvm); the fork's number is in
+                             the argLine (surefire.forkNumber is not replaced here) -->
+                        <tester.forks>${tester.forks}</tester.forks>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
