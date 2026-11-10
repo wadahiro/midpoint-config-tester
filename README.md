@@ -477,7 +477,7 @@ they were (a reconciliation setting `synchronizationSituation` to the value it h
 and `operationExecution` at any depth (4.8 writes an `operationExecution` into each object a task processes), the
 modifications of task and node objects, a shadow's synchronization timestamps, situation description and caching
 metadata. A connector call is recorded as midPoint made it to the connector instance; its account is the naming
-attribute's value (`icfs:name`, an LDAP `dn`), else the identifiers. The tester's own calls (an assertion that reads a
+attribute's value (`icfs:name`, an LDAP `dn`), else the identifiers; `of(account)` ignores case. The tester's own calls (an assertion that reads a
 user, a wait that reads a task, `t.source(...)` writing a source system) are not effects: change source systems before
 the block. A time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
 (`t.clock().runDue()`). The block's exception propagates; check a failure inside it with `t.expectFailure`.

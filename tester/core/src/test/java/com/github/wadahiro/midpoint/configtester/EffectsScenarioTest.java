@@ -38,7 +38,7 @@ class EffectsScenarioTest {
         Claims claims = hired.claims();
         claims.changes().of("e1001").added().single();
         claims.changes().ofType("ShadowType").added().exactly(3);     // HR row, LDAP account, the group found
-        claims.connectorCalls().to("LDAP").adds().of(JOHN).single();
+        claims.connectorCalls().to("LDAP").adds().of(JOHN.toUpperCase()).single();     // names ignore case
         claims.connectorCalls().to("LDAP").modifies().of(SALES).single().only("member");
         claims.mails().to("e1001@example.com").withSubject("Welcome John Doe").single();
         claims.verifyAll();

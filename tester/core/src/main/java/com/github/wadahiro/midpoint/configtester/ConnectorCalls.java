@@ -39,9 +39,12 @@ public final class ConnectorCalls {
         return select(c -> resource.equals(c.resource()), " to " + resource);
     }
 
-    /** The calls about the account with this name ({@link ConnectorCall#account()}). */
+    /**
+     * The calls about the account with this name ({@link ConnectorCall#account()}), ignoring case: a target system
+     * compares names so (an LDAP DN), and midPoint may write one in another case than the configuration.
+     */
     public ConnectorCalls of(String account) {
-        return select(c -> account.equals(c.account()), " of " + account);
+        return select(c -> account.equalsIgnoreCase(c.account()), " of " + account);
     }
 
     /** The calls about objects of the object class (its local name). */
