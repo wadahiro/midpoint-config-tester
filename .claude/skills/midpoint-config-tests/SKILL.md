@@ -150,7 +150,7 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
   - a shell command (a report's post-report script) sees the mapped directory in its arguments; one it builds itself
     does not. midPoint only logs a failed post-report script (WARN), so assert the file it should have written
   - a change from a service's channel (a hook that checks it): `t.inChannel(channelUri, () -> ...)`
-  - an object collection's list as a user sees it (a "my requests" page): `t.as(user).collection(name)`
+  - an object collection's list as a user sees it (a "my requests" page): `t.actor(user).collection(name)`
   - calls a service makes on a user's behalf (a portal over midPoint's API; keep the service's own protocol in the
     project): `t.callAs(Caller.user(u).privileged().owner(u).channel(uri), () -> ...)`
   - an add-on's own service (an API server the tester cannot host): `t.midpoint().createBean(ServiceClass.class)`

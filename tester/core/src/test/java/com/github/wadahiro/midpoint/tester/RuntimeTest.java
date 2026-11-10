@@ -40,13 +40,13 @@ class RuntimeTest {
         // the line of the midPoint release the module is built against (-Dmidpoint48.version=... etc.)
         assertThat(System.getProperty("tester.midpointVersion")).startsWith(mp.line() + ".");
         // archetypes cases, approvals, certification and reports need
-        assertThat(mp.object(ArchetypeType.class, "Approval case")).isNotNull();
+        assertThat(mp.find(ArchetypeType.class, "Approval case")).isNotNull();
         if (Lines.atLeast(mp, "4.4")) {
             // the certification task archetype (4.0 has no task archetypes)
-            assertThat(mp.object(ArchetypeType.class, "00000000-0000-0000-0000-000000000520")).isNotNull();
+            assertThat(mp.find(ArchetypeType.class, "00000000-0000-0000-0000-000000000520")).isNotNull();
             // the bulk action task archetypes, which the tasks of asynchronous policy scripts get
-            assertThat(mp.object(ArchetypeType.class, "00000000-0000-0000-0000-000000000508")).isNotNull();
-            assertThat(mp.object(ArchetypeType.class, "00000000-0000-0000-0000-000000000509")).isNotNull();
+            assertThat(mp.find(ArchetypeType.class, "00000000-0000-0000-0000-000000000508")).isNotNull();
+            assertThat(mp.find(ArchetypeType.class, "00000000-0000-0000-0000-000000000509")).isNotNull();
         }
         if (Lines.atLeast(mp, "4.4")) {
             // every mapping midPoint builds comes from the recording factory, also through ModelBeans
@@ -76,7 +76,7 @@ class RuntimeTest {
     void startsFromTheDeployment(MidPointConfigTester t) {
         MidPoint mp = t.midpoint();
         assertThat(mp.user("temp")).isNull();
-        assertThat(mp.object(RoleType.class, "10000000-0000-0000-0000-00000000c002").getName().getOrig())
+        assertThat(mp.find(RoleType.class, "10000000-0000-0000-0000-00000000c002").getName().getOrig())
                 .isEqualTo("Dept IT");
     }
 }

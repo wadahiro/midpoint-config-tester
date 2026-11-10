@@ -331,7 +331,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
     }
 
     @Override
-    public Map<String, List<Object>> object(String objectClass, String name) {
+    public Map<String, List<Object>> find(String objectClass, String name) {
         return account(name);
     }
 

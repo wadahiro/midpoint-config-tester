@@ -28,7 +28,7 @@ import com.github.wadahiro.midpoint.tester.internal.Deployment;
  * <p>A test that fails with an {@link AssertionError} (an AssertJ assertion on a view such as {@code user.roles()})
  * gets the mappings behind the values it read through the views appended to the message, the last read first; the
  * expected and actual values stay, for the IDE's diff; and the mappings that set an item of a user whose object it read
- * ({@code User.object()}) when the item's value appears in the failure. Off with
+ * ({@code User.asObject()}) when the item's value appears in the failure. Off with
  * {@code -Dscenario.whyOnFailure=false}. During a test, AssertJ shows midPoint's values as {@link Describe} does
  * ({@code assignment of role Dept Sales}).</p>
  *

@@ -26,19 +26,19 @@ class CheckpointScenarioTest {
         t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>before</name></user>");
         Instant stopped = t.clock().now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
         t.clock().stopAt(stopped);
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
         int mails = t.mails().count();
         assertThat(mails).isPositive();
         Checkpoint checkpoint = t.deployment().checkpoint();
         try {
             t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>after</name></user>");
             t.clock().advance("P30D");
-            t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.as(Users.ROLE_OWNER), "fine by me");
+            t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "fine by me");
             assertThat(t.mails().count()).isGreaterThan(mails);
 
             t.deployment().restore(checkpoint);
 
-            assertThat(t.midpoint().as("administrator").search(UserType.class, null).value())
+            assertThat(t.midpoint().actor("administrator").search(UserType.class, null).value())
                     .extracting(u -> u.getName().getOrig()).contains("before").doesNotContain("after");
             assertThat(t.clock().now()).isEqualTo(stopped);
             assertThat(t.mails().count()).isEqualTo(mails);
@@ -48,7 +48,7 @@ class CheckpointScenarioTest {
             // and the checkpoint serves again
             t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>again</name></user>");
             t.deployment().restore(checkpoint);
-            assertThat(t.midpoint().as("administrator").search(UserType.class, null).value())
+            assertThat(t.midpoint().actor("administrator").search(UserType.class, null).value())
                     .extracting(u -> u.getName().getOrig()).doesNotContain("again");
         } finally {
             t.deployment().release(checkpoint);

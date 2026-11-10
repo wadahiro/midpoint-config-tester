@@ -17,7 +17,7 @@ import com.github.wadahiro.midpoint.configtester.names.ObjectRef;
  * ({@code activation/administrativeStatus}, {@code extension/hrId}).
  *
  * <pre>{@code
- * Form form = s.as(Users.HELPDESK).form(Users.JACK);
+ * Form form = s.actor(Users.HELPDESK).form(Users.JACK);
  * assertThat(form.modifiableItems()).containsExactly("telephoneNumber");
  * assertThat(form.canRead("costCenter")).isTrue();
  * }</pre>

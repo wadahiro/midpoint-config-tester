@@ -72,7 +72,7 @@ public final class Shadow {
     }
 
     /** The shadow as the repository has it. */
-    public ShadowType object() {
+    public ShadowType asObject() {
         return object;
     }
 

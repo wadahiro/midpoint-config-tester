@@ -264,7 +264,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public Map<String, List<Object>> account(String name) {
-        return object(accountClass(), name);
+        return find(accountClass(), name);
     }
 
     @Override
@@ -338,7 +338,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public Map<String, List<Object>> group(String name) {
-        return object(groupClass(), name);
+        return find(groupClass(), name);
     }
 
     @Override
@@ -414,7 +414,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
     }
 
     @Override
-    public Map<String, List<Object>> object(String objectClass, String name) {
+    public Map<String, List<Object>> find(String objectClass, String name) {
         Entry entry = get(name);
         if (entry == null) {
             return null;

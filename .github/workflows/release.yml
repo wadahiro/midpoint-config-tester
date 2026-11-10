@@ -47,7 +47,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          # JDK 11 for the toolchain of 4.0 and 4.4; the last one runs Maven
+          # JDK 11 for the toolchain of 4.0; the last one runs Maven
           java-version: |
             11
             21

@@ -125,7 +125,7 @@ class TaskRunsTest {
         // the reset brings them back (rows and Quartz jobs) without running them: checked before the next method
         mp.deleteObject(TaskType.class, RECURRING);
         mp.deleteObject(TaskType.class, SINGLE);
-        assertThat(mp.object(TaskType.class, RECURRING)).isNull();
+        assertThat(mp.find(TaskType.class, RECURRING)).isNull();
     }
 
     @Test
@@ -134,7 +134,7 @@ class TaskRunsTest {
         MidPoint mp = t.midpoint();
         mp.runTask("recompute users");
         // the next run is an hour after that run: not now
-        TaskType task = mp.object(TaskType.class, RECURRING);
+        TaskType task = mp.find(TaskType.class, RECURRING);
         long lastRun = task.getLastRunStartTimestamp().toGregorianCalendar().getTimeInMillis();
         Long next = mp.bean(TaskManager.class).getNextRunStartTime(RECURRING, new OperationResult("next"));
         assertThat(next).isCloseTo(lastRun + 3600_000L, org.assertj.core.data.Offset.offset(1000L));
@@ -360,7 +360,7 @@ class TaskRunsTest {
 
     /** The task's execution state ({@code executionState} since 4.4, {@code executionStatus} before), as text. */
     private static String state(MidPoint mp, String oid) {
-        TaskType task = mp.object(TaskType.class, oid);
+        TaskType task = mp.find(TaskType.class, oid);
         String item = Lines.atLeast(mp, "4.4") ? "executionState" : "executionStatus";
         PrismProperty<?> state = task.asPrismObject().findProperty(new ItemName(SchemaConstants.NS_C, item));
         return state != null ? String.valueOf(state.getRealValue()).toLowerCase(java.util.Locale.ROOT) : null;

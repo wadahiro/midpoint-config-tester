@@ -98,7 +98,7 @@ public interface TargetSystem {
 
     void deleteObject(String objectClass, String name);
 
-    Map<String, List<Object>> object(String objectClass, String name);
+    Map<String, List<Object>> find(String objectClass, String name);
 
     /**
      * The object's primary identifier ({@code __UID__}): generated (e.g. SCIM's {@code id}, LDAP's {@code entryUUID})

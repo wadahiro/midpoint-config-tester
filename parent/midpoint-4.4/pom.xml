@@ -16,12 +16,12 @@
 
     <!--
         The parent of a config repository tested on midPoint 4.4: the tester artifact of the line, the line's dependency
-        management (the tester's classpath is only the same with midPoint's BOM and the tester's own versions), and
-        the JDK 11 toolchain of the tests (midPoint 4.4 is built for Java 11).
+        management (the tester's classpath is only the same with midPoint's BOM and the tester's own versions). The
+        tests run on the JDK that runs Maven (11, 17 or 21).
     -->
     <properties>
         <midpoint.version>${midpoint44.version}</midpoint.version>
-        <!-- midPoint 4.0 and 4.4 run on JDK 11 (a Maven toolchain, see the README): the tests compile for it -->
+        <!-- midPoint 4.4 is built for Java 11: the tests compile for it, and run on 11 or later -->
         <maven.compiler.release>11</maven.compiler.release>
         <!-- no -javaagent: the tester attaches the file redirection's agent itself -->
         <tester.argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</tester.argLine>
@@ -194,15 +194,6 @@
                 <!-- the generator of typed names (configured in the common parent) -->
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <jdkToolchain>
-                        <version>11</version>
-                    </jdkToolchain>
-                </configuration>
             </plugin>
         </plugins>
     </build>

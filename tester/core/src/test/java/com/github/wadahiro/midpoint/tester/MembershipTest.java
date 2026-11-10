@@ -50,7 +50,7 @@ class MembershipTest {
         String shadowOid = mp.user("jdoe").getLinkRef().get(0).getOid();
         // read through the model, which fetches the account (the repository keeps only some attributes)
         String shadow = mp.prismContext().xmlSerializer().serialize(
-                mp.as("administrator").get(ShadowType.class, shadowOid).value().asPrismObject());
+                mp.actor("administrator").get(ShadowType.class, shadowOid).value().asPrismObject());
         assertThat(shadow).contains("memberOf").contains(STAFF);
         assertThatThrownBy(() -> ldap.modifyAccount(JDOE, "memberOf", STAFF)).hasMessageContaining("computed");
     }

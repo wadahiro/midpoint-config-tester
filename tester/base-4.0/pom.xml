@@ -49,10 +49,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- midPoint 4.0 and 4.4 run on JDK 11 (toolchain); one JVM for all test classes -->
-                    <jdkToolchain>
-                        <version>11</version>
-                    </jdkToolchain>
+                    <!-- one JVM for all test classes; on the JDK that runs Maven (4.0: JDK 11, its module) -->
                     <!-- no -javaagent: the tester attaches the file redirection's agent itself (tested here) -->
                     <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</argLine>
                 </configuration>

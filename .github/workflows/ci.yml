@@ -16,8 +16,8 @@ jobs:
   test:
     # Builds every module from the root: the tester's LTS lines 4.0, 4.4 and 4.8 (each runs the shared tests in its own
     # JVM, on a real midPoint with an in-memory PostgreSQL, pgmem) and the static checks; 4.9 and 4.10 only with
-    # -Pnon-lts. Maven runs on the matrix JDK; 4.0 and 4.4 run their tests on JDK 11 through Maven toolchains
-    # (setup-java registers every installed JDK), 4.8 on the matrix JDK.
+    # -Pnon-lts. Maven runs on the matrix JDK; 4.0 runs its tests on JDK 11 through Maven toolchains
+    # (setup-java registers every installed JDK), the other lines on the matrix JDK.
     runs-on: ubuntu-latest
     strategy:
       matrix:

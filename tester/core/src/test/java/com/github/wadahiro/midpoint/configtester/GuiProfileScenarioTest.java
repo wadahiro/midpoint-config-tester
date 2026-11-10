@@ -21,7 +21,7 @@ class GuiProfileScenarioTest {
 
     @Test
     void everyoneHasTheSystemConfigurations(MidPointConfigTester t) {
-        GuiProfile jack = t.as(Users.JACK).guiProfile();
+        GuiProfile jack = t.actor(Users.JACK).guiProfile();
 
         assertThat(jack.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
                 .containsExactly("people");
@@ -34,7 +34,7 @@ class GuiProfileScenarioTest {
     /** The role's configuration after the system configuration's: its view added, its time zone, hidden wins. */
     @Test
     void theManagerHasTheInducedRolesToo(MidPointConfigTester t) {
-        GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
+        GuiProfile manager = t.actor(Users.IT_MANAGER).guiProfile();
 
         assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
                 .containsExactlyInAnyOrder("people", "department-members");
@@ -53,13 +53,13 @@ class GuiProfileScenarioTest {
      */
     @Test
     void theMenuListsTheViewsByTheLinesRule(MidPointConfigTester t) {
-        GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
+        GuiProfile manager = t.actor(Users.IT_MANAGER).guiProfile();
 
         assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::inMenu)
                 .containsOnly(!t.line().equals("4.0"));
         // why on 4.0: the manager does not get the views' collection
-        assertThat(t.midpoint().as("it-manager").get(ObjectCollectionType.class, "People").value()).isNull();
+        assertThat(t.midpoint().actor("it-manager").get(ObjectCollectionType.class, "People").value()).isNull();
         // the administrator reads everything
-        assertThat(t.as("administrator").guiProfile().view(UserType.COMPLEX_TYPE, "people").inMenu()).isTrue();
+        assertThat(t.actor("administrator").guiProfile().view(UserType.COMPLEX_TYPE, "people").inMenu()).isTrue();
     }
 }

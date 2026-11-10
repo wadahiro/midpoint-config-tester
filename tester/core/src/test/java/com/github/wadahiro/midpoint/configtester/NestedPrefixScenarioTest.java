@@ -35,7 +35,7 @@ class NestedPrefixScenarioTest {
     }
 
     static List<String> userNames(MidPointConfigTester t) {
-        return t.midpoint().as("administrator").search(UserType.class, null).value().stream()
+        return t.midpoint().actor("administrator").search(UserType.class, null).value().stream()
                 .map(u -> u.getName().getOrig()).collect(Collectors.toList());
     }
 
@@ -59,7 +59,7 @@ class NestedPrefixScenarioTest {
             addUser(t, "prefix");
             stopped = t.clock().now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
             t.clock().stopAt(stopped);
-            t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+            t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
             mailsAfterPrefix = t.mails().count();
         }
 
@@ -67,7 +67,7 @@ class NestedPrefixScenarioTest {
         @Order(1)
         void theOwnerApproves30DaysLater(MidPointConfigTester t) {
             t.clock().advance("P30D");
-            t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.as(Users.ROLE_OWNER), "fine by me");
+            t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "fine by me");
             addUser(t, "approval");
             assertThat(t.mails().count()).isGreaterThan(mailsAfterPrefix);
         }

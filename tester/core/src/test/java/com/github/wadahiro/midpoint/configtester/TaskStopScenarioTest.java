@@ -31,7 +31,7 @@ class TaskStopScenarioTest {
     }
 
     private static java.util.List<String> users(MidPointConfigTester t) {
-        return t.midpoint().as("administrator").search(UserType.class, null).value().stream()
+        return t.midpoint().actor("administrator").search(UserType.class, null).value().stream()
                 .map(u -> u.getName().getOrig()).filter(n -> n.startsWith("e1")).sorted()
                 .collect(java.util.stream.Collectors.toList());
     }

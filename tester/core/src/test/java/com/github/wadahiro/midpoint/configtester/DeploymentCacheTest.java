@@ -134,7 +134,7 @@ class DeploymentCacheTest {
         t.user("e1001").hasRole(Roles.DEPT_SALES);
         List<String> out = new ArrayList<>();
         out.add("fullName " + t.user("e1001").values(UserItems.FULL_NAME));
-        out.add("roles " + t.user("e1001").object().getAssignment().stream()
+        out.add("roles " + t.user("e1001").asObject().getAssignment().stream()
                 .map(a -> t.nameOf(a.getTargetRef()))
                 .filter(r -> r.startsWith("Dept"))
                 .collect(Collectors.toList()));

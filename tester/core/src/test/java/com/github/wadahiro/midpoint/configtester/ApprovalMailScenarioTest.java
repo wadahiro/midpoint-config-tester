@@ -39,19 +39,19 @@ class ApprovalMailScenarioTest {
     @Test
     void aMailTheServerRefusesIsNotReceived(MidPointConfigTester t) {
         t.mailServer().reject(JACK);
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
         t.workItems().assignedTo(Users.ROLE_OWNER).single();
         assertThat(t.mails().perRecipient()).isEqualTo(Map.of(OWNER, 1));
 
         t.mailServer().accept();
-        t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.as(Users.ROLE_OWNER), "fine by me");
+        t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "fine by me");
         t.mails().to(OFFICER).withSubject("Approval needed: Privileged Access").exactly(1);
     }
 
     @Test
     void eachStagesApproversAreMailedThenTheRequesterHearsTheOutcome(MidPointConfigTester t) {
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
         t.mails().to(JACK).withSubject("Request submitted: Privileged Access").single()
                 .hasBodyContaining("Your request for Privileged Access for Jack Sparrow waits for approval.");
@@ -59,14 +59,14 @@ class ApprovalMailScenarioTest {
                 .hasBodyContaining("Dear Rose Owner,", "Jack Sparrow requests Privileged Access for Jack Sparrow (jack).",
                         "Stage 1 waits for your decision.");
         assertThat(t.mails().perRecipient()).isEqualTo(Map.of(JACK, 1, OWNER, 1));
-        t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.as(Users.ROLE_OWNER), "fine by me");
+        t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "fine by me");
 
         // stage 2: every Security officer has a work item of their own, and a mail
         t.workItems().forUser(Users.JACK).inStage(2).exactly(2);
         assertThat(t.mails().withBodyContaining("Stage 2 waits for your decision.").perRecipient())
                 .isEqualTo(Map.of(OFFICER, 1, ANALYST, 1));
         t.mails().to(ANALYST).withSubject("Approval needed: Privileged Access").single().hasBodyContaining("Dear Sue Analyst,");
-        t.workItems().assignedTo(Users.SEC_ANALYST).single().approve(t.as(Users.SEC_ANALYST), "ok, ticket checked");
+        t.workItems().assignedTo(Users.SEC_ANALYST).single().approve(t.actor(Users.SEC_ANALYST), "ok, ticket checked");
 
         // the first decision counts: the other officer's work item is cancelled, with no mail
         t.workItems().none();
@@ -84,7 +84,7 @@ class ApprovalMailScenarioTest {
      */
     @Test
     void theWholeBodiesOfTheMails(MidPointConfigTester t) throws IOException {
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
         t.mails().to(OWNER).withSubject("Approval needed").single().hasBody(String.join("\n",
                 "Dear Rose Owner,",
@@ -100,9 +100,9 @@ class ApprovalMailScenarioTest {
 
     @Test
     void aRejectionTellsTheRequesterWhyAndGoesNoFurther(MidPointConfigTester t) {
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
         t.workItems().assignedTo(Users.ROLE_OWNER).single()
-                .reject(t.as(Users.ROLE_OWNER), "no privileged access without a ticket");
+                .reject(t.actor(Users.ROLE_OWNER), "no privileged access without a ticket");
 
         t.cases().forUser(Users.JACK).forRole(Roles.PRIVILEGED_ACCESS).single().isRejected();
         t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
@@ -115,7 +115,7 @@ class ApprovalMailScenarioTest {
 
     @Test
     void anUndecidedRequestIsRemindedThenEscalatedToTheDeputy(MidPointConfigTester t) {
-        t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+        t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
         WorkItem owners = t.workItems().assignedTo(Users.ROLE_OWNER).single().atEscalationLevel(0);
         Instant deadline = owners.deadline();
         // five calendar days in the JVM's zone: an hour more or less across a daylight saving change
@@ -140,8 +140,8 @@ class ApprovalMailScenarioTest {
                 .hasBodyContaining("Dear Olga Deputy,", "It is escalated to you (level 1, deputy).");
 
         // the deputy approves, then a Security officer: the request is done
-        escalated.approve(t.as(Users.OWNER_DEPUTY));
-        t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.as(Users.SEC_OFFICER));
+        escalated.approve(t.actor(Users.OWNER_DEPUTY));
+        t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.actor(Users.SEC_OFFICER));
         t.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
         t.mails().to(JACK).withSubject("Request approved: Privileged Access").single()
                 .hasBodyContaining("has been approved by Sam Officer.");

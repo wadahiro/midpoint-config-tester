@@ -69,10 +69,10 @@ class AuthzMatrixCoverageScenarioTest {
      */
     @Test
     void theAuthorizationsAreAsMidPointCompiledThem(MidPointConfigTester t) {
-        assertThat(t.as(Users.IT_MANAGER).compiledAuthorizations())
+        assertThat(t.actor(Users.IT_MANAGER).compiledAuthorizations())
                 .extracting(c -> Actor.source(c.source()) + " " + c.authorization().getName())
                 .contains("role Department manager read-members", "role End user self-read");
-        assertThat(t.as(Users.JACK).compiledAuthorizations())
+        assertThat(t.actor(Users.JACK).compiledAuthorizations())
                 .extracting(c -> Actor.source(c.source()))
                 .doesNotContain("role Department manager");
     }

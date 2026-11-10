@@ -29,7 +29,7 @@ class InitialObjectsScenarioTest {
     /** The post-initial system configuration overwrites the initial one (midPoint: overwrite on every line). */
     @Test
     void theDeploymentsSystemConfigurationReplacesTheInitialOne(MidPointConfigTester t) {
-        SystemConfigurationType config = t.midpoint().object(SystemConfigurationType.class, "SystemConfiguration");
+        SystemConfigurationType config = t.midpoint().find(SystemConfigurationType.class, "SystemConfiguration");
         assertThat(config.getDescription()).isEqualTo("Access deployment");
         // the initial one has a cleanup policy and GUI configuration (object collection views); the deployment's
         // has no cleanup policy, and GUI configuration of its own: one view
@@ -38,8 +38,8 @@ class InitialObjectsScenarioTest {
                 .extracting(v -> v.getIdentifier()).containsExactly("people");
         // the initial objects the deployment refers to are there
         assertThat(config.getGlobalSecurityPolicyRef().getOid()).isEqualTo(InitialPolicies.DEFAULT_SECURITY_POLICY.oid());
-        assertThat(t.midpoint().object(SecurityPolicyType.class, InitialPolicies.DEFAULT_SECURITY_POLICY.oid())).isNotNull();
-        assertThat(t.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.name())).isNotNull();
+        assertThat(t.midpoint().find(SecurityPolicyType.class, InitialPolicies.DEFAULT_SECURITY_POLICY.oid())).isNotNull();
+        assertThat(t.midpoint().find(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.name())).isNotNull();
     }
 
     /** midPoint's default password policy (an initial object, by the default security policy) checks passwords. */

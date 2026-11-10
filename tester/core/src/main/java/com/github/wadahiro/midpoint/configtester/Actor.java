@@ -24,7 +24,7 @@ import com.github.wadahiro.midpoint.tester.GuiPages;
 import com.github.wadahiro.midpoint.tester.GuiProfile;
 
 /**
- * A user who acts in the scenario ({@link MidPointConfigTester#as}): requests roles, approves and rejects work items, reviews in
+ * A user who acts in the scenario ({@link MidPointConfigTester#actor}): requests roles, approves and rejects work items, reviews in
  * certification campaigns. midPoint runs the action logged in as that user, so their authorizations apply (a request
  * needs the End user role's "assign requestable roles", an approval the Approver role's, a review the Reviewer
  * role's). What the user sees and may do in the GUI is asked the same way, by midPoint's actions: what their searches
@@ -33,9 +33,9 @@ import com.github.wadahiro.midpoint.tester.GuiProfile;
  * these fails, the failure lists the user's authorizations.
  *
  * <pre>{@code
- * t.as("jack").request().assign("Privileged Access");
- * t.workItems().forRole("Privileged Access").single().approve(t.as("cc-owner"), "ok");
- * assertThat(t.as("helpdesk").search(UserType.class)).containsExactlyInAnyOrder(Users.JACK, Users.HELPDESK);
+ * t.actor("jack").request().assign("Privileged Access");
+ * t.workItems().forRole("Privileged Access").single().approve(t.actor("cc-owner"), "ok");
+ * assertThat(t.actor("helpdesk").search(UserType.class)).containsExactlyInAnyOrder(Users.JACK, Users.HELPDESK);
  * }</pre>
  */
 public final class Actor {
@@ -74,7 +74,7 @@ public final class Actor {
     public List<ObjectRef> search(Class<? extends ObjectType> type) {
         explainAuthorizations();
         List<ObjectRef> out = new ArrayList<>();
-        for (ObjectType object : tester.midpoint().as(name).search(type, null).value()) {
+        for (ObjectType object : tester.midpoint().actor(name).search(type, null).value()) {
             out.add(ObjectRef.of(typeName(object), object.getName().getOrig(), object.getOid()));
         }
         return out;
@@ -86,7 +86,7 @@ public final class Actor {
      */
     public List<ObjectRef> collection(String nameOrOid) {
         List<ObjectRef> out = new ArrayList<>();
-        for (ObjectType object : tester.midpoint().as(name).collection(nameOrOid).value()) {
+        for (ObjectType object : tester.midpoint().actor(name).collection(nameOrOid).value()) {
             out.add(ObjectRef.of(typeName(object), object.getName().getOrig(), object.getOid()));
         }
         return out;
@@ -103,7 +103,7 @@ public final class Actor {
      */
     public boolean canGet(ObjectRef object) {
         explainAuthorizations();
-        return tester.midpoint().as(name).get(typeOf(object), key(object)).value() != null;
+        return tester.midpoint().actor(name).get(typeOf(object), key(object)).value() != null;
     }
 
     /**
@@ -112,7 +112,7 @@ public final class Actor {
      */
     public boolean isAuthorized(String actionUrl, ObjectRef object) {
         explainAuthorizations();
-        return tester.midpoint().as(name).isAuthorized(actionUrl, typeOf(object), key(object)).value();
+        return tester.midpoint().actor(name).isAuthorized(actionUrl, typeOf(object), key(object)).value();
     }
 
     /**
@@ -122,14 +122,14 @@ public final class Actor {
      */
     public boolean canAssign(ObjectRef focus, ObjectRef target, QName relation) {
         explainAuthorizations();
-        return tester.midpoint().as(name).isAuthorizedToAssign(typeOf(focus), key(focus), typeOf(target),
+        return tester.midpoint().actor(name).isAuthorizedToAssign(typeOf(focus), key(focus), typeOf(target),
                 key(target), relation).value();
     }
 
     /** As {@link #canAssign}, the unassignment ({@code #unassign}). */
     public boolean canUnassign(ObjectRef focus, ObjectRef target, QName relation) {
         explainAuthorizations();
-        return tester.midpoint().as(name).isAuthorizedToUnassign(typeOf(focus), key(focus), typeOf(target),
+        return tester.midpoint().actor(name).isAuthorizedToUnassign(typeOf(focus), key(focus), typeOf(target),
                 key(target), relation).value();
     }
 
@@ -165,7 +165,7 @@ public final class Actor {
             actions = new LinkedHashSet<>(Arrays.asList(pageOrActions));
             actions.addAll(guiAll());
         }
-        return tester.midpoint().as(name).isAuthorizedForAny(actions).value();
+        return tester.midpoint().actor(name).isAuthorizedForAny(actions).value();
     }
 
     /** The {@code #guiAll} actions the GUI adds to a page's: 4.0 has a deprecated one too. */
@@ -182,7 +182,7 @@ public final class Actor {
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();
-        Answer<? extends PrismObjectDefinition<?>> definition = tester.midpoint().as(name)
+        Answer<? extends PrismObjectDefinition<?>> definition = tester.midpoint().actor(name)
                 .editDefinition(typeOf(object), key(object));
         return new Form(name, object, definition.value());
     }
@@ -195,7 +195,7 @@ public final class Actor {
      */
     public GuiProfile guiProfile() {
         explainAuthorizations();
-        GuiProfile profile = tester.midpoint().as(name).guiProfile().value();
+        GuiProfile profile = tester.midpoint().actor(name).guiProfile().value();
         tester.read("GUI profile of " + name, () -> describe(profile));
         return profile;
     }
@@ -235,7 +235,7 @@ public final class Actor {
 
     /** The user's authorizations, by the role (or archetype) they come from, as a failure shows them. */
     String authorizations() {
-        if (tester.midpoint().object(UserType.class, name) == null) {
+        if (tester.midpoint().find(UserType.class, name) == null) {
             return "No user " + name;
         }
         StringBuilder sb = new StringBuilder("Authorizations of " + name + " (as midPoint compiled them at login):");
@@ -254,7 +254,7 @@ public final class Actor {
 
     /** The user's authorizations as midPoint compiled them at login ({@code Access.authorizations()}). */
     List<CompiledAuthorization> compiledAuthorizations() {
-        return tester.midpoint().as(name).authorizations().value();
+        return tester.midpoint().actor(name).authorizations().value();
     }
 
     /** {@code role:<oid>(End user)} as {@code role End user}. */

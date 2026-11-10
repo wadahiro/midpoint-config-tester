@@ -45,9 +45,11 @@ module is a copy, and the work is re-dating what the tests and docs attribute to
   line's `prism-api` jar in `~/.m2`; without it the prism section is empty (it prints the `dependency:get` command).
   The static module (step 8) resolves a different tree: resolve it as well. Older lines pull from more repositories.
 - **JDK**: the `project.source.version` / `maven.compiler.release` / `java.version` of midPoint's root POM (the probe
-  prints it; 4.0 and 4.4: 11, 4.8+: 17). A line built for Java 11 runs its tests through a Maven toolchain
-  (`base-4.0`: `<jdkToolchain>` in surefire, a JDK 11 in `~/.m2/toolchains.xml` or `mvn -t <file>`; CI installs every
-  JDK with `setup-java`).
+  prints it; 4.0 and 4.4: 11, 4.8+: 17). A line built for Java 11 compiles with `--release 11` and runs its tests on
+  the build's JDK when midPoint runs there (4.4 does on 17 and 21); only a line that cannot (4.0: Groovy 2.5 stops on
+  JDK 16+) runs them through a Maven toolchain (`tester/midpoint-4.0`: `<jdkToolchain>` in surefire, a JDK 11 in
+  `~/.m2/toolchains.xml` or `mvn -t <file>`; CI installs every JDK with `setup-java`), and its parent selects the
+  toolchain only when Maven runs on a JDK it cannot run on (`parent/midpoint-4.0`, profile `jdk11-toolchain`).
 
 ## 1. Research: how far is the new line from a supported one?
 
@@ -268,7 +270,7 @@ item the line adds or drops gets its `Lines` in `UserItems`.
 
 **Parent of config repositories.** Add `parent/midpoint-X.Y/pom.xml` (a copy of the nearest line's: the line's
 version property, its dependency management, the versions its tester POM pins over midPoint's BOM, the argLine or
-JDK 11 toolchain) and the module to `parent/pom.xml`. Check it with a config repository on it, e.g. the example
+the JDK 11 toolchain profile of 4.0) and the module to `parent/pom.xml`. Check it with a config repository on it, e.g. the example
 `examples/hr-ldap` with its parent switched to the new line (not committed).
 
 ## 7. Cross-line check
@@ -285,7 +287,8 @@ The static checks run without a runtime, one module per line under `tester/stati
 - `tester/static/midpoint-X.Y/pom.xml`: the line's BOM, model-impl, notifications-impl, report-impl, workflow-impl,
   certification-impl (the Groovy compile classpath), logback, JUnit, AssertJ. Add it to `tester/static/pom.xml` and
   resolve it online (`dependency:resolve -pl tester/static/midpoint-X.Y -am`). A JDK 11 line sets
-  `maven.compiler.release` 11 and the surefire `jdkToolchain` (see `midpoint-4.4`); 4.0 also takes the JUnit BOM
+  `maven.compiler.release` 11 (see `midpoint-4.4`), and the surefire `jdkToolchain` only if midPoint cannot run on
+  the build's JDK (`midpoint-4.0`); 4.0 also takes the JUnit BOM
   first, explicit logback and AssertJ versions and the tester's reporting exclusions (`midpoint-4.0`).
 - `com.github.wadahiro.midpoint.tester.check.StaticLine`: `LINE`, `prismContext(extensionSchemaDir)`
   (`MidPointPrismContextFactory`), `evaluators(prismContext)` (the members of `c:expressionEvaluator`'s substitution

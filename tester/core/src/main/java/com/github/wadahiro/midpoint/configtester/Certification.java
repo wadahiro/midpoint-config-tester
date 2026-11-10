@@ -5,7 +5,7 @@ package com.github.wadahiro.midpoint.configtester;
  *
  * <pre>{@code
  * Campaign c = t.certification("Role assignments").start();
- * c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.as("sec-officer"), "not needed");
+ * c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "not needed");
  * c.closeStage().remediate();
  * t.user("jack").hasNoRole("Auditor");
  * }</pre>

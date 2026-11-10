@@ -16,8 +16,8 @@ import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
 import com.github.wadahiro.midpoint.tester.Shadow;
 
 /**
- * A user of the scenario by name ({@link MidPointConfigTester#user}), read anew by every call. {@link #object()} gives the user
- * as midPoint has it now, a plain {@code UserType} to check with any assertion library (with AssertJ:
+ * A user of the scenario by name ({@link MidPointConfigTester#user}), read anew by every call. {@link #asObject()} gives
+ * the user as midPoint has it now, a plain {@code UserType} to check with any assertion library (with AssertJ:
  * {@code configtester.assertj}); a failed test then shows the mappings of the test that set an item whose value
  * appears in the failure. The assertions ({@code hasRole}, {@code isEnabled}...) return the user for chaining and fail
  * with what is there and the mappings behind it.
@@ -82,9 +82,9 @@ public final class User {
 
     /**
      * The user as midPoint has it now (read anew by every call: after a change, call it again), as the scripts of the
-     * configuration see it: {@code assertThat(t.user("e1001").object().getCostCenter()).isEqualTo("Sales")}.
+     * configuration see it: {@code assertThat(t.user("e1001").asObject().getCostCenter()).isEqualTo("Sales")}.
      */
-    public UserType object() {
+    public UserType asObject() {
         UserType user = existing();
         tester.readObject(name);
         return user;

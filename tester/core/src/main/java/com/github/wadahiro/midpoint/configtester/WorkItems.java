@@ -15,7 +15,7 @@ import com.github.wadahiro.midpoint.tester.Approvals;
  * terminal call ({@link #list()}, {@link #single()}, {@link #exactly}...) is made.
  *
  * <pre>{@code
- * t.workItems().assignedTo("cc-owner").forRole("Privileged Access").single().approve(t.as("cc-owner"));
+ * t.workItems().assignedTo("cc-owner").forRole("Privileged Access").single().approve(t.actor("cc-owner"));
  * t.workItems().forUser("jack").none();
  * }</pre>
  */

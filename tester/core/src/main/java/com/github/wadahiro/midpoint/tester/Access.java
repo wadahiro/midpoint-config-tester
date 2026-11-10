@@ -8,12 +8,12 @@ import com.evolveum.midpoint.prism.query.ObjectQuery;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 
 /**
- * Calls made as another user ({@link MidPoint#as}): each call logs that user in, goes through {@code ModelService}
+ * Calls made as another user ({@link MidPoint#actor}): each call logs that user in, goes through {@code ModelService}
  * (so authorizations apply, and their filter expressions are evaluated and recorded), and logs the administrator back
  * in.
  *
  * <pre>{@code
- * Answer<List<UserType>> visible = mp.as("jdoe").search(UserType.class, null);
+ * Answer<List<UserType>> visible = mp.actor("jdoe").search(UserType.class, null);
  * assertThat(visible.value()).extracting(u -> u.getName().getOrig()).containsOnly("jdoe", "alice");
  * assertThat(visible.run().select().path("authorization")).isNotEmpty();
  * }</pre>

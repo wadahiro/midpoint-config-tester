@@ -18,7 +18,7 @@ fun MidPointConfigTester.addUser(name: String) {
 }
 
 fun MidPointConfigTester.userNames(): List<String> =
-    midpoint().`as`("administrator").search(UserType::class.java, null).value().map { it.name.orig }
+    midpoint().actor("administrator").search(UserType::class.java, null).value().map { it.name.orig }
 
 /**
  * What a container shares: its prefix runs once, each of its tests starts from the prefix's midPoint (the users, the
@@ -40,12 +40,12 @@ class CheckpointSpec : MidPointConfigSpec({
         t.addUser("prefix")
         stopped = t.clock().now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS)
         t.clock().stopAt(stopped)
-        t.`as`("jack").request().assign("Privileged Access")
+        t.actor("jack").request().assign("Privileged Access")
         mailsAfterPrefix = t.mails().count()
 
         "the owner approves, 30 days later" {
             t.clock().advance("P30D")
-            t.workItems().assignedTo("role-owner").single().approve(t.`as`("role-owner"), "fine by me")
+            t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
             t.addUser("approval")
             (t.mails().count() > mailsAfterPrefix) shouldBe true
         }

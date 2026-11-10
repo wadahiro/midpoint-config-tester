@@ -95,7 +95,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public Map<String, List<Object>> account(String name) {
-        return object(accountClass(), name);
+        return find(accountClass(), name);
     }
 
     @Override
@@ -173,7 +173,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public Map<String, List<Object>> group(String name) {
-        return object(groupClass(), name);
+        return find(groupClass(), name);
     }
 
     @Override
@@ -226,7 +226,7 @@ final class MirrorTargetImpl implements ManagedTarget {
     }
 
     @Override
-    public Map<String, List<Object>> object(String objectClass, String name) {
+    public Map<String, List<Object>> find(String objectClass, String name) {
         MirrorClass c = resource.byName(objectClass);
         MirrorObject object = resource.findByName(c, name);
         return object == null ? null : new TreeMap<>(resource.attributes(c, object));

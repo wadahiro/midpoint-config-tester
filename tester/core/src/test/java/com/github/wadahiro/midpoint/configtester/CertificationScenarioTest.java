@@ -20,8 +20,8 @@ class CertificationScenarioTest {
 
         Campaign campaign = t.certification(CertificationDefinitions.ROLE_ASSIGNMENTS).start();
         campaign.isInStage(1).reviews().forReviewer(Users.SEC_OFFICER).exactly(2);
-        campaign.reviews().forUser(Users.JACK).forRole(Roles.AUDITOR).single().revoke(t.as(Users.SEC_OFFICER), "left the audit");
-        campaign.reviews().forUser(Users.ROLE_OWNER).single().accept(t.as(Users.SEC_OFFICER));
+        campaign.reviews().forUser(Users.JACK).forRole(Roles.AUDITOR).single().revoke(t.actor(Users.SEC_OFFICER), "left the audit");
+        campaign.reviews().forUser(Users.ROLE_OWNER).single().accept(t.actor(Users.SEC_OFFICER));
         campaign.reviews().undecided().none();
 
         campaign.closeStage().remediate();

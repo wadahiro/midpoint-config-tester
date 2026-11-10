@@ -73,7 +73,7 @@ class InitialNamesTest {
             @SuppressWarnings("unchecked")
             Class<? extends ObjectType> type = (Class<? extends ObjectType>) Class.forName(
                     "com.evolveum.midpoint.xml.ns._public.common.common_3." + ref.type());
-            ObjectType object = t.midpoint().object(type, ref.oid());
+            ObjectType object = t.midpoint().find(type, ref.oid());
             if (object == null) {
                 problems.add(ref + ": no " + ref.type() + " " + ref.oid());
             } else if (!ref.name().equals(object.getName().getOrig())) {

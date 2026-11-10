@@ -126,7 +126,7 @@ final class NamesCheck {
         if (type == null) {
             return "unknown type " + ref.type();
         }
-        ObjectType object = mp.object(type, ref.oid() != null ? ref.oid() : ref.name());
+        ObjectType object = mp.find(type, ref.oid() != null ? ref.oid() : ref.name());
         if (object == null) {
             return "no such object" + (ref.oid() != null ? " with OID " + ref.oid() : "");
         }
@@ -163,7 +163,7 @@ final class NamesCheck {
     /** The attribute names of the object classes of the schema midPoint stored in the resource; empty if none. */
     private static Set<String> storedSchema(MidPointImpl mp, String oid) {
         Set<String> out = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        ResourceType resource = mp.object(ResourceType.class, oid);
+        ResourceType resource = mp.find(ResourceType.class, oid);
         if (resource == null || resource.getSchema() == null || resource.getSchema().getDefinition() == null) {
             return out;
         }

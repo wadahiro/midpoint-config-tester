@@ -31,7 +31,7 @@ public final class MidPointConfigTester {
     private final List<Run> runs = new ArrayList<>();
     /** What the values read through the views came from, by the value read, in the order last read. */
     private final Map<String, Supplier<String>> reads = new LinkedHashMap<>();
-    /** The users whose object the test read ({@link User#object()}), in the order last read. */
+    /** The users whose object the test read ({@link User#asObject()}), in the order last read. */
     private final java.util.Set<String> objectsRead = new java.util.LinkedHashSet<>();
 
     private static final ThreadLocal<MidPointConfigTester> CURRENT = new ThreadLocal<>();
@@ -86,8 +86,8 @@ public final class MidPointConfigTester {
         return user(user.on(line()));
     }
 
-    public Actor as(UserRef user) {
-        return as(user.on(line()));
+    public Actor actor(UserRef user) {
+        return actor(user.on(line()));
     }
 
     public Certification certification(CertificationDefinitionRef definition) {
@@ -227,10 +227,10 @@ public final class MidPointConfigTester {
     // ---- people, requests and approvals ----------------------------------------------------------------------
 
     /**
-     * A user acting in the scenario: {@code t.as("jack").request().assign("Privileged Access")}, or the approver or
-     * reviewer of a decision ({@code approve(t.as("cc-owner"))}). midPoint runs the action logged in as them.
+     * A user acting in the scenario: {@code t.actor("jack").request().assign("Privileged Access")}, or the approver or
+     * reviewer of a decision ({@code approve(t.actor("cc-owner"))}). midPoint runs the action logged in as them.
      */
-    public Actor as(String user) {
+    public Actor actor(String user) {
         return new Actor(this, user);
     }
 
@@ -295,7 +295,7 @@ public final class MidPointConfigTester {
             return ref.getTargetName().getOrig();
         }
         com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType object = deployment.api()
-                .object(com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType.class, ref.getOid());
+                .find(com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType.class, ref.getOid());
         return object != null ? object.getName().getOrig() : ref.getOid();
     }
 

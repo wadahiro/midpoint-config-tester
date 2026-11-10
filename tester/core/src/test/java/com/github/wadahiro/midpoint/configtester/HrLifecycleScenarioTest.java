@@ -75,7 +75,7 @@ class HrLifecycleScenarioTest {
 
         hr.hire("1001", "John", " DOE ", "Sales", LocalDate.of(2020, 4, 1));
         User john = t.user("e1001");
-        UserType u = john.object();
+        UserType u = john.asObject();
         assertThat(u.getFullName().getOrig()).isEqualTo("John Doe");
         assertThat(u.getCostCenter()).isEqualTo("Sales");
         assertThat(u.getAssignment()).haveExactly(1, targeting(Roles.DEPT_SALES));
@@ -90,7 +90,7 @@ class HrLifecycleScenarioTest {
         assertThat(t.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
 
         hr.update("1001", HrAttrs.DEPARTMENT, "IT");
-        u = john.object();      // the user as midPoint has it now
+        u = john.asObject();      // the user as midPoint has it now
         assertThat(u.getAssignment()).haveExactly(1, targeting(Roles.DEPT_IT)).doNotHave(targeting(Roles.DEPT_SALES));
         assertThat(ldap.value(LdapAttrs.OU)).isEqualTo("IT");
         assertThat(ldap.groups()).containsExactly(IT);
@@ -109,14 +109,14 @@ class HrLifecycleScenarioTest {
 
         // hired today, starting in ten days: a user, but no role and no account yet
         hr.hire("1002", "Kate", "Smith", "IT", start);
-        assertThat(kate.object().getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.DISABLED);
-        assertThat(kate.object().getAssignment()).doNotHave(targeting(Roles.DEPT_IT));
+        assertThat(kate.asObject().getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.DISABLED);
+        assertThat(kate.asObject().getAssignment()).doNotHave(targeting(Roles.DEPT_IT));
         kate.hasNoAccountOn(Resources.LDAP);
         ldap.doesNotExist();
 
         // the start date has come: the scanners recompute her, the role and the account follow
         t.clock().advanceTo(start).advance("PT1H").runDue();
-        UserType u = kate.object();
+        UserType u = kate.asObject();
         assertThat(u.getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.ENABLED);
         assertThat(u.getAssignment()).haveExactly(1, targeting(Roles.DEPT_IT));
         assertThat(u.getRoleMembershipRef()).haveAtLeastOne(refTo(Roles.DEPT_IT));
@@ -128,7 +128,7 @@ class HrLifecycleScenarioTest {
         hr.update("1002", HrAttrs.END_DATE, end.toString());
         assertThat(ldap.status()).isEqualTo(ENABLED);
         t.clock().advanceTo(end).advance("PT1H").runDue();
-        assertThat(kate.object().getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.DISABLED);
+        assertThat(kate.asObject().getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.DISABLED);
         assertThat(ldap.status()).isEqualTo(DISABLED);
     }
 
@@ -161,7 +161,7 @@ class HrLifecycleScenarioTest {
                 + "<name>archived1</name><lifecycleState>archived</lifecycleState></user>");
 
         com.evolveum.midpoint.xml.ns._public.common.common_3.ActivationType activation =
-                t.user("archived1").object().getActivation();
+                t.user("archived1").asObject().getActivation();
         if (com.github.wadahiro.midpoint.common.MidPointLine.isBefore(t.line(), "4.8")) {
             // the time it was archived
             assertThat(activation.getArchiveTimestamp()).isNotNull();
@@ -213,7 +213,7 @@ class HrLifecycleScenarioTest {
     @Test
     void aFailedAssertionOnTheObjectShowsTheValuesAndTheMappingsBehindThem(MidPointConfigTester t) {
         new Hr(t).hire("1001", "John", "Doe", "Sales", LocalDate.of(2020, 4, 1));
-        UserType john = t.user("e1001").object();
+        UserType john = t.user("e1001").asObject();
 
         AssertionError failure = catchThrowableOfType(() -> {
             try {

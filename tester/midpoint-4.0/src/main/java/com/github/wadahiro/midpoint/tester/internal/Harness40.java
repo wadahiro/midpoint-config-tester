@@ -45,6 +45,13 @@ public class Harness40 extends AbstractModelIntegrationTest implements Harness {
     @Autowired private ExtItemDictionary extItemDictionary;
 
     static Harness40 start() throws Exception {
+        // on JDK 16+ Groovy 2.5 fails later, in Spring's context, with a NoClassDefFoundError of its ReflectionCache
+        if (Runtime.version().feature() >= 16) {
+            throw new IllegalStateException("midPoint 4.0 runs on JDK 11 (its Groovy 2.5 does not start on JDK 16 or"
+                    + " later), this is JDK " + Runtime.version() + " (" + System.getProperty("java.home") + "): run"
+                    + " Maven on JDK 11, or give it a JDK 11 toolchain (~/.m2/toolchains.xml or mvn -t <file>; the"
+                    + " parent's profile jdk11-toolchain selects it when Maven runs on JDK 16 or later)");
+        }
         TestContextManager contextManager = new TestContextManager(Harness40.class);
         Harness40 harness = new Harness40();
         contextManager.beforeTestClass();

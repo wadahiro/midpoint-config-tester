@@ -44,7 +44,7 @@ class CallerScenarioTest {
 
         t.callAs(Caller.user("jack").privileged(), () -> t.midpoint().addObjectXml(role));
 
-        assertThat(t.midpoint().object(RoleType.class, "From the API")).isNotNull();
+        assertThat(t.midpoint().find(RoleType.class, "From the API")).isNotNull();
         assertThat(t.audit().ofType("ADD_OBJECT").execution().target("From the API").outcome("SUCCESS").single()
                 .initiatorName())
                 .isEqualTo("jack");

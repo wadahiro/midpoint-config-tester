@@ -619,8 +619,8 @@ final class MidPointImpl implements MidPoint {
     }
 
     @Override
-    public Access as(String username) {
-        if (object(UserType.class, username) == null) {
+    public Access actor(String username) {
+        if (find(UserType.class, username) == null) {
             throw new AssertionError("No user " + username);
         }
         return new AccessImpl(this, runtime, username);
@@ -900,7 +900,7 @@ final class MidPointImpl implements MidPoint {
      */
     /** The result status of the task's last run (null if there is no task). */
     private com.evolveum.midpoint.xml.ns._public.common.common_3.OperationResultStatusType resultStatus(String oid) {
-        TaskType task = object(TaskType.class, oid);
+        TaskType task = find(TaskType.class, oid);
         return task != null ? task.getResultStatus() : null;
     }
 
@@ -1000,7 +1000,7 @@ final class MidPointImpl implements MidPoint {
     // ---- reading ---------------------------------------------------------------------------------------------
 
     @Override
-    public <O extends ObjectType> O object(Class<O> type, String nameOrOid) {
+    public <O extends ObjectType> O find(Class<O> type, String nameOrOid) {
         return query("find " + nameOrOid, (task, result) -> {
             RepositoryService repository = harness.bean(RepositoryService.class);
             if (OID.matcher(nameOrOid).matches()) {
@@ -1029,7 +1029,7 @@ final class MidPointImpl implements MidPoint {
 
     @Override
     public UserType user(String name) {
-        return object(UserType.class, name);
+        return find(UserType.class, name);
     }
 
     @Override
@@ -1039,14 +1039,14 @@ final class MidPointImpl implements MidPoint {
 
     @Override
     public Shadow shadow(String focus, String resource, String kind, String intent) {
-        FocusType owner = object(UserType.class, focus);
+        FocusType owner = find(UserType.class, focus);
         if (owner == null) {
             owner = existing(FocusType.class, focus);
         }
         String resourceOid = resourceOid(resource);
         List<Shadow> candidates = new ArrayList<>();
         for (ObjectReferenceType link : owner.getLinkRef()) {
-            ShadowType shadow = object(ShadowType.class, link.getOid());
+            ShadowType shadow = find(ShadowType.class, link.getOid());
             if (shadow == null || shadow.getResourceRef() == null
                     || !resourceOid.equals(shadow.getResourceRef().getOid())) {
                 continue;
@@ -1407,7 +1407,7 @@ final class MidPointImpl implements MidPoint {
     }
 
     <O extends ObjectType> O existing(Class<O> type, String nameOrOid) {
-        O object = object(type, nameOrOid);
+        O object = find(type, nameOrOid);
         if (object == null) {
             throw new AssertionError("No " + type.getSimpleName() + " " + nameOrOid);
         }

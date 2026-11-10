@@ -187,12 +187,12 @@ public interface MidPoint {
     List<HttpRequest> httpRequests();
 
     /** Calls made as this user, with its authorizations, see {@link Access}. */
-    Access as(String username);
+    Access actor(String username);
 
     /**
      * Makes the driver calls of the block as the caller presents them ({@link Caller}: the user logged in, privileged
      * or not, the owner of their tasks, their channel), as a service that calls midPoint on a user's behalf does;
-     * then the administrator again. A call of the block that names its own user ({@link #as}) keeps it.
+     * then the administrator again. A call of the block that names its own user ({@link #actor}) keeps it.
      */
     void callAs(Caller caller, Runnable calls);
 
@@ -291,7 +291,7 @@ public interface MidPoint {
     // ---- reading ---------------------------------------------------------------------------------------------
 
     /** The object with this name or OID, or null. */
-    <O extends ObjectType> O object(Class<O> type, String nameOrOid);
+    <O extends ObjectType> O find(Class<O> type, String nameOrOid);
 
     /** The user with this name, or null. */
     UserType user(String name);

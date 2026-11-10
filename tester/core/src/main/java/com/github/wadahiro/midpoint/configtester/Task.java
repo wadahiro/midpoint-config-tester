@@ -38,7 +38,7 @@ public final class Task {
             return this;
         }
         String oid = tester.deployment().api()
-                .object(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType.class, name).getOid();
+                .find(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType.class, name).getOid();
         com.github.wadahiro.midpoint.tester.internal.TaskStop.stopAfter(oid, stopAfter);
         try {
             tester.deployment().api().runTask(name);

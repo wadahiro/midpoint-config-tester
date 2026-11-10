@@ -22,39 +22,39 @@ class AssignAuthorizationScenarioTest {
 
     @Test
     void anEndUserAssignsThemselfARequestableRole(MidPointConfigTester t) {
-        assertThat(t.as(Users.JACK).canAssign(Users.JACK, Roles.AUDITOR, null)).isTrue();
+        assertThat(t.actor(Users.JACK).canAssign(Users.JACK, Roles.AUDITOR, null)).isTrue();
 
-        t.as(Users.JACK).request().assign(Roles.AUDITOR);
+        t.actor(Users.JACK).request().assign(Roles.AUDITOR);
 
         t.user(Users.JACK).hasRole(Roles.AUDITOR);
     }
 
     @Test
     void anEndUserAssignsThemselfNoOtherRole(MidPointConfigTester t) {
-        assertThat(t.as(Users.JACK).canAssign(Users.JACK, Roles.ACCOUNTANT, null)).isFalse();
+        assertThat(t.actor(Users.JACK).canAssign(Users.JACK, Roles.ACCOUNTANT, null)).isFalse();
 
-        Failure failure = t.expectFailure(() -> t.as(Users.JACK).request().assign(Roles.ACCOUNTANT));
+        Failure failure = t.expectFailure(() -> t.actor(Users.JACK).request().assign(Roles.ACCOUNTANT));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
     }
 
     @Test
     void theHelpDeskAssignsNobodyARole(MidPointConfigTester t) {
-        assertThat(t.as(Users.HELPDESK).canAssign(Users.JACK, Roles.AUDITOR, null)).isFalse();
+        assertThat(t.actor(Users.HELPDESK).canAssign(Users.JACK, Roles.AUDITOR, null)).isFalse();
 
-        Failure failure = t.expectFailure(() -> t.as(Users.HELPDESK).request(Users.JACK).assign(Roles.AUDITOR));
+        Failure failure = t.expectFailure(() -> t.actor(Users.HELPDESK).request(Users.JACK).assign(Roles.AUDITOR));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
     }
 
     @Test
     void theManagerAssignsAndUnassignsTheirMembersARequestableRole(MidPointConfigTester t) {
-        assertThat(t.as(Users.IT_MANAGER).canAssign(Users.JACK, Roles.AUDITOR, null)).isTrue();
-        assertThat(t.as(Users.IT_MANAGER).canUnassign(Users.JACK, Roles.AUDITOR, null)).isTrue();
+        assertThat(t.actor(Users.IT_MANAGER).canAssign(Users.JACK, Roles.AUDITOR, null)).isTrue();
+        assertThat(t.actor(Users.IT_MANAGER).canUnassign(Users.JACK, Roles.AUDITOR, null)).isTrue();
 
-        t.as(Users.IT_MANAGER).request(Users.JACK).assign(Roles.AUDITOR);
+        t.actor(Users.IT_MANAGER).request(Users.JACK).assign(Roles.AUDITOR);
         t.user(Users.JACK).hasRole(Roles.AUDITOR);
-        t.as(Users.IT_MANAGER).request(Users.JACK).unassign(Roles.AUDITOR);
+        t.actor(Users.IT_MANAGER).request(Users.JACK).unassign(Roles.AUDITOR);
         t.user(Users.JACK).hasNoRole(Roles.AUDITOR);
     }
 
@@ -64,21 +64,22 @@ class AssignAuthorizationScenarioTest {
      */
     @Test
     void theManagerAssignsNoOtherRoleNorAnyoneElse(MidPointConfigTester t) {
-        assertThat(t.as(Users.IT_MANAGER).canAssign(Users.JACK, Roles.ACCOUNTANT, null)).isFalse();
-        assertThat(t.as(Users.IT_MANAGER).canAssign(Users.HELPDESK, Roles.AUDITOR, null)).isFalse();
+        assertThat(t.actor(Users.IT_MANAGER).canAssign(Users.JACK, Roles.ACCOUNTANT, null)).isFalse();
+        assertThat(t.actor(Users.IT_MANAGER).canAssign(Users.HELPDESK, Roles.AUDITOR, null)).isFalse();
 
-        Failure other = t.expectFailure(() -> t.as(Users.IT_MANAGER).request(Users.JACK).assign(Roles.ACCOUNTANT));
+        Failure other = t.expectFailure(() -> t.actor(Users.IT_MANAGER).request(Users.JACK).assign(Roles.ACCOUNTANT));
         assertThat(other.isNotAuthorized()).as(other.message()).isTrue();
-        Failure outside = t.expectFailure(() -> t.as(Users.IT_MANAGER).request(Users.HELPDESK).assign(Roles.AUDITOR));
+        Failure outside = t.expectFailure(() ->
+                t.actor(Users.IT_MANAGER).request(Users.HELPDESK).assign(Roles.AUDITOR));
         assertThat(outside.isNotAuthorized()).as(outside.message()).isTrue();
     }
 
     /** The authorization's relation: the default only, so not as the role's owner. */
     @Test
     void theManagerMakesNobodyAnOwner(MidPointConfigTester t) {
-        assertThat(t.as(Users.IT_MANAGER).canAssign(Users.JACK, Roles.AUDITOR, SchemaConstants.ORG_OWNER)).isFalse();
+        assertThat(t.actor(Users.IT_MANAGER).canAssign(Users.JACK, Roles.AUDITOR, SchemaConstants.ORG_OWNER)).isFalse();
 
-        Failure failure = t.expectFailure(() -> t.as(Users.IT_MANAGER).request(Users.JACK)
+        Failure failure = t.expectFailure(() -> t.actor(Users.IT_MANAGER).request(Users.JACK)
                 .assign(Roles.AUDITOR, SchemaConstants.ORG_OWNER));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
@@ -88,9 +89,9 @@ class AssignAuthorizationScenarioTest {
     @Test
     void anEndUserUnassignsThemselfNothing(MidPointConfigTester t) {
         t.user(Users.JACK).assign(Roles.AUDITOR);
-        assertThat(t.as(Users.JACK).canUnassign(Users.JACK, Roles.AUDITOR, null)).isFalse();
+        assertThat(t.actor(Users.JACK).canUnassign(Users.JACK, Roles.AUDITOR, null)).isFalse();
 
-        Failure failure = t.expectFailure(() -> t.as(Users.JACK).request().unassign(Roles.AUDITOR));
+        Failure failure = t.expectFailure(() -> t.actor(Users.JACK).request().unassign(Roles.AUDITOR));
 
         assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
         t.user(Users.JACK).hasRole(Roles.AUDITOR);

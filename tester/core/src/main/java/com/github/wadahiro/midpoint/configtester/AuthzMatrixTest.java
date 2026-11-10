@@ -105,7 +105,7 @@ public abstract class AuthzMatrixTest {
         }
         Map<String, String> authorizations = new HashMap<>();
         for (AuthzMatrixSpec.Persona p : spec.personas.values()) {
-            StringBuilder text = new StringBuilder(t.as(users.get(p.id)).authorizations());
+            StringBuilder text = new StringBuilder(t.actor(users.get(p.id)).authorizations());
             List<Coverage> own = new ArrayList<>();
             coverage.stream().filter(c -> c.persona.equals(p.id)).forEach(own::add);
             if (!own.isEmpty()) {
@@ -227,9 +227,9 @@ public abstract class AuthzMatrixTest {
             Map<String, ObjectType> samples = new java.util.LinkedHashMap<>();
             samples.put("self", user);
             for (AuthzMatrixSpec.SampleObject object : spec.objects.values()) {
-                samples.put(object.id, mp.object(type(object.type), object.name));
+                samples.put(object.id, mp.find(type(object.type), object.name));
             }
-            for (CompiledAuthorization compiled : t.as(name).compiledAuthorizations()) {
+            for (CompiledAuthorization compiled : t.actor(name).compiledAuthorizations()) {
                 com.evolveum.midpoint.xml.ns._public.common.common_3.AuthorizationType authorization =
                         compiled.authorization();
                 String label = "'" + (authorization.getName() != null ? authorization.getName() : "unnamed")
@@ -285,7 +285,7 @@ public abstract class AuthzMatrixTest {
         for (Map.Entry<Class<? extends ObjectType>, List<String>> entry : byType.entrySet()) {
             List<String> oids = new ArrayList<>();
             entry.getValue().forEach(id -> oids.add(samples.get(id).getOid()));
-            Set<String> in = mp.as(user).selectedBy(selector, entry.getKey(), oids).value();
+            Set<String> in = mp.actor(user).selectedBy(selector, entry.getKey(), oids).value();
             for (String id : entry.getValue()) {
                 (in.contains(samples.get(id).getOid()) ? c.inside : c.outside).add(id);
             }
@@ -313,22 +313,22 @@ public abstract class AuthzMatrixTest {
                 throw spec.error(persona.line, "persona " + persona.id + ": no user " + persona.user);
             }
             for (String role : persona.roles) {
-                if (mp.object(AbstractRoleType.class, role) == null) {
+                if (mp.find(AbstractRoleType.class, role) == null) {
                     throw spec.error(persona.line, "persona " + persona.id + ": no role " + role);
                 }
             }
             for (AuthzMatrixSpec.Membership org : persona.orgs) {
-                if (mp.object(OrgType.class, org.org) == null) {
+                if (mp.find(OrgType.class, org.org) == null) {
                     throw spec.error(persona.line, "persona " + persona.id + ": no org " + org.org);
                 }
                 relation(org.relation, spec, persona.line, mp);
             }
-            if (persona.archetype != null && mp.object(ArchetypeType.class, persona.archetype) == null) {
+            if (persona.archetype != null && mp.find(ArchetypeType.class, persona.archetype) == null) {
                 throw spec.error(persona.line, "persona " + persona.id + ": no archetype " + persona.archetype);
             }
         }
         for (AuthzMatrixSpec.SampleObject object : spec.objects.values()) {
-            if (mp.object(type(object.type), object.name) == null) {
+            if (mp.find(type(object.type), object.name) == null) {
                 throw spec.error(object.line, "object " + object.id + ": no " + object.type + " " + object.name);
             }
         }
@@ -381,7 +381,7 @@ public abstract class AuthzMatrixTest {
         targets.addAll(persona.orgs);
         persona.roles.forEach(role -> targets.add(new AuthzMatrixSpec.Membership(role, null)));
         for (AuthzMatrixSpec.Membership target : targets) {
-            ObjectType object = mp.object(AbstractRoleType.class, target.org);
+            ObjectType object = mp.find(AbstractRoleType.class, target.org);
             QName relation = relation(target.relation, null, 0, mp);
             boolean assigned = false;
             for (AssignmentType assignment : mp.user(name).getAssignment()) {
@@ -408,7 +408,7 @@ public abstract class AuthzMatrixTest {
         List<Cell> cells = new ArrayList<>();
         Map<String, GuiProfile> profiles = new HashMap<>();
         for (AuthzMatrixSpec.Persona persona : spec.personas.values()) {
-            Actor actor = t.as(users.get(persona.id));
+            Actor actor = t.actor(users.get(persona.id));
             String self = t.midpoint().user(users.get(persona.id)).getOid();
             Map<String, List<ObjectRef>> searches = new HashMap<>();
             Map<String, Boolean> gets = new HashMap<>();
@@ -540,7 +540,7 @@ public abstract class AuthzMatrixTest {
             return ObjectRef.of("UserType", self, user.getOid());
         }
         AuthzMatrixSpec.SampleObject sample = spec.objects.get(id);
-        ObjectType object = t.midpoint().object(type(sample.type), sample.name);
+        ObjectType object = t.midpoint().find(type(sample.type), sample.name);
         return ObjectRef.of(sample.type, sample.name, object.getOid());
     }
 
@@ -550,7 +550,7 @@ public abstract class AuthzMatrixTest {
         for (AuthzMatrixSpec.SampleObject object : spec.objects.values()) {
             if (out.contains("{" + object.id + "}")) {
                 out = out.replace("{" + object.id + "}",
-                        t.midpoint().object(type(object.type), object.name).getOid());
+                        t.midpoint().find(type(object.type), object.name).getOid());
             }
         }
         if (out.matches(".*\\{[^}]*}.*")) {
@@ -582,7 +582,7 @@ public abstract class AuthzMatrixTest {
     /** The GUI's pages of the line, the items of a type in its schema, what the personas' GUI profiles have. */
     private static AuthzMatrixSpec.Expander expander(MidPointConfigTester t, AuthzMatrixSpec spec, Map<String, String> users) {
         List<GuiProfile> profiles = new ArrayList<>();
-        spec.personas.values().forEach(p -> profiles.add(t.as(users.get(p.id)).guiProfile()));
+        spec.personas.values().forEach(p -> profiles.add(t.actor(users.get(p.id)).guiProfile()));
         return new AuthzMatrixSpec.Expander() {
             @Override
             public List<String[]> views() {

@@ -68,8 +68,9 @@ line). The parent `midpoint-config-tester-parent-<line>` brings:
 - the generator of typed names, run at `generate-sources` on the manifest (its `names.package`), its output a test
   source root;
 - Surefire: one JVM for all test classes (one midPoint), `-Dtester.forks=N` for more, the manifest as the default of
-  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and for 4.0 and 4.4 the tests on a JDK 11 toolchain
-  (see [JDK 11](#jdk-11-for-40-and-44)) compiled with `--release 11`;
+  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and the tests on the JDK that runs Maven: for 4.0
+  a JDK 11, or a JDK 11 toolchain when Maven runs on a later one (see [JDK 11](#jdk-11-for-40)); 4.0 and 4.4 compile
+  with `--release 11`;
 - Evolveum's repository and the pgmem profiles: the in-memory PostgreSQL
   ([pgmem](https://github.com/shibukawa/pgmem)) is a native binary from `io.github.shibukawa.pgmem:pgmem-native`,
   classifier `linux-x86_64` (default), `darwin-arm64`, `linux-arm64` or `windows-x86_64` by OS; on another platform
@@ -166,13 +167,13 @@ class HrLifecycleTest {
 Requests, approvals, certification, reports and refusals, by name (`scenarios/access`):
 
 ```java
-t.as("jack").request().assign("Privileged Access");                // as jack, through his End user role
+t.actor("jack").request().assign("Privileged Access");             // as jack, through his End user role
 Case request = t.cases().forUser("jack").forRole("Privileged Access").single();
 request.isOpen().atStage(1);
-t.workItems().assignedTo("role-owner").single().approve(t.as("role-owner"), "ok");
+t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "ok");
 WorkItem officer = t.workItems().assignedTo("sec-officer").single();   // each Security officer has one
 WorkItem analyst = t.workItems().assignedTo("sec-analyst").single();
-officer.approve(t.as("sec-officer"));                              // also reject, delegate, forward, claim, release
+officer.approve(t.actor("sec-officer"));                           // also reject, delegate, forward, claim, release
 analyst.isCancelled();                                             // firstDecides: closed without a decision
 request.isApproved();
 t.user("jack").hasRole("Privileged Access");
@@ -181,7 +182,7 @@ Failure f = t.expectFailure(() -> t.user("ann").assign("Auditor"));  // excluded
 assertThat(f.isPolicyViolation()).isTrue();
 
 Campaign c = t.certification("Role assignments").start();
-c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.as("sec-officer"), "left the audit");
+c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "left the audit");
 c.closeStage().remediate();
 t.user("jack").hasNoRole("Auditor");
 
@@ -196,20 +197,20 @@ logged in as them (`GuiAuthorizationScenarioTest`, the Help desk role of `scenar
 
 ```java
 // the objects a search finds (the GUI's lists): midPoint narrows it by the user's #read authorizations
-assertThat(t.as(Users.HELPDESK).search(UserType.class))
+assertThat(t.actor(Users.HELPDESK).search(UserType.class))
         .containsExactlyInAnyOrder(Users.JACK, Users.ROLE_OWNER, Users.HELPDESK);
-assertThat(t.as(Users.HELPDESK).canSearch(Users.ANN)).isFalse();   // #search: the list shows it
-assertThat(t.as(Users.HELPDESK).canGet(Users.ANN)).isTrue();       // #get: its details open
-assertThat(t.as(Users.HELPDESK).canRead(Users.JACK)).isTrue();     // #read: both
+assertThat(t.actor(Users.HELPDESK).canSearch(Users.ANN)).isFalse();   // #search: the list shows it
+assertThat(t.actor(Users.HELPDESK).canGet(Users.ANN)).isTrue();    // #get: its details open
+assertThat(t.actor(Users.HELPDESK).canRead(Users.JACK)).isTrue();  // #read: both
 
 // a page opens, as the GUI decides it: by its URL, or by the actions of its @PageDescriptor
-assertThat(t.as(Users.HELPDESK).canOpen("/admin/users")).isTrue();
-assertThat(t.as(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();   // #userDetails
-assertThat(t.as(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_ALL_URL,
+assertThat(t.actor(Users.HELPDESK).canOpen("/admin/users")).isTrue();
+assertThat(t.actor(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).isTrue();   // #userDetails
+assertThat(t.actor(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_ALL_URL,
         AuthorizationConstants.AUTZ_UI_USERS_URL, AuthorizationConstants.AUTZ_UI_USERS_VIEW_URL)).isTrue();
 
 // an object's form: what it shows and what it lets the user change
-Form form = t.as(Users.HELPDESK).form(Users.JACK);
+Form form = t.actor(Users.HELPDESK).form(Users.JACK);
 assertThat(form.modifiableItems()).containsExactly("telephoneNumber");
 assertThat(form.canRead("emailAddress")).isTrue();
 ```
@@ -248,7 +249,7 @@ The GUI's configuration (`adminGuiConfiguration`) is asked the same way: `guiPro
 midPoint compiled it at login (`GuiProfileScenarioTest`):
 
 ```java
-GuiProfile manager = t.as(Users.IT_MANAGER).guiProfile();
+GuiProfile manager = t.actor(Users.IT_MANAGER).guiProfile();
 assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
         .containsExactlyInAnyOrder("people", "department-members");   // the system's, the induced role's
 assertThat(manager.view(UserType.COMPLEX_TYPE, "department-members").inMenu()).isTrue();   // 4.4+
@@ -394,7 +395,7 @@ subject and body from expressions over `event`, `requester`, `requestee`, `assig
 owner has a deadline (`duration` P5D) and a timed action that escalates to her deputy, with a reminder a day before:
 
 ```java
-t.as(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
+t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 t.mails().to("role-owner@example.com").withSubject("Approval needed: Privileged Access for Jack Sparrow").single()
         .hasBodyContaining("Dear Rose Owner,", "Stage 1 waits for your decision.");
 WorkItem owners = t.workItems().assignedTo(Users.ROLE_OWNER).single();
@@ -406,8 +407,8 @@ t.mails().to("role-owner@example.com").withSubject("Reminder").single().hasBodyC
 t.clock().advance("P1D").runDue();                                  // past the deadline
 WorkItem escalated = t.workItems().forUser(Users.JACK).single().atEscalationLevel(1).hasAssignee(Users.OWNER_DEPUTY);
 t.mails().to("owner-deputy@example.com").withSubject("Escalated to you").single();
-escalated.approve(t.as(Users.OWNER_DEPUTY));
-t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.as(Users.SEC_OFFICER));
+escalated.approve(t.actor(Users.OWNER_DEPUTY));
+t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.actor(Users.SEC_OFFICER));
 
 t.mails().to("jack@example.com").withSubject("Request approved: Privileged Access").single()
         .hasBodyContaining("approved by Sam Officer");
@@ -522,7 +523,7 @@ that have them:
 
 ```java
 t.user(Users.JACK).hasRole(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
-t.midpoint().object(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.oid());
+t.midpoint().find(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.oid());
 ```
 
 A name whose object differs between lines gets one constant per name (`InitialReports.CERTIFICATION_DECISIONS_REPORT`
@@ -533,7 +534,7 @@ and that each user item is in the line's schema exactly on its lines.
 
 ### Values and AssertJ
 
-A user's `object()` is the user as midPoint has it now, the plain `UserType` the configuration's scripts see; read it
+A user's `asObject()` is the user as midPoint has it now, the plain `UserType` the configuration's scripts see; read it
 again after a change. Accounts, mails and work items give their values directly. With AssertJ (on the test classpath
 of every line through the tester), `configtester.assertj.MidPointConditions` checks midPoint's references by the
 typed names:
@@ -542,7 +543,7 @@ typed names:
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.refTo;
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.targeting;
 
-UserType john = t.user("e1001").object();
+UserType john = t.user("e1001").asObject();
 assertThat(john.getCostCenter()).isEqualTo("Sales");
 assertThat(john.getAssignment()).haveExactly(1, targeting(Roles.DEPT_SALES)).doNotHave(targeting(Roles.DEPT_IT));
 assertThat(john.getRoleMembershipRef()).haveAtLeastOne(refTo(Roles.DEPT_SALES));
@@ -559,7 +560,7 @@ assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).
 
 | Type | Values |
 |---|---|
-| `User` | `object()` (the `UserType`), `values(item)` (an item by path or typed name, e.g. an extension item) |
+| `User` | `asObject()` (the `UserType`), `values(item)` (an item by path or typed name, e.g. an extension item) |
 | `Account` | `value(attribute)`, `values(attribute)`, `attributes()`, `groups()`, `status()` |
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |
@@ -748,8 +749,8 @@ of its own, or select the evaluations of a run. The tester's own engine tests (`
 
 | Line | midPoint | Artifact | JDK running the tests | Groovy | Repository |
 |---|---|---|---|---|---|
-| 4.0 | 4.0.3 | `midpoint-config-tester-4.0` | **11** (Maven toolchain) | 2.5.8 | old (Hibernate) repository on PostgreSQL |
-| 4.4 | 4.4.11 | `midpoint-config-tester-4.4` | **11** (Maven toolchain) | 3.0.19 | native (`sqale`) |
+| 4.0 | 4.0.3 | `midpoint-config-tester-4.0` | **11** (Maven on JDK 11, or a toolchain) | 2.5.8 | old (Hibernate) repository on PostgreSQL |
+| 4.4 | 4.4.11 | `midpoint-config-tester-4.4` | 11 / 17 / 21 | 3.0.19 | native (`sqale`) |
 | 4.8 | 4.8.14 | `midpoint-config-tester-4.8` | 17 / 21 | 4.0.24 | native |
 | 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / 21 | 4.0.24 | native |
 | 4.10 | 4.10.3 | `midpoint-config-tester-4.10` | 17 / 21 | 4.0.24 | native |
@@ -971,8 +972,8 @@ on and why (midPoint's result only counts the failures; the task's statistics ke
 | `waitForTasks()`, `runTask(nameOrOid)` | wait for background work; run a task now (once) and wait for it |
 | `reconcile(resource[, kind, intent])`, `importAccounts(resource)` | a single-run reconciliation / import task of the resource's object type (default `account/default`) as the GUI starts one (an activity on 4.4+, the task handler on 4.0), run and waited for; a later call replaces and re-runs it |
 | `liveSync(resource[, kind, intent])` | a single-run live synchronization task of the resource's object type, created and run by the first call (which only fetches the token, as in production), run again from its token by later calls; fails when the task's run fails (see [Live synchronization](#live-synchronization)) |
-| `object(type, nameOrOid)`, `user(name)` | read the repository |
-| `shadow(focus, resource[, kind, intent])`, `situation(focus, resource)` | the shadow a focus (user by name or OID) links on a resource, as the repository has it: `situation()`, `kind()`, `intent()`, `linked()`, `dead()`, `synchronizationTimestamp()`, `object()`; null when it links none there |
+| `find(type, nameOrOid)`, `user(name)` | read the repository |
+| `shadow(focus, resource[, kind, intent])`, `situation(focus, resource)` | the shadow a focus (user by name or OID) links on a resource, as the repository has it: `situation()`, `kind()`, `intent()`, `linked()`, `dead()`, `synchronizationTimestamp()`, `asObject()`; null when it links none there |
 | `bean(type)`, `harness()` | escape hatches: a Spring bean of the running midPoint; the line's `AbstractModelIntegrationTest` instance |
 
 Paths given by name (`"activation/administrativeStatus"`) are matched against the object definition; values are real
@@ -1174,7 +1175,7 @@ result on every line although the variables differ: 4.0 and 4.4 give a correlati
 repository (no target system read): a live one before dead ones (kept linked as `related`), failing when several live
 ones match without kind and intent. `mp.situation(focus, resource)` is its `situation()`. The five situations
 (`LINKED`, `UNLINKED`, `UNMATCHED`, `DISPUTED`, `DELETED`), kind, intent, `dead` and the synchronization timestamps are
-the same on 4.0 to 4.10; `shadow.object()` gives the rest (e.g. `getCorrelation()`, 4.8+).
+the same on 4.0 to 4.10; `shadow.asObject()` gives the rest (e.g. `getCorrelation()`, 4.8+).
 
 ### Identity, not line numbers
 
@@ -1590,14 +1591,14 @@ need:
 run.hooks("forbid-test-users");          // HookRun: name(), state(), focusType(), focusName(), evaluation()
 run.notifications(); mp.notifications(); // messages sent to dummy transports: per run / since the test began
 run.mails(); mp.mails();                 // mails sent by midPoint's mail transport over SMTP (next section)
-Answer<List<UserType>> visible = mp.as("jdoe").search(UserType.class, null);   // also get, isAuthorized, isAuthorizedForAny, editDefinition, execute
+Answer<List<UserType>> visible = mp.actor("jdoe").search(UserType.class, null);   // also get, isAuthorized, isAuthorizedForAny, editDefinition, execute
 ```
 
 - Scripting model hooks of the system configuration: each run with the Clockwork state and the focus when it started.
 - Notifications are enabled as in production. A notifier whose transport is `dummy` (e.g. `dummy:hr`) or a custom
   transport named `dummy...` sends to a recording transport; `Notification` has transport, to, cc, bcc, subject, body.
   Notifier filters and expressions are recorded.
-- `mp.as(user)` makes one call as that user through `ModelService` and the security enforcer (authorization filter
+- `mp.actor(user)` makes one call as that user through `ModelService` and the security enforcer (authorization filter
   expressions are recorded); a denial is an answer (`value()` null, `run().failure()` the `SecurityViolationException`),
   not an exception.
 - Without a logged-in user, midPoint evaluates authorizations in tasks: a task runs as its owner, so its model calls
@@ -1619,7 +1620,7 @@ driver calls of the block that way, with a `Caller`: `Caller.user("jdoe")` (the 
 `.privileged()` (all authorizations on top, as midPoint's `runPrivileged` and a service account's "run privileged"
 option), `.owner("jdoe")` (the owner of the tasks the calls create, the requester of the approvals they start; the
 user by default) and `.channel(uri)`. Hooks, scripts, authorizations, approvals and the audit's initiator then see the
-calls as in production; a call of the block that names its own user (`t.as(...)`) keeps it (`CallerScenarioTest`).
+calls as in production; a call of the block that names its own user (`t.actor(...)`) keeps it (`CallerScenarioTest`).
 
 ```java
 t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.midpoint().addObjectXml(serviceXml));
@@ -1877,7 +1878,7 @@ assertThat(r.errors()).isEmpty();          // also findings(check[, severity]), 
 
 Without writing a test: `mvn test -pl tester/static/midpoint-4.8 -am -Dstatic.dir=<dir> [-Dstatic.schemaDir=<dir>]
 [-Dstatic.classpath=<jar,dir,...>]` writes `target/static-check/<dir name>.md` and fails on compile errors; for
-another build of the line's midPoint (a support build, a fork), add `-Dmidpoint48.version=<version>`. Use the module of your line; 4.0 and 4.4 need
+another build of the line's midPoint (a support build, a fork), add `-Dmidpoint48.version=<version>`. Use the module of your line; 4.0 needs
 the JDK 11 toolchain. What differs between the lines' checks (Groovy messages, upgrade statuses, evaluator sets) is in
 `docs/redesign.md`.
 
@@ -2202,11 +2203,14 @@ Opt-ins:
 - **Lines in parallel**: `mvn -T 2 test` builds two line modules at once (each its own JVM and pgmem; more heat, about
   3 GB heap each). Tests inside a JVM always run one at a time.
 
-### JDK 11 for 4.0 and 4.4
+### JDK 11 for 4.0
 
-midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later, and 4.4 is built for Java 11, so these lines run their
-tests on a JDK 11 selected with a Maven toolchain (sources compile with `--release 11`; the build itself may run on JDK
-17). Register it in `~/.m2/toolchains.xml` (another file: `mvn -t <file>`):
+midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later, so its tests run on a JDK 11 (4.4 runs on 11, 17 and
+21; both compile with `--release 11`). A config repository on 4.0 needs nothing more than Maven on JDK 11
+(`JAVA_HOME`, or a `.mise.toml` or `.sdkmanrc` that pins it): its tests run on the JDK of Maven. When Maven runs on JDK
+16 or later, the 4.0 parent's profile `jdk11-toolchain` runs the tests on the JDK 11 of a Maven toolchain instead; the
+tester's own build does so too (its other lines need JDK 17). Without a toolchain on a later JDK, the tester stops at
+the start with a message that says so. Register the JDK 11 in `~/.m2/toolchains.xml` (another file: `mvn -t <file>`):
 
 ```xml
 <toolchains>
@@ -2218,7 +2222,7 @@ tests on a JDK 11 selected with a Maven toolchain (sources compile with `--relea
 </toolchains>
 ```
 
-Without a JDK 11, leave those lines out: `-pl '!tester/midpoint-4.0,!tester/midpoint-4.4'`.
+Without a JDK 11, leave the line out of the tester's build: `-pl '!tester/midpoint-4.0,!tester/static/midpoint-4.0'`.
 
 ### Publishing
 

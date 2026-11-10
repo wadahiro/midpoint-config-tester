@@ -2,7 +2,7 @@ package com.github.wadahiro.midpoint.configtester.names;
 
 /**
  * An object of a type no verb takes by name (an object collection, a dashboard, a security or value policy, a mark,
- * an object template): its name and OID, e.g. for {@code s.midpoint().object(ValuePolicyType.class, ref.oid())}.
+ * an object template): its name and OID, e.g. for {@code s.midpoint().find(ValuePolicyType.class, ref.oid())}.
  */
 public final class MidPointObjectRef extends ObjectRef {
 
