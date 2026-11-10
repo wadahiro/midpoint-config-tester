@@ -115,7 +115,11 @@ their stand-ins, typed names, expression places). A task the deployment ships su
 n items, as an operator's Suspend stops a task in the middle: midPoint's running task says it cannot go on
 (`canRun()` false) once n items are done (the task's progress, or the items an activity processed on 4.4+), so a
 handler or a script that checks it between items ends there and records what it did; the task itself is left as it
-was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
+was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items. `t.task(name).run()` fails when the
+run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying the last object that failed and why;
+`t.task(name).allowPartialErrors().run()` passes a run that failed on some objects, as tasks often do in production,
+and still fails one that could not run (`TaskErrorsTest`). `t.clock().runDue()` and its scanners fail alike, the due
+tasks after they all ran; `t.clock().allowPartialErrors().runDue()` passes their partial errors.
 
 Once per JVM the tester starts the line's midPoint, imports **the line's initial objects** as midPoint does on its
 first start (system configuration, administrator, End user and Approver roles, default security and password

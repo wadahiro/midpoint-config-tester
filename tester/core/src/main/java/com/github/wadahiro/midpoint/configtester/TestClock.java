@@ -28,9 +28,25 @@ import com.github.wadahiro.midpoint.tester.internal.Internals;
 public final class TestClock {
 
     private final MidPointConfigTester tester;
+    /** Whether the runs of {@link #runDue()} pass a partial error (see {@link #allowPartialErrors}). */
+    private final boolean partialErrorsAllowed;
 
     TestClock(MidPointConfigTester tester) {
+        this(tester, false);
+    }
+
+    private TestClock(MidPointConfigTester tester, boolean partialErrorsAllowed) {
         this.tester = tester;
+        this.partialErrorsAllowed = partialErrorsAllowed;
+    }
+
+    /**
+     * This clock, whose {@link #runDue()} and scanners pass a run that failed on some of its objects
+     * ({@code PARTIAL_ERROR}), as {@link Task#allowPartialErrors()}; one that could not run ({@code FATAL_ERROR})
+     * still fails. {@code t.clock().advance("P1D").allowPartialErrors().runDue()}.
+     */
+    public TestClock allowPartialErrors() {
+        return new TestClock(tester, true);
     }
 
     /** midPoint's current time. */
@@ -98,24 +114,29 @@ public final class TestClock {
      * Runs what has become due by the clock, as midPoint's scheduler would have: the focus validity scanner
      * (activation dates passed), the trigger scanner (time constraints of mappings, delayed deletes, escalations), then
      * every recurring task of the deployment whose next run has come (each once, by name; a held task that never ran is
-     * due). Waits for all of it.
+     * due). Waits for all of it. Fails, as {@link Task#run()}, if one of them failed, on all or (unless
+     * {@link #allowPartialErrors()}) some of its objects: the due tasks after they all ran.
      */
     public TestClock runDue() {
         runValidityScanner();
         runTriggerScanner();
-        Internals.time(tester.deployment().api()).runDueTasks();
+        allowingPartialErrors(() -> Internals.time(tester.deployment().api()).runDueTasks());
         return this;
     }
 
     /** Runs the focus validity scanner once and waits for it. */
     public TestClock runValidityScanner() {
-        Internals.time(tester.deployment().api()).runValidityScanner();
+        allowingPartialErrors(() -> Internals.time(tester.deployment().api()).runValidityScanner());
         return this;
     }
 
     /** Runs the trigger scanner once and waits for it and what it starts. */
     public TestClock runTriggerScanner() {
-        Internals.time(tester.deployment().api()).runTriggerScanner();
+        allowingPartialErrors(() -> Internals.time(tester.deployment().api()).runTriggerScanner());
         return this;
+    }
+
+    private void allowingPartialErrors(Runnable runs) {
+        Internals.allowingPartialErrors(tester.deployment().api(), partialErrorsAllowed, runs);
     }
 }

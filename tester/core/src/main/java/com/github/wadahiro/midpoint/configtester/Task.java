@@ -1,5 +1,8 @@
 package com.github.wadahiro.midpoint.configtester;
 
+import com.github.wadahiro.midpoint.tester.MidPoint;
+import com.github.wadahiro.midpoint.tester.internal.Internals;
+
 /** A task of the deployment ({@link MidPointConfigTester#task}), by name. */
 public final class Task {
 
@@ -7,15 +10,18 @@ public final class Task {
     private final String name;
     /** The items after which {@link #run()} stops the task (see {@link #stopAfter}); -1: it runs to its end. */
     private final long stopAfter;
+    /** Whether {@link #run()} lets a run that failed on some of its objects pass (see {@link #allowPartialErrors}). */
+    private final boolean partialErrorsAllowed;
 
     Task(MidPointConfigTester tester, String name) {
-        this(tester, name, -1);
+        this(tester, name, -1, false);
     }
 
-    private Task(MidPointConfigTester tester, String name, long stopAfter) {
+    private Task(MidPointConfigTester tester, String name, long stopAfter, boolean partialErrorsAllowed) {
         this.tester = tester;
         this.name = name;
         this.stopAfter = stopAfter;
+        this.partialErrorsAllowed = partialErrorsAllowed;
     }
 
     /**
@@ -25,27 +31,38 @@ public final class Task {
      * itself is left as it was (not suspended). {@code t.task("Import users").stopAfter(2).run()}.
      */
     public Task stopAfter(long items) {
-        return new Task(tester, name, items);
+        return new Task(tester, name, items, partialErrorsAllowed);
     }
 
     /**
-     * Runs the task now, as the GUI's "Run now", and waits for it and the work it starts; fails if the task fails. A
-     * recurring task held by the manifest ({@code tasks.recurring: held}) runs this way, once.
+     * This task, whose next {@link #run()} passes when the run failed on some of its objects ({@code PARTIAL_ERROR}:
+     * a reconciliation that could not take one account, as tasks often do in production); a run that could not run at
+     * all ({@code FATAL_ERROR}) still fails. Without it, {@link #run()} fails on either. What failed is in the logs
+     * ({@link MidPointConfigTester#effectsOf}). {@code t.task("Reconcile HR").allowPartialErrors().run()}.
+     */
+    public Task allowPartialErrors() {
+        return new Task(tester, name, stopAfter, true);
+    }
+
+    /**
+     * Runs the task now, as the GUI's "Run now", and waits for it and the work it starts; fails if the task fails,
+     * on all or (unless {@link #allowPartialErrors()}) some of its objects. A recurring task held by the manifest
+     * ({@code tasks.recurring: held}) runs this way, once.
      */
     public Task run() {
+        MidPoint mp = tester.deployment().api();
         if (stopAfter < 0) {
-            tester.deployment().api().runTask(name);
+            Internals.allowingPartialErrors(mp, partialErrorsAllowed, () -> mp.runTask(name));
             return this;
         }
-        String oid = tester.deployment().api()
-                .find(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType.class, name).getOid();
+        String oid = mp.find(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType.class, name).getOid();
         com.github.wadahiro.midpoint.tester.internal.TaskStop.stopAfter(oid, stopAfter);
         try {
-            tester.deployment().api().runTask(name);
+            Internals.allowingPartialErrors(mp, partialErrorsAllowed, () -> mp.runTask(name));
         } finally {
             com.github.wadahiro.midpoint.tester.internal.TaskStop.clear();
         }
-        return new Task(tester, name);
+        return new Task(tester, name, -1, partialErrorsAllowed);
     }
 
     /**

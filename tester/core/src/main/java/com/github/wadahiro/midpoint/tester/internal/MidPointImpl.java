@@ -94,6 +94,8 @@ final class MidPointImpl implements MidPoint {
     private final AtomicInteger mailCount = new AtomicInteger();
     private LineDrivers drivers;
     private volatile String step;
+    /** Whether a partial error fails a call ({@link #allowingPartialErrors}). */
+    private volatile boolean partialErrorsAllowed;
 
     /** What an operation returns besides its evaluations. */
     static final class Outcome {
@@ -695,6 +697,20 @@ final class MidPointImpl implements MidPoint {
         return run("wait for tasks", (task, result) -> Outcome.NONE);
     }
 
+    /**
+     * Runs the calls with a partial error (a task that failed on some of its objects, {@code PARTIAL_ERROR}) not failing
+     * a call if {@code allowed}; a fatal error ({@code FATAL_ERROR}, a task that could not run) still fails it.
+     */
+    void allowingPartialErrors(boolean allowed, Runnable calls) {
+        boolean before = partialErrorsAllowed;
+        partialErrorsAllowed = allowed;
+        try {
+            calls.run();
+        } finally {
+            partialErrorsAllowed = before;
+        }
+    }
+
     @Override
     public Run runTask(String taskNameOrOid) {
         TaskType existing = existing(TaskType.class, taskNameOrOid);
@@ -720,7 +736,8 @@ final class MidPointImpl implements MidPoint {
 
     /**
      * Runs the recurring tasks due by midPoint's clock ({@link Time#runDueTasks()}): each once, in the order of their
-     * names, waiting for each run before the next; fails, after them all, if one of them could not run (fatal error).
+     * names, waiting for each run before the next; fails, after them all, if one of them failed: could not run (fatal
+     * error) or, unless partial errors are allowed ({@link #allowingPartialErrors}), failed on some of its objects.
      */
     Run runDueTasks() {
         dueTasksRun = true;
@@ -739,14 +756,14 @@ final class MidPointImpl implements MidPoint {
             for (String oid : due) {
                 runNow(oid, result);
                 awaitBackgroundWork("run " + nameOf(TaskType.class, oid));
-                // a due task that could not run (fatal error) fails the call; partial errors (some objects failed, as
-                // midPoint's tasks often have in production) stay in the run's result
+                // as a task's run: a due task that could not run (fatal error) fails the call, one that failed on some
+                // of its objects (partial error) too unless allowed; allowed, they stay in the run's result
                 OperationResult taskResult = new OperationResult("due task " + nameOf(TaskType.class, oid));
                 String errors = taskErrors(oid, taskResult);
                 if (errors != null) {
                     result.addSubresult(taskResult);
                     if (resultStatus(oid) == com.evolveum.midpoint.xml.ns._public.common.common_3
-                            .OperationResultStatusType.FATAL_ERROR) {
+                            .OperationResultStatusType.FATAL_ERROR || !partialErrorsAllowed) {
                         failed.add(nameOf(TaskType.class, oid) + ": " + errors);
                     }
                 }
@@ -1271,7 +1288,7 @@ final class MidPointImpl implements MidPoint {
             throw new OperationFailed(name + " failed: " + failure.getMessage(), run, failure);
         }
         result.computeStatus();
-        if (result.isError()) {
+        if (result.isError() && !(partialErrorsAllowed && !result.isFatalError())) {
             // a task's run: its summary says how many objects failed, the tree says why
             throw new OperationFailed(name + " failed: " + result.getStatus() + " " + firstMessage(result)
                     + (taskFailed != null ? "\n" + taskFailed : ""), run, null);
