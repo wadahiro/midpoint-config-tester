@@ -274,6 +274,19 @@
                     <version>3.0.0</version>
                 </plugin>
                 <plugin>
+                    <!-- also for the config repositories: without a version, Maven before 3.9 binds 3.1, which ignores
+                         maven.compiler.release and compiles for Java 5, which JDK 11's javac no longer accepts -->
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.15.0</version>
+                </plugin>
+                <plugin>
+                    <!-- for the same reason: Maven before 3.9 binds 2.6 -->
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.4.0</version>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.2</version>
