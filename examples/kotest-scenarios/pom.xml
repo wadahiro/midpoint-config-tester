@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.example.idm</groupId>
     <artifactId>kotest-scenarios</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Example: Kotest specs over the tester's sample deployments</name>
     <description>
