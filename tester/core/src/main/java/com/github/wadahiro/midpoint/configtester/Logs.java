@@ -17,16 +17,28 @@ public final class Logs {
     private final List<LogEntry> all;
     private final List<LogEntry> selected;
     private final String description;
+    /** Where the elements come from, for the failure message: {@code "in this test"}, {@code "in the block"}. */
+    private final String scope;
+    /** The claims of a verification ({@link Claims}), or null. */
+    private final Ledger ledger;
 
-    private Logs(List<LogEntry> all, List<LogEntry> selected, String description) {
+    private Logs(List<LogEntry> all, List<LogEntry> selected, String description, String scope, Ledger ledger) {
         this.all = all;
         this.selected = selected;
         this.description = description;
+        this.scope = scope;
+        this.ledger = ledger;
     }
 
     static Logs of(List<LogEntry> entries) {
         List<LogEntry> copy = Collections.unmodifiableList(new ArrayList<>(entries));
-        return new Logs(copy, copy, "log messages");
+        return new Logs(copy, copy, "log messages", "in this test", null);
+    }
+
+    /** The elements of a block ({@link Effects}), claimed in {@code ledger} if it is not null. */
+    static Logs ofBlock(List<LogEntry> elements, Ledger ledger) {
+        List<LogEntry> copy = Collections.unmodifiableList(new ArrayList<>(elements));
+        return new Logs(copy, copy, "log messages", "in the block", ledger);
     }
 
     public Logs info() {
@@ -69,9 +81,16 @@ public final class Logs {
     public Logs exactly(int expected) {
         if (selected.size() != expected) {
             throw new AssertionError("Expected " + expected + " " + description + ", found " + selected.size()
-                    + "; logged in this test: " + summary());
+                    + "; logged " + scope + ": " + summary());
         }
+        Ledger.claim(ledger, selected);
         return this;
+    }
+
+    /** Claims the selected elements without checking them ({@link Claims} only). */
+    public void ignored() {
+        Ledger.requireLedger(ledger);
+        ledger.claim(selected);
     }
 
     public Logs none() {
@@ -90,7 +109,7 @@ public final class Logs {
                 out.add(e);
             }
         }
-        return new Logs(all, out, description + what);
+        return new Logs(all, out, description + what, scope, ledger);
     }
 
     private String summary() {

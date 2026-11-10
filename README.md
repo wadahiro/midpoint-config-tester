@@ -430,6 +430,58 @@ element that no notifier of its notification module handles (its `EventHandlerRe
 4.0 and 4.4. The transport differs: `notificationConfiguration/mail` on 4.0 and 4.4, a named
 `messageTransportConfiguration/mail` on 4.8 (an overlay of the system configuration).
 
+### What a block did
+
+`t.effectsOf { ... }` runs a block and returns what midPoint did meanwhile, with the work the block waited for (a
+task's background work): `changes()`, the objects it added, modified or deleted in its repository, one change per
+object with the items changed; `connectorCalls()`, the calls it made to the connectors of its resources, writes
+(`add`, `modify`, `delete`, `executeScript`) and reads (`fetch`, `search`, `count`, `fetchChanges`...), mirror and
+real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repositoryCalls()`, the repository calls
+below midPoint's cache, for looking into what a configuration costs. Selections narrow and check like `t.mails()`.
+
+A check that something did not happen, and a check of what happened that also proves nothing else did, are
+verifications: in `claims()` (Kotlin: `effects.verifyAll { ... }`) each check claims what it selects (`exactly`,
+`none`, `single`, and `ignored()` for what the test does not care about), and `verifyAll()` fails listing every
+changed object, connector write, mail and error logged that no check claimed. `none()` is a verification without
+checks. Connector reads, logs below ERROR and audit records need no claim.
+
+```kotlin
+val effects = t.effectsOf {
+    t.clock().advanceTo(renewalDay)
+    t.task("Nightly renewal").run()
+}
+when (row.outcome) {
+    NOTHING -> effects.none()                          // no object changed, nothing sent to a resource, no mail
+    RENEW -> effects.verifyAll {                       // these, and nothing else
+        changes().of("jdoe").single().only("activation/validTo")
+        connectorCalls().to("LDAP").modifies().of("uid=jdoe,ou=people,dc=example,dc=com").single().only("validTo")
+        mails().to("jdoe@example.com").withSubject("renewed").single()
+    }
+}
+effects.connectorCalls().to("HR").reads().count()      // how often the block read HR
+effects.repositoryCalls().reads().perMethod()          // {"getObject UserType"=3, "searchObjects ShadowType"=8...}
+```
+
+```java
+Claims claims = t.effectsOf(() -> t.task("Reconcile HR").run()).claims();
+claims.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
+claims.changes().ofType("ShadowType").added().ignored();               // the group shadows midPoint discovered
+claims.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");
+claims.connectorCalls().to("LDAP").modifies().exactly(3);
+claims.verifyAll();
+```
+
+What counts (`EffectsScenarioTest`, 4.0, 4.4 and 4.8 alike): a change is what midPoint wrote to its repository
+(below the cache), so a script's direct `repositoryService` write is one too; a delta that leaves the item's values as
+they were (a reconciliation setting `synchronizationSituation` to the value it has) is none. Not counted: `metadata`
+and `operationExecution` at any depth (4.8 writes an `operationExecution` into each object a task processes), the
+modifications of task and node objects, a shadow's synchronization timestamps, situation description and caching
+metadata. A connector call is recorded as midPoint made it to the connector instance; its account is the naming
+attribute's value (`icfs:name`, an LDAP `dn`), else the identifiers. The tester's own calls (an assertion that reads a
+user, a wait that reads a task, `t.source(...)` writing a source system) are not effects: change source systems before
+the block. A time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
+(`t.clock().runDue()`). The block's exception propagates; check a failure inside it with `t.expectFailure`.
+
 ### Typed names
 
 Names in strings fail only when the test runs. With `names: { package: com.example.idm.names }` in the manifest, a

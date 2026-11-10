@@ -13,6 +13,8 @@
     <context:spring-configured/>
     <!-- records mapping and expression evaluations (see RecorderInstaller) -->
     <bean class="com.github.wadahiro.midpoint.tester.internal.RecorderInstaller"/>
+    <!-- records the repository and connector calls of an effectsOf block (see EffectsHook) -->
+    <bean class="com.github.wadahiro.midpoint.tester.internal.EffectsHook"/>
     <import resource="classpath:ctx-model.xml"/>
     <import resource="classpath:ctx-model-test.xml"/>
     <import resource="classpath:ctx-model-common.xml"/>

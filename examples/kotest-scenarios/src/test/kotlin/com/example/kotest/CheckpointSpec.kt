@@ -5,6 +5,7 @@ import com.github.wadahiro.midpoint.configtester.MidPointConfigTest
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester
 import com.github.wadahiro.midpoint.configtester.kotest.MidPointConfigSpec
 import com.github.wadahiro.midpoint.configtester.kotest.steps
+import com.github.wadahiro.midpoint.configtester.kotest.verifyAll
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
@@ -45,7 +46,11 @@ class CheckpointSpec : MidPointConfigSpec({
 
         "the owner approves, 30 days later" {
             t.clock().advance("P30D")
-            t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
+            val approved = t.effectsOf {
+                t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
+            }
+            approved.changes().ofType("CaseType").single().paths() shouldContain "stageNumber"  // on to stage 2
+            approved.mails().list().isNotEmpty() shouldBe true
             t.addUser("approval")
             (t.mails().count() > mailsAfterPrefix) shouldBe true
         }
@@ -86,6 +91,13 @@ class CheckpointSpec : MidPointConfigSpec({
 
         "after the steps, their work is gone" {
             t.userNames() shouldNotContain "step-1"
+        }
+    }
+
+    "a block's effects: what it changed, and nothing else" {
+        t.effectsOf { t.user("jack").recompute() }.none()
+        t.effectsOf { t.addUser("effects") }.verifyAll {
+            changes().of("effects").added().single()
         }
     }
 

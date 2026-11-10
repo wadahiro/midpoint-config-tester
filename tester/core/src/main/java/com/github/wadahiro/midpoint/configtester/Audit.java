@@ -18,16 +18,28 @@ public final class Audit {
     private final List<AuditRecord> all;
     private final List<AuditRecord> selected;
     private final String description;
+    /** Where the elements come from, for the failure message: {@code "in this test"}, {@code "in the block"}. */
+    private final String scope;
+    /** The claims of a verification ({@link Claims}), or null. */
+    private final Ledger ledger;
 
-    private Audit(List<AuditRecord> all, List<AuditRecord> selected, String description) {
+    private Audit(List<AuditRecord> all, List<AuditRecord> selected, String description, String scope, Ledger ledger) {
         this.all = all;
         this.selected = selected;
         this.description = description;
+        this.scope = scope;
+        this.ledger = ledger;
     }
 
     static Audit of(List<AuditRecord> records) {
         List<AuditRecord> copy = Collections.unmodifiableList(new ArrayList<>(records));
-        return new Audit(copy, copy, "audit records");
+        return new Audit(copy, copy, "audit records", "in this test", null);
+    }
+
+    /** The elements of a block ({@link Effects}), claimed in {@code ledger} if it is not null. */
+    static Audit ofBlock(List<AuditRecord> elements, Ledger ledger) {
+        List<AuditRecord> copy = Collections.unmodifiableList(new ArrayList<>(elements));
+        return new Audit(copy, copy, "audit records", "in the block", ledger);
     }
 
     /** The records of the event type: {@code ADD_OBJECT}, {@code MODIFY_OBJECT}, {@code DELETE_OBJECT}... */
@@ -84,9 +96,16 @@ public final class Audit {
     public Audit exactly(int expected) {
         if (selected.size() != expected) {
             throw new AssertionError("Expected " + expected + " " + description + ", found " + selected.size()
-                    + "; written in this test: " + summary());
+                    + "; written " + scope + ": " + summary());
         }
+        Ledger.claim(ledger, selected);
         return this;
+    }
+
+    /** Claims the selected elements without checking them ({@link Claims} only). */
+    public void ignored() {
+        Ledger.requireLedger(ledger);
+        ledger.claim(selected);
     }
 
     public Audit none() {
@@ -105,7 +124,7 @@ public final class Audit {
                 out.add(r);
             }
         }
-        return new Audit(all, out, description + what);
+        return new Audit(all, out, description + what, scope, ledger);
     }
 
     private String summary() {

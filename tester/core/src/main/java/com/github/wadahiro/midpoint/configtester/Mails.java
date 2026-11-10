@@ -21,16 +21,28 @@ public final class Mails {
     private final List<Mail> all;
     private final List<Mail> selected;
     private final String description;
+    /** Where the elements come from, for the failure message: {@code "in this test"}, {@code "in the block"}. */
+    private final String scope;
+    /** The claims of a verification ({@link Claims}), or null. */
+    private final Ledger ledger;
 
-    private Mails(List<Mail> all, List<Mail> selected, String description) {
+    private Mails(List<Mail> all, List<Mail> selected, String description, String scope, Ledger ledger) {
         this.all = all;
         this.selected = selected;
         this.description = description;
+        this.scope = scope;
+        this.ledger = ledger;
     }
 
     static Mails of(List<Mail> mails) {
         List<Mail> copy = Collections.unmodifiableList(new ArrayList<>(mails));
-        return new Mails(copy, copy, "mails");
+        return new Mails(copy, copy, "mails", "in this test", null);
+    }
+
+    /** The elements of a block ({@link Effects}), claimed in {@code ledger} if it is not null. */
+    static Mails ofBlock(List<Mail> elements, Ledger ledger) {
+        List<Mail> copy = Collections.unmodifiableList(new ArrayList<>(elements));
+        return new Mails(copy, copy, "mails", "in the block", ledger);
     }
 
     /** The mails with this address among their recipients (To, Cc or Bcc), ignoring case. */
@@ -41,7 +53,7 @@ public final class Mails {
                 out.add(mail);
             }
         }
-        return new Mails(all, out, description + " to " + address);
+        return new Mails(all, out, description + " to " + address, scope, ledger);
     }
 
     /** The mails from this address ({@link Mail#from()}), ignoring case. */
@@ -52,7 +64,7 @@ public final class Mails {
                 out.add(mail);
             }
         }
-        return new Mails(all, out, description + " from " + address);
+        return new Mails(all, out, description + " from " + address, scope, ledger);
     }
 
     /** The mails whose body ({@link Mail#body()}) contains the text. */
@@ -63,7 +75,7 @@ public final class Mails {
                 out.add(mail);
             }
         }
-        return new Mails(all, out, description + " with a body containing '" + text + "'");
+        return new Mails(all, out, description + " with a body containing '" + text + "'", scope, ledger);
     }
 
     /** The mails whose subject contains the text. */
@@ -74,7 +86,7 @@ public final class Mails {
                 out.add(mail);
             }
         }
-        return new Mails(all, out, description + " with a subject containing '" + text + "'");
+        return new Mails(all, out, description + " with a subject containing '" + text + "'", scope, ledger);
     }
 
     /**
@@ -115,9 +127,16 @@ public final class Mails {
     public Mails exactly(int expected) {
         if (selected.size() != expected) {
             throw new AssertionError("Expected " + expected + " " + description + ", found " + selected.size()
-                    + "; sent in this test: " + summary());
+                    + "; sent " + scope + ": " + summary());
         }
+        Ledger.claim(ledger, selected);
         return this;
+    }
+
+    /** Claims the selected elements without checking them ({@link Claims} only). */
+    public void ignored() {
+        Ledger.requireLedger(ledger);
+        ledger.claim(selected);
     }
 
     public Mails none() {

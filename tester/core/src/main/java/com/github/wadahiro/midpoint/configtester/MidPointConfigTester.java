@@ -205,7 +205,28 @@ public final class MidPointConfigTester {
      * the test, without what came before it.
      */
     public Audit audit(Runnable during) {
-        return Audit.of(deployment().api().auditRecords(during));
+        return Audit.ofBlock(deployment().api().auditRecords(during), null);
+    }
+
+    /**
+     * Runs the block and returns what midPoint did meanwhile ({@link Effects}): the objects it changed in the
+     * repository, its calls to the connectors, the mails, logs and audit records, with the work the block waited for.
+     * The block's exception propagates ({@link #expectFailure} goes inside the block). E.g. in Kotlin
+     *
+     * <pre>{@code
+     * val effects = t.effectsOf { t.task("Nightly renewal").run() }
+     * effects.none()                                    // changed nothing, wrote nothing, sent nothing
+     * effects.verifyAll {                               // these, and nothing else
+     *     changes().of("jdoe").single().only("activation/validTo")
+     *     connectorCalls().to("LDAP").modifies().of("jdoe").single()
+     *     mails().to("jdoe@example.com").withSubject("renewed").single()
+     * }
+     * effects.connectorCalls().to("HR").reads().count()  // how often the block read HR
+     * }</pre>
+     */
+    public Effects effectsOf(Runnable block) {
+        return Effects.of(com.github.wadahiro.midpoint.tester.internal.EffectsCapture.capture(deployment().api(),
+                block));
     }
 
     /**
