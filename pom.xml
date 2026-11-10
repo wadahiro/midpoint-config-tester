@@ -80,6 +80,9 @@
         <tester.forks>1</tester.forks>
         <!-- Kotlin and Kotest, for the opt-in Kotest layer (tester/kotest) and the repositories that use it -->
         <kotlin.version>2.3.10</kotlin.version>
+        <!-- the JDK whose class library Kotlin compiles against (-Xjdk-release): the build's, not that of a Kotlin daemon
+             a build on another JDK started and the plugin reuses (with JDK 11's, -Xjdk-release=17 fails on its ct.sym) -->
+        <kotlin.compiler.jdkHome>${java.home}</kotlin.compiler.jdkHome>
         <kotest.version>6.2.6</kotest.version>
         <kotlinx-coroutines.version>1.10.2</kotlinx-coroutines.version>
     </properties>
