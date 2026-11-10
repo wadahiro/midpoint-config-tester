@@ -137,7 +137,8 @@
         <pluginManagement>
             <plugins>
                 <plugin>
-                    <!-- Kotlin tests, opt-in (see above): compiled before javac, with the typed names (Java sources) -->
+                    <!-- Kotlin tests, opt-in (see above): compiled before javac, so it reads the Java sources it may use: the
+                         typed names and the repository's Java tests (javac then compiles those against the Kotlin classes) -->
                     <groupId>org.jetbrains.kotlin</groupId>
                     <artifactId>kotlin-maven-plugin</artifactId>
                     <version>${kotlin.version}</version>
@@ -160,6 +161,7 @@
                                 <sourceDirs>
                                     <sourceDir>${tester.kotlin.testSourceDir}</sourceDir>
                                     <sourceDir>${tester.names.dir}</sourceDir>
+                                    <sourceDir>${project.build.testSourceDirectory}</sourceDir>
                                 </sourceDirs>
                             </configuration>
                         </execution>
