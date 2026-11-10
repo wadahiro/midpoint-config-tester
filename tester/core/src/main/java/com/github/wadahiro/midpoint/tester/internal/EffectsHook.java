@@ -341,10 +341,12 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             }
             if (args != null) {
                 for (Object arg : args) {
-                    if (arg != null && arg.getClass().getSimpleName().contains("Identification")) {
+                    if (arg != null && arg.getClass().getName().contains("Identification")) {
                         // the secondary identifier is the one people know (a DN), the primary one a UUID
-                        for (String getter : List.of("getSecondaryIdentifiers", "getPrimaryIdentifiers",
-                                "getAllIdentifiers")) {
+                        // (4.9 on: the identifiers as attributes; before, the identifiers are the attributes)
+                        for (String getter : List.of("getSecondaryIdentifiersAsAttributes",
+                                "getSecondaryIdentifiers", "getPrimaryIdentifiersAsAttributes",
+                                "getPrimaryIdentifiers", "getAllIdentifiers")) {
                             String text = identifiersText(getter(arg, getter));
                             if (text != null) {
                                 return text;

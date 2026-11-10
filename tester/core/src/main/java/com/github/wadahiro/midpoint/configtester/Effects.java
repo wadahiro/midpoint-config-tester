@@ -41,9 +41,13 @@ public final class Effects {
 
     /** Item names that are midPoint's bookkeeping wherever they are. */
     private static final Set<String> HOUSEKEEPING = Set.of("metadata", "operationExecution");
-    /** A shadow's synchronization bookkeeping. */
+    /**
+     * A shadow's synchronization bookkeeping, and its attributes and references: midPoint's copy of the account (4.9 on
+     * caches them as it reads the account); what the block did to the account itself is its connector calls.
+     */
     private static final Set<String> SHADOW_HOUSEKEEPING = Set.of("synchronizationTimestamp",
-            "fullSynchronizationTimestamp", "synchronizationSituationDescription", "cachingMetadata");
+            "fullSynchronizationTimestamp", "synchronizationSituationDescription", "cachingMetadata", "attributes",
+            "referenceAttributes");
     /** Types whose modifications are the runtime's own (a task's progress, a node's heartbeat). */
     private static final Set<String> RUNTIME_TYPES = Set.of("TaskType", "NodeType");
 
@@ -230,6 +234,6 @@ public final class Effects {
 
     static String ignoredNote() {
         return "(not counted: metadata, operationExecution, task and node modifications, a shadow's synchronization"
-                + " timestamps and situation description, connector reads, logs below ERROR, audit records)";
+                + " timestamps, situation description and cached attributes, connector reads, logs below ERROR, audit records)";
     }
 }
