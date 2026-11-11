@@ -67,7 +67,10 @@ public final class Task {
 
     /**
      * Resumes the task, as the GUI's "Resume": a task the deployment ships suspended. A recurring task held by the
-     * manifest still runs only by {@link #run()} or the due tasks of {@link MidPointConfigTester#clock()}.
+     * manifest does not start on it, though midPoint may start one at once (a missed run, an interval task that never
+     * ran): it still runs only by {@link #run()} or the due tasks of {@link MidPointConfigTester#clock()}. Other tasks
+     * are left to midPoint. The reset after each test restores the task's state, so resume it where the state the
+     * tests start from is set up.
      */
     public Task resume() {
         tester.deployment().api().resumeTask(name);

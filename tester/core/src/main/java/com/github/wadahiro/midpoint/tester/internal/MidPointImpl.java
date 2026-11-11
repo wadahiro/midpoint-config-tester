@@ -43,6 +43,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ConnectorType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.FocusType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ModelExecuteOptionsType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.OperationResultStatusType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.SynchronizationSituationType;
@@ -789,7 +790,7 @@ final class MidPointImpl implements MidPoint {
             runNow.computeStatusIfUnknown();
             if (runNow.isError() || runNow.isWarning()) {
                 throw new AssertionError("Task " + nameOf(TaskType.class, oid) + " cannot be run now: "
-                        + runNow.getStatus() + " " + firstMessage(runNow));
+                        + runNow.getStatus() + " " + firstMessage(runNow) + suspendedHint(oid));
             }
             long deadline = System.nanoTime() + TesterRuntime.TASK_WAIT_MILLIS * 1_000_000L;
             while (Recorder.taskRuns(oid) == runs) {
@@ -811,22 +812,52 @@ final class MidPointImpl implements MidPoint {
      */
     private boolean runnable(String oid) {
         try {
-            PrismObject<TaskType> task = harness.bean(RepositoryService.class).getObject(TaskType.class, oid, null,
-                    new OperationResult("task state"));
-            for (String name : List.of("executionState", "executionStatus")) {
-                com.evolveum.midpoint.prism.PrismProperty<?> state = task.findProperty(
-                        com.evolveum.midpoint.prism.path.ItemPath.create(new javax.xml.namespace.QName(Xml.NS_C, name)));
-                if (state != null && state.getRealValue() != null) {
-                    String value = state.getRealValue().toString().toLowerCase(java.util.Locale.ROOT);
-                    return value.equals("runnable") || value.equals("running");
-                }
-            }
-            return true;
+            String state = state(task(oid));
+            return state == null || state.equals("runnable") || state.equals("running");
         } catch (ObjectNotFoundException e) {
             return false;
         } catch (Exception e) {
             throw new IllegalStateException("Cannot read task " + oid, e);
         }
+    }
+
+    /**
+     * Why a task that cannot be run now is suspended, for the failure: midPoint suspended it when its last run failed,
+     * or it is suspended as deployed (or by a suspend) and needs a resume first. Empty if it is not suspended.
+     */
+    private String suspendedHint(String oid) {
+        try {
+            PrismObject<TaskType> task = task(oid);
+            if (!"suspended".equals(state(task))) {
+                return "";
+            }
+            OperationResultStatusType last = task.asObjectable().getResultStatus();
+            if (last == OperationResultStatusType.FATAL_ERROR || last == OperationResultStatusType.PARTIAL_ERROR) {
+                return ". The task is suspended: midPoint suspended it when its last run failed (" + last + ")";
+            }
+            return ". The task is suspended: resume it first (t.task(name).resume(), mp.resumeTask), as an operator"
+                    + " does. The reset after each test restores the task's state as well, so resume it where the state"
+                    + " the tests start from is set up, not in an earlier test";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private PrismObject<TaskType> task(String oid) throws Exception {
+        return harness.bean(RepositoryService.class).getObject(TaskType.class, oid, null,
+                new OperationResult("task state"));
+    }
+
+    /** The task's {@code executionStatus} (4.0) or {@code executionState} (4.4+), read by name, in lower case. */
+    private static String state(PrismObject<TaskType> task) {
+        for (String name : List.of("executionState", "executionStatus")) {
+            com.evolveum.midpoint.prism.PrismProperty<?> state = task.findProperty(
+                    com.evolveum.midpoint.prism.path.ItemPath.create(new javax.xml.namespace.QName(Xml.NS_C, name)));
+            if (state != null && state.getRealValue() != null) {
+                return state.getRealValue().toString().toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        return null;
     }
 
     /** The task's last run start (real time, as midPoint stores it), or null if it never ran or does not exist. */

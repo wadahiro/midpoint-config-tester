@@ -111,15 +111,26 @@ tasks: { recurring: held }              # imported recurring tasks run only when
 
 A file that midPoint exports, `<object xsi:type="c:RoleType">`, is read as the `<role>` it is (resources moved to
 their stand-ins, typed names, expression places). A task the deployment ships suspended is resumed with
-`t.task(name).resume()` (`mp.resumeTask`), as an operator does. `t.task(name).stopAfter(n).run()` stops the run after
-n items, as an operator's Suspend stops a task in the middle: midPoint's running task says it cannot go on
-(`canRun()` false) once n items are done (the task's progress, or the items an activity processed on 4.4+), so a
-handler or a script that checks it between items ends there and records what it did; the task itself is left as it
-was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items. `t.task(name).run()` fails when the
-run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying the last object that failed and why;
-`t.task(name).allowPartialErrors().run()` passes a run that failed on some objects, as tasks often do in production,
-and still fails one that could not run (`TaskErrorsTest`). `t.clock().runDue()` and its scanners fail alike, the due
-tasks after they all ran; `t.clock().allowPartialErrors().runDue()` passes their partial errors.
+`t.task(name).resume()` (`mp.resumeTask`), as an operator does. In midPoint a resume can start a recurring task at
+once: a task suspended after it was runnable keeps its standard trigger paused, and resuming it fires the run missed
+meanwhile when `misfireAction` is `executeImmediately` (the default); a task deployed suspended has no trigger until the
+resume, which builds one to start now (an interval task starts at once, a cron task at its next cron time). A recurring
+task the manifest holds (`tasks.recurring: held`: a loosely bound one, the usual kind) does not start on the resume
+(`TaskRunsTest.aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`): it runs only by `t.task(name).run()` or
+`t.clock().runDue()`, so a test that means that run runs it. Single-run tasks, tightly bound ones and all of
+`tasks.recurring: scheduled` are not held: the tester leaves them to midPoint. A suspended single-run task runs on the
+resume, within the call (`TaskRunsTest.aSuspendedSingleRunTaskRunsOnTheResume`). A run of a task still suspended fails,
+saying so (`SuspendedTaskScenarioTest`). The reset after each test restores the task's state with the rest, so resume it
+where the state the tests start from is set up (a container of a spec), not in an earlier test.
+`t.task(name).stopAfter(n).run()` stops the run after n items, as an operator's Suspend stops a task in the middle:
+midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the task's progress, or the items
+an activity processed on 4.4+), so a handler or a script that checks it between items ends there and records what it
+did; the task itself is left as it was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
+`t.task(name).run()` fails when the run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying
+the last object that failed and why; `t.task(name).allowPartialErrors().run()` passes a run that failed on some objects,
+as tasks often do in production, and still fails one that could not run (`TaskErrorsTest`). `t.clock().runDue()` and its
+scanners fail alike, the due tasks after they all ran; `t.clock().allowPartialErrors().runDue()` passes their partial
+errors.
 
 Once per JVM the tester starts the line's midPoint, imports **the line's initial objects** as midPoint does on its
 first start (system configuration, administrator, End user and Approver roles, default security and password

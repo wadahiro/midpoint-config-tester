@@ -208,8 +208,9 @@ class TaskRunsTest {
 
     /**
      * A recurring task added after the clock has moved is held too, its first run included (midPoint schedules it for
-     * now): {@code runDueTasks} runs it, as a task that never ran is due. Resuming it (midPoint re-creates or resumes
-     * its trigger) does not start it either.
+     * now): {@code runDueTasks} runs it, as a task that never ran is due. Resuming it does not start it either:
+     * midPoint resumes the trigger it paused, and Quartz fires at once the run it missed while suspended
+     * ({@code misfireAction} executeImmediately, the default), a firing held as the others.
      */
     @Test
     @Order(8)
@@ -229,9 +230,12 @@ class TaskRunsTest {
 
         TaskManager tasks = mp.bean(TaskManager.class);
         tasks.suspendTasks(java.util.List.of(OFTEN_LATE), 5000, new OperationResult("suspend"));
+        // past the next fire time by more than the misfire threshold of Quartz's in-memory store (5 s)
+        Thread.sleep(OFTEN_WAIT + 5000);
         held = Recorder.heldRuns(OFTEN_LATE);
         tasks.resumeTasks(java.util.List.of(OFTEN_LATE), new OperationResult("resume"));
         awaitHeldRun(OFTEN_LATE, held);
+        assertThat(Recorder.heldRuns(OFTEN_LATE)).as("held runs after the resume").isGreaterThan(held);
         assertThat(Recorder.taskRuns(OFTEN_LATE)).as("runs after the resume").isEqualTo(1);
     }
 
@@ -318,6 +322,29 @@ class TaskRunsTest {
         } finally {
             com.github.wadahiro.midpoint.configtester.MidPointConfigTestLifecycle.release(t, checkpoint);
         }
+    }
+
+    /**
+     * A single-run task added suspended does not run; resuming it does, at once (midPoint builds its trigger to start
+     * now): the manifest holds recurring tasks only.
+     */
+    @Test
+    @Order(12)
+    void aSuspendedSingleRunTaskRunsOnTheResume(MidPointConfigTester t) throws Exception {
+        MidPoint mp = t.midpoint();
+        String xml = Files.readString(Fixtures.of(mp, new File(DIR, "task-recompute-users-once.xml")).toPath())
+                .replace(SINGLE, ADDED).replace("recompute users once", "recompute users suspended")
+                .replace(">runnable</", ">suspended</");
+        int before = Recorder.taskRuns(ADDED);
+        mp.addObjectXml(xml);
+        assertThat(Recorder.taskRuns(ADDED) - before).as("runs while suspended").isZero();
+        assertThat(state(mp, ADDED)).isEqualTo("suspended");
+
+        Run resumed = mp.resumeTask(ADDED);
+        assertThat(Recorder.taskRuns(ADDED) - before).as("runs after the resume").isEqualTo(1);
+        assertThat(resumed.mappings("auditor-description").list()).hasSize(perRun)
+                .allSatisfy(e -> assertThat(e.task()).isEqualTo("recompute users suspended"));
+        assertThat(state(mp, ADDED)).as("state after the run").isEqualTo("closed");
     }
 
     private static java.time.Instant at(java.time.LocalDate date, int hour, int minute) {

@@ -69,6 +69,7 @@ class LiveSyncRealConnectorsTest extends LiveSyncScenarioTest {
         assertThat(run.isSuccess()).isFalse();
         assertThat(run.failure()).hasMessageContaining("moddn");
         // suspended: the next call cannot run it (the GUI would resume it first)
-        assertThat(mp.attempt(() -> mp.liveSync("LDAP")).failure()).hasMessageContaining("SUSPENDED");
+        assertThat(mp.attempt(() -> mp.liveSync("LDAP")).failure()).hasMessageContaining("SUSPENDED")
+                .hasMessageContaining("midPoint suspended it when its last run failed");
     }
 }
