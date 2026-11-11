@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- not the tester's parent: that one adds every runtime source of tester/core -->
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-root</artifactId>
+        <version>0.5.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>midpoint-config-tester-static-parent</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester static checks (parent)</name>
+
+    <!--
+        Static checks of a configuration directory without a midPoint runtime (no Spring, no database): Groovy
+        compilation on the line's classpath, prism parsing, ninja verify's upgrade validator, configuration lint
+        (docs/redesign.md, step 5). core/ holds the line-neutral sources and tests (not a module), midpoint-<line>/ the
+        line's dependencies and its StaticLine class (prism context, upgrade validator, evaluator elements).
+
+        From tester/core only the runtime-free configuration index is compiled (Identity, ConfigFiles, the scanner
+        scan/ConfigScanner and scan/EvaluatorFingerprint, common/MidPointLine), so that places have the identity the
+        tester gives their evaluations; the compiler includes below keep the rest out (a dependency of these on the
+        runtime fails this build).
+    -->
+    <modules>
+        <module>midpoint-4.0</module>
+        <module>midpoint-4.4</module>
+        <module>midpoint-4.8</module>
+    </modules>
+
+    <profiles>
+        <profile>
+            <!-- the lines after 4.8 (not LTS): built and tested only with -Pnon-lts -->
+            <id>non-lts</id>
+            <modules>
+                <module>midpoint-4.9</module>
+                <module>midpoint-4.10</module>
+            </modules>
+        </profile>
+        <!--
+            The sources and javadoc jars of the release profile (root pom.xml): only the files the compiler takes.
+            Javadoc reads a copy of them, as it would otherwise follow their references into the rest of the sources.
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>com/github/wadahiro/midpoint/tester/check/**</include>
+                                <include>com/github/wadahiro/midpoint/tester/Identity.java</include>
+                                <include>com/github/wadahiro/midpoint/tester/internal/ConfigFiles.java</include>
+                                <include>com/github/wadahiro/midpoint/scan/ConfigScanner.java</include>
+                                <include>com/github/wadahiro/midpoint/scan/EvaluatorFingerprint.java</include>
+                                <include>com/github/wadahiro/midpoint/common/**</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-javadoc-sources</id>
+                                <phase>prepare-package</phase>
+                                <goals><goal>copy-resources</goal></goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/javadoc-sources</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${static.home}/core/src/main/java</directory>
+                                            <includes>
+                                                <include>com/github/wadahiro/midpoint/tester/check/**</include>
+                                                <include>com/github/wadahiro/midpoint/tester/Identity.java</include>
+                                                <include>com/github/wadahiro/midpoint/tester/internal/ConfigFiles.java</include>
+                                                <include>com/github/wadahiro/midpoint/scan/ConfigScanner.java</include>
+                                                <include>com/github/wadahiro/midpoint/scan/EvaluatorFingerprint.java</include>
+                                                <include>com/github/wadahiro/midpoint/common/**</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${tester.dir}/core/src/main/java</directory>
+                                            <includes>
+                                                <include>com/github/wadahiro/midpoint/tester/check/**</include>
+                                                <include>com/github/wadahiro/midpoint/tester/Identity.java</include>
+                                                <include>com/github/wadahiro/midpoint/tester/internal/ConfigFiles.java</include>
+                                                <include>com/github/wadahiro/midpoint/scan/ConfigScanner.java</include>
+                                                <include>com/github/wadahiro/midpoint/scan/EvaluatorFingerprint.java</include>
+                                                <include>com/github/wadahiro/midpoint/common/**</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <sourcepath>${project.build.directory}/javadoc-sources</sourcepath>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <properties>
+        <!-- tester/, from the module's own place (the children of this POM are two levels below tester/), as in
+             tester/pom.xml -->
+        <tester.dir>${project.basedir}/../..</tester.dir>
+        <!-- not static.dir: -Dstatic.dir names the configuration to check -->
+        <static.home>${tester.dir}/static</static.home>
+        <!-- Maven Build Cache (opt-in): the static sources and the tester's sources are inputs -->
+        <maven.build.cache.input.1>${tester.dir}/static/core</maven.build.cache.input.1>
+        <maven.build.cache.input.2>${tester.dir}/core</maven.build.cache.input.2>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- every jar carries LICENSE: the copies of midPoint's initial objects are EUPL, as the tester -->
+                        <id>add-license</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>add-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${tester.dir}/..</directory>
+                                    <targetPath>META-INF</targetPath>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-static-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${static.home}/core/src/main/java</source>
+                                <source>${tester.dir}/core/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-static-test-sources</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${static.home}/core/src/test/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>add-static-test-resources</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>add-test-resource</goal>
+                        </goals>
+                        <configuration>
+                            <resources>
+                                <resource>
+                                    <directory>${static.home}/core/src/test/resources</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!-- the version Maven 3.9 binds by default -->
+                <version>3.13.0</version>
+                <configuration>
+                    <includes>
+                        <include>com/github/wadahiro/midpoint/tester/check/**</include>
+                        <include>com/github/wadahiro/midpoint/tester/Identity.java</include>
+                        <include>com/github/wadahiro/midpoint/tester/internal/ConfigFiles.java</include>
+                        <include>com/github/wadahiro/midpoint/scan/ConfigScanner.java</include>
+                        <include>com/github/wadahiro/midpoint/scan/EvaluatorFingerprint.java</include>
+                        <include>com/github/wadahiro/midpoint/common/**</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Duser.language=en</argLine>
+                    <systemPropertyVariables>
+                        <static.fixtures>${static.home}/core/src/test/resources/static</static.fixtures>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
