@@ -1495,6 +1495,17 @@ and `mp.runTask` still runs a task exactly once (`TaskRunsTest.recurringTaskRuns
 Tightly bound tasks (a thread that sleeps between runs) are not held. In production the real time passes for
 everything at once; that difference is the point of the tester's clock. Log lines written after an advance carry the shifted time.
 
+**Quartz keeps its jobs in memory.** The tester starts midPoint with the in-memory job store
+(`<jdbcJobStore>false</jdbcJobStore>`), midPoint's default on one node; a cluster (`taskManager.clustered`) keeps them
+in the database by default (the JDBC job store). The reset restores the task rows, not Quartz: it holds the scheduler,
+has midPoint synchronize the jobs with the restored rows (`TaskManager.synchronizeTasks`), puts every recurring trigger
+back on the schedule of the restored task (its next run after its last one) and drops the other triggers. A trigger the
+test resumed stays resumed for a task the restore made suspended again; the due tasks check the task's state, so it does
+not run. The JDBC store would not spare that work: its rows hold the fire times of the snapshot on the real time, past
+by the restore, so every trigger would misfire on the release. What a test cannot see of a deployment on the JDBC store:
+the misfire threshold (60 s; the due tasks apply none, a test moves the clock further), the runs a node that was down
+missed (they misfire when it starts), and the runs another node of the cluster takes.
+
 Scripts may read time either way. Only where midPoint's clock moves alone (midPoint's own clock override, outside the
 tester, or a JVM without the agent) does a script on the JVM's clock disagree with the scanners: the static check
 notes such reads (`LINT`, rule `jdk-time`, a warning); `basic.currentDateTime()` and
