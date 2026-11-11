@@ -49,8 +49,7 @@ public class Harness40 extends AbstractModelIntegrationTest implements Harness {
         if (Runtime.version().feature() >= 16) {
             throw new IllegalStateException("midPoint 4.0 runs on JDK 11 (its Groovy 2.5 does not start on JDK 16 or"
                     + " later), this is JDK " + Runtime.version() + " (" + System.getProperty("java.home") + "): run"
-                    + " Maven on JDK 11, or give it a JDK 11 toolchain (~/.m2/toolchains.xml or mvn -t <file>; the"
-                    + " parent's profile jdk11-toolchain selects it when Maven runs on JDK 16 or later)");
+                    + " Maven on JDK 11 (JAVA_HOME, or a mise.toml or .sdkmanrc that pins it)");
         }
         TestContextManager contextManager = new TestContextManager(Harness40.class);
         Harness40 harness = new Harness40();

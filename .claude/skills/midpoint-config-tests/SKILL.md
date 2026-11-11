@@ -58,6 +58,7 @@ preparation scripts for that.
 | mail | `mail: { redirect: true }` (default) |
 | recurring tasks | always held (no key): they run only when a test runs them (`t.task(name).run()`, `t.clock().runDue()`) |
 | typed names | `names: { package: ... }` |
+| JDK | Maven on a JDK the line's midPoint supports (4.0: 11; 4.4: 11, 17; 4.8+: 17, 21; the parent checks it), pinned in the repository (`mise.toml`, `.sdkmanrc`) |
 
 Resources deployed without a stored `<schema>` (its `definition`; midPoint fetches it from the real connector):
 - **Best**: export each such resource from a midPoint that has connected to the real system (STG, a local environment;

@@ -65,6 +65,10 @@
     <properties>
         <!-- the parent's version, not the repository's: a config repository has a version of its own -->
         <tester.version>${project.parent.version}</tester.version>
+        <!-- the JDKs the tests may run on: each line's parent sets those its midPoint supports; -DskipTests also skips
+             the check -->
+        <tester.jdk>[11,)</tester.jdk>
+        <skipTests>false</skipTests>
         <!-- the repository's manifest: the generator reads its names.package, the tests load it -->
         <tester.manifest.file>${project.basedir}/midpoint-config-tester.yaml</tester.manifest.file>
         <tester.names.dir>${project.build.directory}/generated-test-sources/midpoint-names</tester.names.dir>
@@ -201,6 +205,30 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <!-- the tests run on the JDK that runs Maven: one midPoint supports (tester.jdk of the line's parent).
+                     Not with -DskipTests: a build that only compiles and packages may run on another JDK -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>tester-jdk</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipTests}</skip>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>${tester.jdk}</version>
+                                    <message>midPoint ${midpoint.version} runs its tests on JDK ${tester.jdk}: run Maven on such a JDK (JAVA_HOME, or a mise.toml or .sdkmanrc that pins it)</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>

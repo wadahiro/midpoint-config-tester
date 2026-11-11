@@ -68,9 +68,8 @@ line). The parent `midpoint-config-tester-parent-<line>` brings:
 - the generator of typed names, run at `generate-sources` on the manifest (its `names.package`), its output a test
   source root;
 - Surefire: one JVM for all test classes (one midPoint), `-Dtester.forks=N` for more, the manifest as the default of
-  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and the tests on the JDK that runs Maven: for 4.0
-  a JDK 11, or a JDK 11 toolchain when Maven runs on a later one (see [JDK 11](#jdk-11-for-40)); 4.0 and 4.4 compile
-  with `--release 11`;
+  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and the tests on the JDK that runs Maven, one the
+  line's midPoint supports: the parent checks it (see [JDKs](#jdks)); 4.0 and 4.4 compile with `--release 11`;
 - Evolveum's repository and the pgmem profiles: the in-memory PostgreSQL
   ([pgmem](https://github.com/shibukawa/pgmem)) is a native binary from `io.github.shibukawa.pgmem:pgmem-native`,
   classifier `linux-x86_64` (default), `darwin-arm64`, `linux-arm64` or `windows-x86_64` by OS; on another platform
@@ -823,11 +822,11 @@ of its own, or select the evaluations of a run. The tester's own engine tests (`
 
 | Line | midPoint | Artifact | JDK running the tests | Groovy | Repository |
 |---|---|---|---|---|---|
-| 4.0 | 4.0.3 | `midpoint-config-tester-4.0` | **11** (Maven on JDK 11, or a toolchain) | 2.5.8 | old (Hibernate) repository on PostgreSQL |
-| 4.4 | 4.4.11 | `midpoint-config-tester-4.4` | 11 / 17 / 21 | 3.0.19 | native (`sqale`) |
-| 4.8 | 4.8.14 | `midpoint-config-tester-4.8` | 17 / 21 | 4.0.24 | native |
-| 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / 21 | 4.0.24 | native |
-| 4.10 | 4.10.3 | `midpoint-config-tester-4.10` | 17 / 21 | 4.0.24 | native |
+| 4.0 | 4.0.3 | `midpoint-config-tester-4.0` | **11** | 2.5.8 | old (Hibernate) repository on PostgreSQL |
+| 4.4 | 4.4.11 | `midpoint-config-tester-4.4` | 11 / **17** | 3.0.19 | native (`sqale`) |
+| 4.8 | 4.8.14 | `midpoint-config-tester-4.8` | 17 / **21** | 4.0.24 | native |
+| 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / **21** | 4.0.24 | native |
+| 4.10 | 4.10.3 | `midpoint-config-tester-4.10` | 17 / **21** | 4.0.24 | native |
 
 The build and its tests cover the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9 and 4.10 (tester, static checks,
 parents) are built and tested only with `-Pnon-lts`.
@@ -1963,8 +1962,8 @@ assertThat(r.errors()).isEmpty();          // also findings(check[, severity]), 
 
 Without writing a test: `mvn test -pl tester/static/midpoint-4.8 -am -Dstatic.dir=<dir> [-Dstatic.schemaDir=<dir>]
 [-Dstatic.classpath=<jar,dir,...>]` writes `target/static-check/<dir name>.md` and fails on compile errors; for
-another build of the line's midPoint (a support build, a fork), add `-Dmidpoint48.version=<version>`. Use the module of your line; 4.0 needs
-the JDK 11 toolchain. What differs between the lines' checks (Groovy messages, upgrade statuses, evaluator sets) is in
+another build of the line's midPoint (a support build, a fork), add `-Dmidpoint48.version=<version>`. Use the module of your line, with
+Maven on its JDK (4.0: JDK 11). What differs between the lines' checks (Groovy messages, upgrade statuses, evaluator sets) is in
 `docs/redesign.md`.
 
 ## Line notes
@@ -2214,7 +2213,7 @@ Quartz hold and task runs, time shift, file redirection, live sync, mirror optio
 ```bash
 mvn test -pl tester/midpoint-4.8 -am                       # one line
 mvn test -pl tester/midpoint-4.8,tester/midpoint-4.9,tester/midpoint-4.10 -am  # 4.8+ lines
-mvn test -pl tester/midpoint-4.0 -am                       # 4.0 (JDK 11 toolchain)
+mvn test -pl tester/midpoint-4.0 -am                       # 4.0 (Maven on JDK 11)
 mvn test -pl tester/static/midpoint-4.8 -am                # static checks of one line
 ```
 
@@ -2224,7 +2223,7 @@ The 4.0 BOM pins old test libraries (JUnit 5.3), so `midpoint-4.0` imports a new
 
 ### Speed
 
-A full build (`mvn -t <toolchains> -o verify`) takes under 4 minutes on a laptop (8 minutes before phase 4 removed the
+A build of every line (each with Maven on its JDK, [JDKs](#jdks)) takes under 4 minutes on a laptop (8 minutes before phase 4 removed the
 PoC tests): each line module 31-43 s for 117 tests, midPoint's start 6-7 s of it, each static module 5 s, the example
 15 s. Most of a line module's time is midPoint's own work; the tester keeps its own share small:
 
@@ -2280,7 +2279,7 @@ Opt-ins:
   modules. A change in `tester/core` reruns every module; one in `midpoint-4.9` only that one (about 80 s instead of 7
   minutes; nothing changed: 2 s). The cache does not see `-D` properties, so `static.dir`, `static.schemaDir`, `tester.*`, `pgmem.binary` and `-Dtest`
   switch it off for the build (profiles `no-build-cache-*` of the root POM). A module served from the cache runs no tests, so its `target/tester/` reports
-  are not written; the JDK of a toolchain is not part of the key. Only `-Dpgmem.binary` is caught, not the
+  are not written. Only `-Dpgmem.binary` is caught, not the
   `PGMEM_BINARY` environment variable. A project of your own that reads other `-D` properties in its tests needs a
   profile like `no-build-cache-<property>` for each. `-Dmaven.build.cache.skipCache=true` builds everything once
   without reading the cache; `rm -rf ~/.m2/build-cache/v1.1/io.github.wadahiro.midpoint` forgets this repository's
@@ -2288,26 +2287,29 @@ Opt-ins:
 - **Lines in parallel**: `mvn -T 2 test` builds two line modules at once (each its own JVM and pgmem; more heat, about
   3 GB heap each). Tests inside a JVM always run one at a time.
 
-### JDK 11 for 4.0
+### JDKs
 
-midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later, so its tests run on a JDK 11 (4.4 runs on 11, 17 and
-21; both compile with `--release 11`). A config repository on 4.0 needs nothing more than Maven on JDK 11
-(`JAVA_HOME`, or a `.mise.toml` or `.sdkmanrc` that pins it): its tests run on the JDK of Maven. When Maven runs on JDK
-16 or later, the 4.0 parent's profile `jdk11-toolchain` runs the tests on the JDK 11 of a Maven toolchain instead; the
-tester's own build does so too (its other lines need JDK 17). Without a toolchain on a later JDK, the tester stops at
-the start with a message that says so. Register the JDK 11 in `~/.m2/toolchains.xml` (another file: `mvn -t <file>`):
+Each line runs its tests on the JDK that runs Maven, one its midPoint supports (the release notes of the line); the
+line's parent checks it before the tests (`tester.jdk`, maven-enforcer), not with `-DskipTests`:
 
-```xml
-<toolchains>
-  <toolchain>
-    <type>jdk</type>
-    <provides><version>11</version></provides>
-    <configuration><jdkHome>/path/to/jdk-11</jdkHome></configuration>
-  </toolchain>
-</toolchains>
+| Line | Recommended | Supported |
+|---|---|---|
+| 4.0 | 11 | 11 (midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later) |
+| 4.4 | 17 | 11, 17 |
+| 4.8, 4.9, 4.10 | 21 | 17, 21 |
+
+A config repository pins the JDK of its line where Maven runs: a `mise.toml` (`[tools] java = "temurin-11"`) or a
+`.sdkmanrc` in the repository, or `JAVA_HOME`; nothing per machine. The tester's own build needs JDK 17 or later to
+compile (4.8+ and the Kotest layer), so a line is built and tested on its own, with Maven on its JDK, as CI does (one job
+per line):
+
+```bash
+JAVA_HOME=<jdk-11> mvn test -pl tester/midpoint-4.0,tester/static/midpoint-4.0 -am
+JAVA_HOME=<jdk-17> mvn test -pl tester/midpoint-4.4,tester/static/midpoint-4.4 -am
+JAVA_HOME=<jdk-21> mvn test -pl tester/midpoint-4.8,tester/static/midpoint-4.8 -am
 ```
 
-Without a JDK 11, leave the line out of the tester's build: `-pl '!tester/midpoint-4.0,!tester/static/midpoint-4.0'`.
+A build that only compiles and packages every line (`-DskipTests`, as the release does) runs on JDK 21.
 
 ### Publishing
 

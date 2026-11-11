@@ -21,6 +21,8 @@
     -->
     <properties>
         <midpoint.version>${midpoint410.version}</midpoint.version>
+        <!-- the JDKs midPoint 4.10 supports (its release notes): the parent checks the one Maven runs on -->
+        <tester.jdk>[17,22)</tester.jdk>
         <tester.argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en --add-exports java.management/sun.management=ALL-UNNAMED -javaagent:${net.bytebuddy:byte-buddy-agent:jar}</tester.argLine>
     </properties>
 

@@ -21,6 +21,8 @@
     -->
     <properties>
         <midpoint.version>${midpoint44.version}</midpoint.version>
+        <!-- the JDKs midPoint 4.4 supports (its release notes): the parent checks the one Maven runs on -->
+        <tester.jdk>[11,18)</tester.jdk>
         <!-- midPoint 4.4 is built for Java 11: the tests compile for it, and run on 11 or later -->
         <maven.compiler.release>11</maven.compiler.release>
         <!-- no -javaagent: the tester attaches the file redirection's agent itself -->

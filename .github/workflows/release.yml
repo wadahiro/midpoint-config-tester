@@ -47,10 +47,8 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          # JDK 11 for the toolchain of 4.0; the last one runs Maven
-          java-version: |
-            11
-            21
+          # the deployment compiles and packages every line (-DskipTests): JDK 21 does, 4.0 and 4.4 with --release 11
+          java-version: 21
           cache: maven
           server-id: central
           server-username: MAVEN_CENTRAL_USERNAME

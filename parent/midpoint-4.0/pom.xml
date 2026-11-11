@@ -18,10 +18,12 @@
         The parent of a config repository tested on midPoint 4.0: the tester artifact of the line, the line's dependency
         management (the tester's classpath is only the same with midPoint's BOM and the tester's own versions). The
         tests need JDK 11 (midPoint 4.0's Groovy 2.5 does not start on JDK 16+): they run on the JDK that runs Maven,
-        or, when Maven runs on JDK 16 or later, on the JDK 11 of a Maven toolchain (profile jdk11-toolchain).
+        which the parent checks (tester.jdk).
     -->
     <properties>
         <midpoint.version>${midpoint40.version}</midpoint.version>
+        <!-- the JDKs midPoint 4.0 supports (its release notes): the parent checks the one Maven runs on -->
+        <tester.jdk>[11,12)</tester.jdk>
         <!-- midPoint 4.0 runs on JDK 11: the tests compile for it -->
         <maven.compiler.release>11</maven.compiler.release>
         <!-- no -javaagent: the tester attaches the file redirection's agent itself -->
@@ -251,27 +253,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <!-- Maven on JDK 16+: the tests on the JDK 11 of a toolchain (~/.m2/toolchains.xml, or mvn -t <file>) -->
-            <id>jdk11-toolchain</id>
-            <activation>
-                <jdk>[16,)</jdk>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <jdkToolchain>
-                                <version>11</version>
-                            </jdkToolchain>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

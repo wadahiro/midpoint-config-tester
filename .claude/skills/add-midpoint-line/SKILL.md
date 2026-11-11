@@ -41,15 +41,14 @@ module is a copy, and the work is re-dating what the tests and docs attribute to
   https://github.com/Evolveum/midpoint.git <dir>`. Read the sources: do not guess an API from a javadoc, from memory or
   from the version number.
 - **Dependencies, online, before the probe.** Create the module POM and the root POM property first (step 2, first
-  bullet), then `mvn -t <toolchains> dependency:resolve -pl tester/midpoint-X.Y -am`. The probe reads prism from the
+  bullet), then `mvn dependency:resolve -pl tester/midpoint-X.Y -am`. The probe reads prism from the
   line's `prism-api` jar in `~/.m2`; without it the prism section is empty (it prints the `dependency:get` command).
   The static module (step 8) resolves a different tree: resolve it as well. Older lines pull from more repositories.
 - **JDK**: the `project.source.version` / `maven.compiler.release` / `java.version` of midPoint's root POM (the probe
-  prints it; 4.0 and 4.4: 11, 4.8+: 17). A line built for Java 11 compiles with `--release 11` and runs its tests on
-  the build's JDK when midPoint runs there (4.4 does on 17 and 21); only a line that cannot (4.0: Groovy 2.5 stops on
-  JDK 16+) runs them through a Maven toolchain (`tester/midpoint-4.0`: `<jdkToolchain>` in surefire, a JDK 11 in
-  `~/.m2/toolchains.xml` or `mvn -t <file>`; CI installs every JDK with `setup-java`), and its parent selects the
-  toolchain only when Maven runs on a JDK it cannot run on (`parent/midpoint-4.0`, profile `jdk11-toolchain`).
+  prints it; 4.0 and 4.4: 11, 4.8+: 17). A line built for Java 11 compiles with `--release 11`. Its tests run on the
+  JDK that runs Maven: the JDKs midPoint supports for the line (its release notes) go into the parent's `tester.jdk`
+  (a version range, checked by maven-enforcer before the tests), and the line's CI job runs on the recommended one
+  (`.github/workflows/ci.yml`, one job per line). Run the line's commands below with Maven on that JDK (`JAVA_HOME`).
 
 ## 1. Research: how far is the new line from a supported one?
 
@@ -229,7 +228,7 @@ reports), and the tests that need it are skipped by an assumption (step 6).
 
 ## 6. Shared tests on the new line
 
-Run them: `mvn -t <toolchains> test -pl tester/midpoint-X.Y -am` (about 35 s for a line once resolved, 6 s of it
+Run them: `mvn test -pl tester/midpoint-X.Y -am` (about 35 s for a line once resolved, 6 s of it
 midPoint's start).
 `RuntimeTest` checks that the line matches the release the module is built against and that the recorder is wired.
 Each failure is one of:
@@ -251,7 +250,7 @@ what each line does:
 grep -rn 'Lines.atLeast\|mp.line()\|assumeTrue' tester/core/src/test/java
 ```
 
-Then build every other line too (shared code changed): `mvn -t <toolchains> test -pl tester/midpoint-4.0,...`.
+Then build every other line too (shared code changed): `mvn test -pl tester/midpoint-4.0,...`.
 
 **Typed initial names.** `InitialNamesTest` fails when the line's initial objects or user schema differ from
 `configtester.names.midpoint`: write the classes again from the initial objects of every supported line (the jars are
@@ -270,7 +269,7 @@ item the line adds or drops gets its `Lines` in `UserItems`.
 
 **Parent of config repositories.** Add `parent/midpoint-X.Y/pom.xml` (a copy of the nearest line's: the line's
 version property, its dependency management, the versions its tester POM pins over midPoint's BOM, the argLine or
-the JDK 11 toolchain profile of 4.0) and the module to `parent/pom.xml`. Check it with a config repository on it, e.g. the example
+its `tester.jdk`) and the module to `parent/pom.xml`; give the line a job in `.github/workflows/ci.yml`. Check it with a config repository on it, e.g. the example
 `examples/hr-ldap` with its parent switched to the new line (not committed).
 
 ## 7. Cross-line check
@@ -287,8 +286,7 @@ The static checks run without a runtime, one module per line under `tester/stati
 - `tester/static/midpoint-X.Y/pom.xml`: the line's BOM, model-impl, notifications-impl, report-impl, workflow-impl,
   certification-impl (the Groovy compile classpath), logback, JUnit, AssertJ. Add it to `tester/static/pom.xml` and
   resolve it online (`dependency:resolve -pl tester/static/midpoint-X.Y -am`). A JDK 11 line sets
-  `maven.compiler.release` 11 (see `midpoint-4.4`), and the surefire `jdkToolchain` only if midPoint cannot run on
-  the build's JDK (`midpoint-4.0`); 4.0 also takes the JUnit BOM
+  `maven.compiler.release` 11 (see `midpoint-4.4`); 4.0 also takes the JUnit BOM
   first, explicit logback and AssertJ versions and the tester's reporting exclusions (`midpoint-4.0`).
 - `com.github.wadahiro.midpoint.tester.check.StaticLine`: `LINE`, `prismContext(extensionSchemaDir)`
   (`MidPointPrismContextFactory`), `evaluators(prismContext)` (the members of `c:expressionEvaluator`'s substitution
@@ -296,7 +294,7 @@ The static checks run without a runtime, one module per line under `tester/stati
   where the line has none, before 4.4: the report then marks `UPGRADE` skipped). Copy the nearest line's class and
   change only what the probe shows (the validator's constructor and `ValidationItem`; 4.9+: a record, a no-argument
   validator).
-- Run `mvn -t <toolchains> test -pl tester/static/midpoint-X.Y -am`. `StaticCheckTest` asserts per-line
+- Run `mvn test -pl tester/static/midpoint-X.Y -am`. `StaticCheckTest` asserts per-line
   expectations (`MidPointLine.isBefore(LINE, ...)`: Groovy's syntax messages, upgrade item wording, prism's message
   names, the evaluator set): give the
   new line its branch where its results differ, and add a column to the line table of `docs/redesign.md` (step 5).
@@ -333,8 +331,8 @@ The static checks run without a runtime, one module per line under `tester/stati
 - If the base branch moves while you work, rebase before writing accepted files (run keys, driver labels and the file
   format may change), then rerun steps 6 and 7.
 - Commit so that every commit builds: the root POM property with the line module that uses it, the static module after
-  both; tests and their accepted entries together. Finish with one full build from the root
-  (`mvn -t <toolchains> test`).
+  both; tests and their accepted entries together. Finish with a build of every line, each with Maven on its
+  JDK (README, JDKs).
 
 ## Pitfalls seen so far
 
