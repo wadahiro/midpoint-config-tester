@@ -828,8 +828,8 @@ of its own, or select the evaluations of a run. The tester's own engine tests (`
 | 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / **21** | 4.0.24 | native |
 | 4.10 | 4.10.3 | `midpoint-config-tester-4.10` | 17 / **21** | 4.0.24 | native |
 
-The build and its tests cover the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9 and 4.10 (tester, static checks,
-parents) are built and tested only with `-Pnon-lts`.
+A build from the root covers the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9 and 4.10 (tester, static checks,
+parents) are built and tested only with `-Pnon-lts`. CI tests every line on every push, one job per line.
 
 All artifacts have the group `io.github.wadahiro.midpoint` and the same API (packages
 `com.github.wadahiro.midpoint.configtester` and, for the PoC API, `com.github.wadahiro.midpoint.tester`): a test
