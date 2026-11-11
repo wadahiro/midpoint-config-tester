@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-parent</artifactId>
+        <version>0.6.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-base-4.0</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester (base for 4.0 and 4.4)</name>
+
+    <!--
+        Parent of the Java 11 lines before 4.8 (4.0, 4.4): the sources in src/ here (approval and certification drivers,
+        script hook, notification transport) are compiled into each line module, which has its own dependencies,
+        harness, Spring context, recorder hook and SQL (4.0 has the old Hibernate repository, 4.4 the native one).
+    -->
+    <properties>
+        <!-- Maven Build Cache: this base's sources are inputs of its line modules -->
+        <maven.build.cache.input.2>${tester.dir}/base-4.0/src</maven.build.cache.input.2>
+        <maven.compiler.release>11</maven.compiler.release>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-base-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${tester.dir}/base-4.0/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- one JVM for all test classes; on the JDK that runs Maven (4.0: JDK 11, its module) -->
+                    <!-- no -javaagent: the tester attaches the file redirection's agent itself (tested here) -->
+                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-parent-common</artifactId>
+        <version>0.6.0</version>
+    </parent>
+
+    <artifactId>midpoint-config-tester-parent-4.0</artifactId>
+    <packaging>pom</packaging>
+    <name>midPoint Config Tester parent of config repositories for midPoint 4.0</name>
+
+    <!--
+        The parent of a config repository tested on midPoint 4.0: the tester artifact of the line, the line's dependency
+        management (the tester's classpath is only the same with midPoint's BOM and the tester's own versions). The
+        tests need JDK 11 (midPoint 4.0's Groovy 2.5 does not start on JDK 16+): they run on the JDK that runs Maven,
+        or, when Maven runs on JDK 16 or later, on the JDK 11 of a Maven toolchain (profile jdk11-toolchain).
+    -->
+    <properties>
+        <midpoint.version>${midpoint40.version}</midpoint.version>
+        <!-- midPoint 4.0 runs on JDK 11: the tests compile for it -->
+        <maven.compiler.release>11</maven.compiler.release>
+        <!-- no -javaagent: the tester attaches the file redirection's agent itself -->
+        <tester.argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</tester.argLine>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- before the midPoint BOM: its Spring Boot 2.1 BOM would pin JUnit 5.3 -->
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>5.10.2</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint</groupId>
+                <artifactId>midpoint</artifactId>
+                <version>${midpoint.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <!-- the file redirection's version wins over midPoint's: it must read JDK 21 classes -->
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${bytebuddy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-agent</artifactId>
+                <version>${bytebuddy.version}</version>
+            </dependency>
+            <!-- midPoint's own modules the tester depends on (tester/midpoint-4.0/pom.xml): midPoint's BOM does not manage them, so
+                 without these the tester's versions would win over midpoint.version (a support build, a fork) -->
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>model-test</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>model-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>notifications-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>workflow-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>certification-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.provisioning</groupId>
+                <artifactId>provisioning-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.provisioning</groupId>
+                <artifactId>ucf-impl-builtin</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>task-quartz-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>audit-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>security-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>security-enforcer-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>repo-sql-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>repo-sql-impl-test</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>repo-test-util</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.repo</groupId>
+                <artifactId>system-init</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.infra</groupId>
+                <artifactId>test-util</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint</groupId>
+                <artifactId>midpoint-localization</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <!-- the versions the tester's own POM gives (tester/midpoint-4.0/pom.xml): they win over midPoint's BOM there -->
+            <dependency>
+                <groupId>com.unboundid</groupId>
+                <artifactId>unboundid-ldapsdk</artifactId>
+                <version>${unboundid.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.shibukawa.pgmem</groupId>
+                <artifactId>pgmem-native</artifactId>
+                <version>${pgmem.version}</version>
+                <classifier>${pgmem.classifier}</classifier>
+            </dependency>
+            <dependency>
+                <groupId>com.icegreen</groupId>
+                <artifactId>greenmail</artifactId>
+                <version>1.6.15</version>
+            </dependency>
+            <dependency>
+                <groupId>net.tirasa.connid</groupId>
+                <artifactId>connector-framework</artifactId>
+                <version>1.5.0.10</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.polygon</groupId>
+                <artifactId>connector-csv</artifactId>
+                <version>2.3</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.polygon</groupId>
+                <artifactId>connector-ldap</artifactId>
+                <version>2.4.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>6.14.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-test</artifactId>
+                <version>5.1.9.RELEASE</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-aspects</artifactId>
+                <version>5.1.9.RELEASE</version>
+            </dependency>
+            <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+                <version>2.5</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.2.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>42.2.8</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.24.2</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.wadahiro.midpoint</groupId>
+                <artifactId>midpoint-config-tester-4.0</artifactId>
+                <version>${tester.version}</version>
+            </dependency>
+            <dependency>
+                <!-- opt-in, for a deployment whose scripts or custom classes use GUI classes (a page's utility, Wicket):
+                     declared without a version by the repository, it is on the test class path as a library; the
+                     tester's Spring context does not load the GUI (README, Classes of the GUI) -->
+                <groupId>com.evolveum.midpoint.gui</groupId>
+                <artifactId>admin-gui</artifactId>
+                <version>${midpoint.version}</version>
+                <!-- the GUI module of this line is a war: its classes are the "classes" jar -->
+                <classifier>classes</classifier>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.wadahiro.midpoint</groupId>
+            <artifactId>midpoint-config-tester-4.0</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- the generator of typed names (configured in the common parent) -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- Maven on JDK 16+: the tests on the JDK 11 of a toolchain (~/.m2/toolchains.xml, or mvn -t <file>) -->
+            <id>jdk11-toolchain</id>
+            <activation>
+                <jdk>[16,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <jdkToolchain>
+                                <version>11</version>
+                            </jdkToolchain>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
