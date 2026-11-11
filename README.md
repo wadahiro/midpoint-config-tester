@@ -106,22 +106,28 @@ targets:                                # by resource name; any other resource i
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
 mail: { redirect: true }                # midPoint's mail servers -> the tester's SMTP server
-tasks: { recurring: held }              # imported recurring tasks run only when a test runs them
 ```
 
 A file that midPoint exports, `<object xsi:type="c:RoleType">`, is read as the `<role>` it is (resources moved to
 their stand-ins, typed names, expression places). A task the deployment ships suspended is resumed with
-`t.task(name).resume()` (`mp.resumeTask`), as an operator does. In midPoint a resume can start a recurring task at
-once: a task suspended after it was runnable keeps its standard trigger paused, and resuming it fires the run missed
-meanwhile when `misfireAction` is `executeImmediately` (the default); a task deployed suspended has no trigger until the
-resume, which builds one to start now (an interval task starts at once, a cron task at its next cron time). A recurring
-task the manifest holds (`tasks.recurring: held`: a loosely bound one, the usual kind) does not start on the resume
-(`TaskRunsTest.aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`): it runs only by `t.task(name).run()` or
-`t.clock().runDue()`, so a test that means that run runs it. Single-run tasks, tightly bound ones and all of
-`tasks.recurring: scheduled` are not held: the tester leaves them to midPoint. A suspended single-run task runs on the
-resume, within the call (`TaskRunsTest.aSuspendedSingleRunTaskRunsOnTheResume`). A run of a task still suspended fails,
-saying so (`SuspendedTaskScenarioTest`). The reset after each test restores the task's state with the rest, so resume it
-where the state the tests start from is set up (a container of a spec), not in an earlier test.
+`t.task(name).resume()` (`mp.resumeTask`), as an operator does. The tester holds the recurring tasks (loosely bound
+ones, the usual kind): they run only by `t.task(name).run()` or `t.clock().runDue()`, so a resume does not start one
+(`TaskRunsTest.aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`); the due tasks then run it when midPoint would. A
+task suspended after it was runnable keeps its standard trigger paused, and resuming it fires a run missed meanwhile at
+once when `misfireAction` is `executeImmediately` (the default), at its next regular time with `reschedule`; a trigger
+midPoint builds anew on the resume (a task deployed suspended has none; 4.4 re-creates the one of an activity task)
+starts now: an interval task at once, a cron task at its next cron time, whatever the misfire action
+(`TaskRunsTest.aRunMissedWhileSuspendedIsDueAtOnceByDefault`, `…WaitsForTheNextCronTimeWithReschedule`). Quartz's
+misfire threshold (60 s) is not applied: a test moves the clock further. Single-run and tightly bound tasks are not
+held: a suspended single-run task runs on the resume, within the call
+(`TaskRunsTest.aSuspendedSingleRunTaskRunsOnTheResume`); so does a tightly bound one, whose thread then sleeps until its
+next run: the driver calls do not wait for it, and the reset after the test suspends it (`ResumedTasksTest`). Both
+follow midPoint's clock only, the time a test sets: to run the task whatever its schedule, a test calls
+`t.task(name).run()` after the resume; `t.clock().runDue()` says whether midPoint would start it by then, so a test that
+uses it fixes the clock (`t.clock().startAt`, `stopAt`, `advanceTo`), or the due tasks on the real time may cross a cron
+time. A run of a task still suspended fails, saying so (`SuspendedTaskScenarioTest`). The reset after each test restores
+the task's state with the rest, so resume it where the state the tests start from is set up (a container of a spec), not
+in an earlier test.
 `t.task(name).stopAfter(n).run()` stops the run after n items, as an operator's Suspend stops a task in the middle:
 midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the task's progress, or the items
 an activity processed on 4.4+), so a handler or a script that checks it between items ends there and records what it

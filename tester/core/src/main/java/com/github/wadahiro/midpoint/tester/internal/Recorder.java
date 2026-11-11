@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,6 +30,10 @@ public final class Recorder {
     /** The configuration element a driver evaluates on this thread ({@link #scope}); null when none. */
     private static final ThreadLocal<String[]> SCOPE = new ThreadLocal<>();
     private static final AtomicInteger TASK_THREADS = new AtomicInteger();
+    /** The tightly bound tasks (OIDs) whose thread runs now: it goes on between their runs. */
+    private static final Set<String> TIGHT_THREADS = ConcurrentHashMap.newKeySet();
+    /** Those of {@link #TIGHT_THREADS} between two runs (the last one finished, the thread sleeps until the next). */
+    private static final Set<String> TIGHT_IDLE = ConcurrentHashMap.newKeySet();
     /** Task threads and runs started since the JVM started ({@link #backgroundStarts}). */
     private static final java.util.concurrent.atomic.AtomicLong BACKGROUND_STARTS = new java.util.concurrent.atomic.AtomicLong();
     /** Regular runs held (vetoed by {@code TaskSchedules}) per task OID since the JVM started. */
@@ -170,9 +175,34 @@ public final class Recorder {
     }
 
     public static void taskThreadFinished() {
-        if (TASK.get() != null) {
+        String[] task = TASK.get();
+        if (task != null) {
             TASK.remove();
+            if (task[1] != null) {
+                TIGHT_IDLE.remove(task[1]);
+                TIGHT_THREADS.remove(task[1]);
+            }
             TASK_THREADS.decrementAndGet();
+        }
+    }
+
+    /** As {@link #taskRunStarted(String, long)}, of a task bound {@code tightly} or not. */
+    public static void taskRunStarted(String oid, long clockMillis, boolean tightly) {
+        if (oid != null && tightly) {
+            TIGHT_THREADS.add(oid);
+            TIGHT_IDLE.remove(oid);
+        }
+        taskRunStarted(oid, clockMillis);
+    }
+
+    /**
+     * A run of the task finished: a tightly bound task's thread then sleeps until its next run, no work to wait for
+     * ({@link #busyTaskThreads}).
+     */
+    public static void taskRunFinished(String oid, boolean tightly) {
+        if (oid != null && tightly) {
+            TIGHT_THREADS.add(oid);
+            TIGHT_IDLE.add(oid);
         }
     }
 
@@ -235,5 +265,23 @@ public final class Recorder {
     /** How many task threads are running now (started, not finished). */
     public static int runningTaskThreads() {
         return TASK_THREADS.get();
+    }
+
+    /**
+     * How many task threads are running a run now: {@link #runningTaskThreads} without the threads of tightly bound
+     * tasks between two runs, which go on until the task is suspended.
+     */
+    public static int busyTaskThreads() {
+        return Math.max(0, TASK_THREADS.get() - TIGHT_IDLE.size());
+    }
+
+    /** The tightly bound tasks (OIDs) between two runs ({@link #busyTaskThreads}). */
+    public static Set<String> idleTightlyBoundTasks() {
+        return Set.copyOf(TIGHT_IDLE);
+    }
+
+    /** The tightly bound tasks (OIDs) whose thread runs now, in a run or between two. */
+    public static Set<String> tightlyBoundTasks() {
+        return Set.copyOf(TIGHT_THREADS);
     }
 }

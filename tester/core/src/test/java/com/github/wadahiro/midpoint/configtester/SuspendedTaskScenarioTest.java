@@ -15,7 +15,7 @@ import com.github.wadahiro.midpoint.tester.internal.Recorder;
 /**
  * {@code t.task(name).run()} of a suspended task fails, saying why it is suspended: a task the deployment ships
  * suspended (here suspended as an operator would) runs only after {@code t.task(name).resume()}, which itself does
- * not start this held recurring task ({@code tasks.recurring: held}).
+ * not start this recurring task (the tester holds it).
  */
 @MidPointConfigTest("classpath:scenarios/hr/midpoint-config-tester.yaml")
 class SuspendedTaskScenarioTest {

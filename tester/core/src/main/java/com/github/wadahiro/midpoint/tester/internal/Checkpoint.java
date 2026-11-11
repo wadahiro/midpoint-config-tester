@@ -22,12 +22,12 @@ public final class Checkpoint {
     final int logs;
     final Object[] http;
     final Object[] marks;
-    final Map<org.quartz.TriggerKey, Long> scheduledAt;
+    final TaskSchedules.Times scheduledAt;
     boolean released;
 
     Checkpoint(TesterRuntime.State state, Map<String, String> databases, Long clockOverride, Long clockOffset,
             int mails, int notifications, int logs, Object[] http, Object[] marks,
-            Map<org.quartz.TriggerKey, Long> scheduledAt) {
+            TaskSchedules.Times scheduledAt) {
         this.state = state;
         this.databases = databases;
         this.clockOverride = clockOverride;

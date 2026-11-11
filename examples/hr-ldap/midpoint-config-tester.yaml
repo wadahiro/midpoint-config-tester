@@ -10,6 +10,5 @@ targets:
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
 mail: { redirect: true }
-tasks: { recurring: held }
 # typed names for the tests: Resources.HR, Roles.DEPT_SALES, HrAttrs.FIRST_NAME, LdapAttrs.OU, Tasks.RECONCILE_HR...
 names: { package: com.example.idm.names }

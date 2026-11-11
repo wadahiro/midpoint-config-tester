@@ -56,7 +56,7 @@ are relative to the manifest; unknown keys fail the load. Reference (`internal/M
 | `targets.<resource>` | `connector: mirror` (default for every resource) / `csv` / `ldap`; `initialData` (`.csv` file content for csv, `.ldif` for ldap); `namingAttribute`, `identifier`, `referentialIntegrity`, `caseInsensitiveNames`, `computed`, `attributes`, `multiValued`, `keyedValues`, `store` as the PoC's `ResourceOptions`. |
 | `mail.redirect` | Default true: the mail servers of the system configuration go to the tester's SMTP server (`MailRedirect`). |
 | `files.map` | Directories scripts read and write, mapped to the tester's (`FileArea`). |
-| `tasks.recurring` | `held` (default): the regular Quartz runs of the loosely bound recurring tasks never fire; a scenario runs them with `t.task(name).run()` or `t.clock().runDue()`, and a task that never ran counts as due (in production it would have run right after the deployment). `scheduled`: Quartz fires them on the real time as in production (their first run happens during the load) until a scenario moves the clock; not covered by a test yet. Tightly bound recurring tasks (4.0's default binding) are not held. |
+| `tasks.recurring` | Removed: the recurring tasks are always held. The regular Quartz runs of the loosely bound recurring tasks never fire; a scenario runs them with `t.task(name).run()` or `t.clock().runDue()`, and a task that never ran counts as due (in production it would have run right after the deployment). `scheduled` (Quartz firing them on the real time until a scenario moved the clock) never loaded a deployment: the load waited for the initial tasks, due at once. Tightly bound recurring tasks (4.0's default binding) are not held. |
 
 ### Load sequence (`internal/Deployment`, once per JVM and manifest)
 
@@ -207,8 +207,8 @@ Stand-ins and deviations:
   normalizer in the system configuration's `internals` is not applied.
 - A failing initial object is noted in `load-report.txt` and the import goes on, as in midPoint (these are the line's
   files, not the user's); `DeploymentLoadTest.theLinesInitialObjectsAreImportedFirst` pins that none fails.
-- With `tasks.recurring: held` the initial cleanup, validity and trigger tasks are held like the deployment's: they
-  are due (never run) and `t.clock().runDue()` runs them. With `scheduled` they are released after the load.
+- Held, the initial cleanup, validity and trigger tasks are held like the deployment's: they
+  are due (never run) and `t.clock().runDue()` runs them.
 
 The 4.4 jar was not in the local Maven repository: `admin-gui-4.4.11-classes.jar` was fetched once from Evolveum's
 Nexus (`mvn dependency:get`); the build itself runs offline. The 4.0.3 one was already there.
@@ -262,8 +262,7 @@ class AccessRequestScenarioTest {
 
 Not covered by a test yet: `Actor.request(forUser)`, `Request.unassign`, `Cases.named`/`closed`,
 `WorkItem.escalationLevel`/`atStage`, `Campaign.nextStage` past stage 1, `close()`, `reviewersOf`, `Review.decide` with
-other responses, `ReportOutput.isHtml`, `Failure.exception`; and `tasks.recurring: scheduled` with the initial tasks
-released after the load.
+other responses, `ReportOutput.isHtml`, `Failure.exception`.
 
 The second sample deployment, `scenarios/access`, has no resources: a system configuration that keeps the initial
 default security policy, a user template that assigns the initial End user role by name, roles with an approval
@@ -440,8 +439,7 @@ the cached deployment (opt-in).
   `mvn test` of the module.
 - **Limits**: timestamps in the restored database are those of the cached load; the cache does not see what the key
   does not cover (an environment variable or an outside file a script reads, a connector bundle loaded from a
-  directory rather than the class path); `tasks.recurring: scheduled` with the cache has no test (the dump holds
-  Quartz and waits for running jobs).
+  directory rather than the class path).
 
 ### Parallel test JVMs (`-Dtester.forks=N`)
 
@@ -485,7 +483,6 @@ passing when run again. The 4.8 module with `-Dtester.forks=2`: 458 tests pass.
 - Compile-time resource types for attributes, if wanted.
 - A parent POM for config repositories that carries the generator, the source root and the Surefire wiring.
 - Forks pay only with long-waiting tests or many cores: a measurement on a CI machine.
-- `tasks.recurring: scheduled` together with the cache (the dump while Quartz would fire tasks) is untested.
 - A new line module needs `<tester.names.skip>false</tester.names.skip>` in its POM (the parents skip the generator;
   the add-midpoint-line skill says so now).
 - From phase 1-2: initial data of mirrors, initial CSV rows, `connector: none`, `<const>`, one schema per manifest, a real customer
@@ -508,7 +505,7 @@ it real-time waits; every other class 0.1-2.2 s). The other lines alike: 4.0 80.
 
 | Kind | Classes | Done |
 |---|---|---|
-| Engine mechanisms the scenario API relies on and no scenario test covers | `RuntimeTest` (line, baseline, recorder wiring, the reset after each method), `ResetIntegrityTest` + `ResourceRedefinitionTest` (no midPoint cache survives a reset: the snapshot every scenario starts from and the cache's restore), `TaskRunsTest` (Quartz hold: imported and added tasks run once, `runTask`, the reset runs nothing and restores the schedule, `runDueTasks` by midPoint's clock, the hold of regular runs after the clock moved, first run included: the same hold as `tasks.recurring: held`), `ClockTest` (the JVM agent of the time shift), `FilesTest` (file redirection and its agent, `files.map`), `LiveSync*Test` (live sync on the CSV file, the LDAP change log, the mirror's token), `MembershipTest` (mirror options of the manifest: referential integrity, computed memberships, case-insensitive DNs), `GoldenTest`, the internal unit tests (`MirrorResourceXml`, `MailRedirect`, `IdentityKeys`) | kept; the two reset guards merged into `ResetTest` (3 and 2 repetitions instead of 10 and 4), `TaskRunsTest` without its two real-time methods (a task every 2 s firing by itself before the clock moves, the held runs after it moved, which the remaining method covers) and a 1 s sleep; `ClockTest` took over "scripts see the advanced time" |
+| Engine mechanisms the scenario API relies on and no scenario test covers | `RuntimeTest` (line, baseline, recorder wiring, the reset after each method), `ResetIntegrityTest` + `ResourceRedefinitionTest` (no midPoint cache survives a reset: the snapshot every scenario starts from and the cache's restore), `TaskRunsTest` (Quartz hold: imported and added tasks run once, `runTask`, the reset runs nothing and restores the schedule, `runDueTasks` by midPoint's clock, the hold of regular runs after the clock moved, first run included: the hold of every deployment), `ClockTest` (the JVM agent of the time shift), `FilesTest` (file redirection and its agent, `files.map`), `LiveSync*Test` (live sync on the CSV file, the LDAP change log, the mirror's token), `MembershipTest` (mirror options of the manifest: referential integrity, computed memberships, case-insensitive DNs), `GoldenTest`, the internal unit tests (`MirrorResourceXml`, `MailRedirect`, `IdentityKeys`) | kept; the two reset guards merged into `ResetTest` (3 and 2 repetitions instead of 10 and 4), `TaskRunsTest` without its two real-time methods (a task every 2 s firing by itself before the clock moves, the held runs after it moved, which the remaining method covers) and a 1 s sleep; `ClockTest` took over "scripts see the advanced time" |
 | Covered by a scenario test now | `HrToLdapScenarioTest` and its mirror / real-connector variants, `LdapTest` (`HrLifecycleScenarioTest` and the new `MirrorTargetScenarioTest`: the HR deployment with both resources on mirrors, from a manifest), `ApprovalTest`, `CertificationTest`, `ReportTest`, `MailNotificationTest`, `ExtensionTest` (access and HR scenarios), `RecorderTest` (`why()`) | deleted |
 | PoC-only: expression places and line notes, recorder details, PoC selection and identity | the other 88 classes (list in the deletion commit `1e39281`) | deleted, with the 228 fixture files only they used |
 
@@ -633,7 +630,7 @@ Full build (`verify`, offline, all lines, forks 1): 226 s (469 s before), every 
 - The PoC API's README sections still describe the deleted tests' examples; a shorter reference of `t.midpoint()`
   would read better.
 - From phase 3: outcome snapshots and the cross-line upgrade check, compile-time resource types, forks on a CI
-  machine, `tasks.recurring: scheduled` with the cache, initial data of mirrors, `<const>`, one schema per manifest.
+  machine, initial data of mirrors, `<const>`, one schema per manifest.
 
 ## Approval mails as built
 

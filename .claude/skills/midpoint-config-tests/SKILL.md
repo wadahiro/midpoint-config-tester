@@ -56,7 +56,7 @@ preparation scripts for that.
 | resources | `targets.<resource name>`: `mirror` (default, any connector) or `csv`/`ldap` (the real connector) |
 | scripts call HTTP services (webhooks) via `java.net.URL` | `http.redirect: ["https://hooks.example.com"]`; requests are recorded |
 | mail | `mail: { redirect: true }` (default) |
-| recurring tasks | `tasks: { recurring: held }`: they run only when a test runs them |
+| recurring tasks | always held (no key): they run only when a test runs them (`t.task(name).run()`, `t.clock().runDue()`) |
 | typed names | `names: { package: ... }` |
 
 Resources deployed without a stored `<schema>` (its `definition`; midPoint fetches it from the real connector):

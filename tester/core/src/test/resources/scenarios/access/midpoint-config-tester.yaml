@@ -11,6 +11,5 @@ config:
     "4.0": { remove: [050-report-users.xml] }
     # 4.8 sends mail through named transports (messageTransportConfiguration)
     "4.8": { dirs: [overlays/4.8] }
-tasks: { recurring: held }
 # typed names for the tests (NamesGenerator): Resources.HR, Roles.DEPT_SALES, LdapAttrs.OU...
 names: { package: com.github.wadahiro.midpoint.configtester.sample.access }

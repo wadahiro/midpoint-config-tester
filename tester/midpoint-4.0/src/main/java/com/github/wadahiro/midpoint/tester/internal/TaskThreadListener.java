@@ -20,11 +20,12 @@ final class TaskThreadListener implements TaskListener {
 
     @Override
     public void onTaskStart(Task task) {
-        Recorder.taskRunStarted(task.getOid(), clock.currentTimeMillis());
+        Recorder.taskRunStarted(task.getOid(), clock.currentTimeMillis(), task.isTightlyBound());
     }
 
     @Override
     public void onTaskFinish(Task task, TaskRunResult runResult) {
+        Recorder.taskRunFinished(task.getOid(), task.isTightlyBound());
     }
 
     @Override

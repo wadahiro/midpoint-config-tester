@@ -4,5 +4,4 @@ config:
   dirs: [../scenarios/access/post-initial-objects]
   overlays:
     "4.0": { remove: [050-report-users.xml] }
-tasks: { recurring: held }
 names: { package: com.github.wadahiro.midpoint.configtester.sample.stale }

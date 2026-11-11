@@ -213,11 +213,16 @@ public class Harness44 extends AbstractModelIntegrationTest implements Harness {
     /** Running task threads, then the tasks that run or are due now (as {@code name (state)}). */
     private List<String> pendingWork() {
         List<String> pending = new ArrayList<>();
-        int threads = Recorder.runningTaskThreads();
+        // a tightly bound task between two runs is no work to wait for: its thread goes on until it is suspended
+        int threads = Recorder.busyTaskThreads();
         if (threads > 0) {
             pending.add(threads + " task thread(s)");
         }
+        java.util.Set<String> idle = Recorder.idleTightlyBoundTasks();
         for (TaskType task : activeTasks()) {
+            if (idle.contains(task.getOid())) {
+                continue;
+            }
             pending.add(task.getName() + " (" + task.getExecutionState() + ")");
         }
         return pending;

@@ -39,14 +39,10 @@ import com.github.wadahiro.midpoint.tester.ResourceOptions;
  * mail: { redirect: true }
  * http: { redirect: ["https://hooks.example.com"] }   # URL prefixes the tester stands in for (HttpStandIn)
  * files: { map: [/opt/midpoint/var], initial: { /opt/midpoint/var: files/var } }   # initial: the directory's tree
- * tasks: { recurring: held }              # held | scheduled
  * names: { package: com.example.idm.names }   # typed names generated from the configuration (NamesGenerator)
  * </pre>
  */
 public final class Manifest {
-
-    /** How the recurring tasks of the deployment run, see {@code tasks.recurring}. */
-    public enum Recurring { HELD, SCHEDULED }
 
     /** The files that replace, add or remove files of the config directories on one line. */
     public static final class Overlay {
@@ -105,15 +101,18 @@ public final class Manifest {
      * directories kept by a {@code .gitkeep}).
      */
     public final Map<String, Path> initialFiles;
-    public final Recurring recurring;
     /** {@code names.package}: the package of the generated names ({@code NamesGenerator}); null: none generated. */
     public final String namesPackage;
 
     private Manifest(Path file, Map<String, Object> yaml) {
         this.file = file;
         this.dir = file.getParent();
+        if (yaml.containsKey("tasks")) {
+            throw invalid("tasks: removed, delete it (the recurring tasks are always held: they run only when a test"
+                    + " runs them)");
+        }
         check(yaml, "", Set.of("config", "targets", "constants", "databases", "environment", "mail", "http", "network", "logs", "files",
-                "tasks", "names"));
+                "names"));
         Map<String, Object> config = map(yaml.get("config"), "config");
         check(config, "config.", Set.of("dirs", "exclude", "properties", "replace", "overlays", "schema"));
         configDirs = paths(config.get("dirs"), "config.dirs");
@@ -226,17 +225,6 @@ public final class Manifest {
         }
         mappedDirectories = List.copyOf(mapped);
         initialFiles = java.util.Collections.unmodifiableMap(initial);
-
-        Map<String, Object> tasks = map(yaml.get("tasks"), "tasks");
-        check(tasks, "tasks.", Set.of("recurring"));
-        Object rec = tasks.get("recurring");
-        if (rec == null || "held".equals(rec)) {
-            recurring = Recurring.HELD;
-        } else if ("scheduled".equals(rec)) {
-            recurring = Recurring.SCHEDULED;
-        } else {
-            throw invalid("tasks.recurring: held or scheduled, not " + rec);
-        }
 
         Map<String, Object> names = map(yaml.get("names"), "names");
         check(names, "names.", Set.of("package"));

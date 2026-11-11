@@ -67,8 +67,8 @@ public final class TesterRuntime {
         final Object configIndex;
         final Object files;
         /**
-         * Whether the regular runs of recurring tasks stay held after a reset to this state ({@code tasks.recurring:
-         * held} of a loaded deployment); otherwise a reset releases them.
+         * Whether the regular runs of recurring tasks stay held after a reset to this state (a loaded deployment);
+         * otherwise a reset releases them.
          */
         final boolean regularRunsHeld;
 
@@ -284,6 +284,7 @@ public final class TesterRuntime {
             System.err.println("Tester: suspending background work still running at the reset: " + pending);
             harness.stopBackgroundWork();
         }
+        TaskSchedules.stopTightlyBoundTasks(harness);
         // no task may start before the database, Quartz, the files and the targets match the snapshot (TaskSchedules)
         org.quartz.Scheduler scheduler = harness.quartzScheduler();
         TaskSchedules.hold(scheduler);
@@ -342,6 +343,7 @@ public final class TesterRuntime {
             System.err.println("Tester: suspending background work still running at the restore: " + pending);
             harness.stopBackgroundWork();
         }
+        TaskSchedules.stopTightlyBoundTasks(harness);
         org.quartz.Scheduler scheduler = harness.quartzScheduler();
         TaskSchedules.hold(scheduler);
         try {

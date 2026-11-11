@@ -62,6 +62,36 @@ final class TaskSchedules {
      * from the real time, which is not the test's once its clock has moved.
      */
     private static final Map<TriggerKey, Long> SCHEDULED_AT = new ConcurrentHashMap<>();
+    /**
+     * The standard triggers of loosely bound recurring tasks restarted outside a reset, by midPoint's clock: resumed
+     * (a suspended task's paused trigger, as on a resume) or scheduled anew (a trigger midPoint re-creates, as 4.4 does
+     * on a resume). A run they missed meanwhile is due as Quartz would fire it ({@link #due}).
+     */
+    private static final Map<TriggerKey, Restart> RESTARTS = new ConcurrentHashMap<>();
+    /** Whether {@link #rearm} reschedules the triggers now: no restart of theirs. */
+    private static volatile boolean rearming;
+
+    /** When a trigger was restarted ({@link #RESTARTS}), and whether it was resumed rather than scheduled anew. */
+    private static final class Restart {
+        final long at;
+        final boolean resumed;
+
+        Restart(long at, boolean resumed) {
+            this.at = at;
+            this.resumed = resumed;
+        }
+    }
+
+    /** {@link #SCHEDULED_AT} and {@link #RESTARTS} as at a checkpoint. */
+    static final class Times {
+        final Map<TriggerKey, Long> scheduledAt;
+        final Map<TriggerKey, Restart> restarts;
+
+        private Times(Map<TriggerKey, Long> scheduledAt, Map<TriggerKey, Restart> restarts) {
+            this.scheduledAt = scheduledAt;
+            this.restarts = restarts;
+        }
+    }
 
     private TaskSchedules() {
     }
@@ -69,7 +99,9 @@ final class TaskSchedules {
     /**
      * {@link Harness#awaitBackgroundWork}, then until Quartz has no job executing: the task listener reports a task
      * thread finished before midPoint's job executor has written the task's final execution state, so a thread count
-     * of zero still leaves those writes (and their transaction) running. Returns what is pending after the timeout.
+     * of zero still leaves those writes (and their transaction) running. The job of a tightly bound task between two
+     * runs goes on until the task is suspended: it is not waited for ({@link #stopTightlyBoundTasks} at the reset).
+     * Returns what is pending after the timeout.
      */
     static List<String> awaitBackgroundWork(Harness harness, long timeoutMillis) {
         long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
@@ -81,7 +113,9 @@ final class TaskSchedules {
         while (true) {
             int jobs;
             try {
-                jobs = scheduler.getCurrentlyExecutingJobs().size();
+                java.util.Set<String> idle = Recorder.idleTightlyBoundTasks();
+                jobs = (int) scheduler.getCurrentlyExecutingJobs().stream()
+                        .filter(job -> !idle.contains(job.getJobDetail().getKey().getName())).count();
             } catch (SchedulerException e) {
                 throw new IllegalStateException("Cannot list the executing Quartz jobs", e);
             }
@@ -100,6 +134,18 @@ final class TaskSchedules {
                 Thread.currentThread().interrupt();
                 return List.of(jobs + " Quartz job(s) executing");
             }
+        }
+    }
+
+    /**
+     * Suspends the tightly bound tasks whose thread runs (between two runs, which {@link #awaitBackgroundWork} does not
+     * wait for), as an operator's Suspend: before a reset, so none goes on into the restored database.
+     */
+    static void stopTightlyBoundTasks(Harness harness) {
+        java.util.Set<String> tight = Recorder.tightlyBoundTasks();
+        if (!tight.isEmpty()) {
+            harness.bean(com.evolveum.midpoint.task.api.TaskManager.class).suspendTasks(tight, 5000,
+                    new com.evolveum.midpoint.schema.result.OperationResult("suspend tightly bound tasks"));
         }
     }
 
@@ -129,7 +175,18 @@ final class TaskSchedules {
             scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerSupport() {
                 @Override
                 public void jobScheduled(Trigger trigger) {
-                    SCHEDULED_AT.put(trigger.getKey(), clock.getAsLong());
+                    long now = clock.getAsLong();
+                    SCHEDULED_AT.put(trigger.getKey(), now);
+                    if (!rearming && isRegular(trigger)) {
+                        RESTARTS.put(trigger.getKey(), new Restart(now, false));
+                    }
+                }
+
+                @Override
+                public void triggerResumed(TriggerKey key) {
+                    if (!rearming) {
+                        RESTARTS.put(key, new Restart(clock.getAsLong(), true));
+                    }
                 }
             });
             scheduler.getListenerManager().addTriggerListener(new TriggerListenerSupport() {
@@ -158,18 +215,20 @@ final class TaskSchedules {
      * (except a run now, {@link #permitRegularRun}), also those of tasks added or resumed later; run-now triggers and
      * other tasks are not affected.
      */
-    /** When each trigger was scheduled, by midPoint's clock (a checkpoint of the test). */
-    static Map<TriggerKey, Long> scheduledAt() {
-        return new java.util.HashMap<>(SCHEDULED_AT);
+    /** When each trigger was scheduled and restarted, by midPoint's clock (a checkpoint of the test). */
+    static Times scheduledAt() {
+        return new Times(new java.util.HashMap<>(SCHEDULED_AT), new java.util.HashMap<>(RESTARTS));
     }
 
     /**
      * Back to the times of a checkpoint: the reset re-creates triggers (4.4: every activity task's) and they would count
      * from the clock of the reset.
      */
-    static void restoreScheduledAt(Map<TriggerKey, Long> scheduledAt) {
+    static void restoreScheduledAt(Times times) {
         SCHEDULED_AT.clear();
-        SCHEDULED_AT.putAll(scheduledAt);
+        SCHEDULED_AT.putAll(times.scheduledAt);
+        RESTARTS.clear();
+        RESTARTS.putAll(times.restarts);
     }
 
     /** Whether the regular runs are held now ({@link #holdRegularRuns}). */
@@ -243,6 +302,9 @@ final class TaskSchedules {
      * @param lastRunStart the task's last run start (repository, real time) by OID; null if it never ran or is gone
      */
     static void rearm(Scheduler scheduler, Function<String, Long> lastRunStart) {
+        // the restarts were of the database just replaced: the state restored holds the triggers as they were
+        RESTARTS.clear();
+        rearming = true;
         try {
             for (JobKey job : scheduler.getJobKeys(GroupMatcher.jobGroupEquals(JobKey.DEFAULT_GROUP))) {
                 TriggerKey standard = new TriggerKey(job.getName());
@@ -271,13 +333,16 @@ final class TaskSchedules {
             }
         } catch (SchedulerException e) {
             throw new IllegalStateException("Cannot re-arm the Quartz triggers after the reset", e);
+        } finally {
+            rearming = false;
         }
     }
 
     /**
      * The OIDs of the loosely bound recurring tasks due at {@code now} by their schedule (interval or cron): never
-     * run ({@link #firstRun}), or their next regular time after {@code lastRunAt} (both in midPoint's clock) has come. Suspended tasks
-     * (paused triggers) and tightly bound ones (no repeating trigger) are not due; held regular runs
+     * run ({@link #firstRun}), or their next regular time after {@code lastRunAt} (both in midPoint's clock) has come; a
+     * run missed before the trigger restarted (a resume) when Quartz would fire it ({@link #afterRestart}). Suspended
+     * tasks (paused triggers) and tightly bound ones (no repeating trigger) are not due; held regular runs
      * ({@link #holdRegularRuns}) do not pause the trigger, so those tasks are due as usual.
      */
     static List<String> due(Scheduler scheduler, Function<String, Long> lastRunAt, long now, long testStart) {
@@ -292,6 +357,10 @@ final class TaskSchedules {
                 }
                 Long last = lastRunAt.apply(job.getName());
                 Long next = last != null ? nextRun(trigger, last) : firstRun(trigger, testStart);
+                Restart restart = RESTARTS.get(standard);
+                if (next != null && restart != null && (last == null || restart.at > last) && next < restart.at) {
+                    next = afterRestart(trigger, restart, next);
+                }
                 if (next != null && next <= now) {
                     due.add(job.getName());
                 }
@@ -315,6 +384,32 @@ final class TaskSchedules {
             return nextRun(trigger, Math.max(made, testStart) - 1);
         }
         return Long.MIN_VALUE;
+    }
+
+    /**
+     * When a task whose run at {@code missed} was missed before its trigger restarted runs, as Quartz fires it: a
+     * resumed trigger fires the missed run at once by its misfire instruction (midPoint's {@code misfireAction}:
+     * {@code executeImmediately}, the default) or goes on to its next regular time ({@code reschedule}); a trigger
+     * scheduled anew starts now (an interval task at once, a cron task at its next cron time). Quartz's misfire
+     * threshold (60 s on a database, 5 s in memory) is not applied: a test moves the clock further.
+     */
+    private static Long afterRestart(Trigger trigger, Restart restart, long missed) {
+        boolean simple = trigger instanceof SimpleTrigger;
+        int instruction = trigger.getMisfireInstruction();
+        boolean atOnce = restart.resumed
+                ? simple ? instruction == SimpleTrigger.MISFIRE_INSTRUCTION_FIRE_NOW
+                        || instruction == SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT
+                        || instruction == SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_REMAINING_REPEAT_COUNT
+                        : instruction != CronTrigger.MISFIRE_INSTRUCTION_DO_NOTHING
+                : simple;
+        if (atOnce) {
+            return restart.at;
+        }
+        if (simple) {
+            long interval = ((SimpleTrigger) trigger).getRepeatInterval();
+            return interval > 0 ? missed + ((restart.at - missed) / interval + 1) * interval : null;
+        }
+        return nextRun(trigger, restart.at);
     }
 
     /** The regular run after {@code last}: an interval later, or the next cron time; null for other triggers. */

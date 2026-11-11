@@ -235,7 +235,7 @@ public interface MidPoint {
 
     /**
      * Resumes the suspended task (by name or OID), as the GUI's "Resume" ({@code TaskService.resumeTask}): a
-     * deployment that ships a task suspended and resumes it per environment. A recurring task held by the manifest
+     * deployment that ships a task suspended and resumes it per environment. A recurring task, which the tester holds,
      * then runs only when the test runs it ({@link #runTask}, the due tasks of {@code MidPointConfigTester#clock()}).
      */
     Run resumeTask(String task);

@@ -26,7 +26,7 @@ import com.github.wadahiro.midpoint.tester.internal.Internals;
 import com.github.wadahiro.midpoint.tester.internal.Recorder;
 
 /**
- * How often tasks run on a deployment whose recurring tasks are held ({@code tasks.recurring: held}, the default): an
+ * How often tasks run on a deployment, whose recurring tasks the tester holds: an
  * imported single-run task runs once in the import, a recurring one does not run by itself; a task added through the
  * Clockwork runs once after the change, {@code mp.runTask} runs a task exactly once, a reset runs nothing, and a
  * recurring task runs on its schedule by midPoint's clock with the due tasks ({@code t.clock().runDue()}), its first
@@ -345,6 +345,53 @@ class TaskRunsTest {
         assertThat(resumed.mappings("auditor-description").list()).hasSize(perRun)
                 .allSatisfy(e -> assertThat(e.task()).isEqualTo("recompute users suspended"));
         assertThat(state(mp, ADDED)).as("state after the run").isEqualTo("closed");
+    }
+
+    /**
+     * A cron task suspended over its time of the day and resumed the day after runs the missed run with the due tasks
+     * as Quartz fires it on the resume: at once with {@code misfireAction} executeImmediately (the default), not before
+     * its next cron time with reschedule. midPoint 4.4 re-creates the trigger of an activity task on the resume (its
+     * comparison takes two missing handler URIs as different, {@code QuartzUtil.triggersDiffer}): the new trigger
+     * starts at the next cron time whatever the misfire action.
+     */
+    @Test
+    @Order(13)
+    void aRunMissedWhileSuspendedIsDueAtOnceByDefault(MidPointConfigTester t) throws Exception {
+        boolean recreated = Lines.atLeast(t.midpoint(), "4.4") && !Lines.atLeast(t.midpoint(), "4.8");
+        assertThat(missedRunsAfterTheResume(t, cronTask(t.midpoint()))).as("runs: after the resume, the next day")
+                .containsExactly(recreated ? 0 : 1, 1);
+    }
+
+    @Test
+    @Order(14)
+    void aRunMissedWhileSuspendedWaitsForTheNextCronTimeWithReschedule(MidPointConfigTester t) throws Exception {
+        String xml = cronTask(t.midpoint()).replace("</cronLikePattern>",
+                "</cronLikePattern><misfireAction>reschedule</misfireAction>");
+        assertThat(missedRunsAfterTheResume(t, xml)).as("runs: after the resume, the next day").containsExactly(0, 1);
+    }
+
+    /**
+     * Runs the cron task (4:30) once, suspends it over the next day's 4:30, resumes it at 5:00: the runs of the due
+     * tasks right after the resume, then on the day after at 4:31.
+     */
+    private static java.util.List<Integer> missedRunsAfterTheResume(MidPointConfigTester t, String xml) throws Exception {
+        MidPoint mp = t.midpoint();
+        java.time.LocalDate day = t.clock().today().plusDays(1);
+        t.clock().startAt(day.atStartOfDay());
+        mp.importObjectXml(xml);
+        t.clock().stopAt(day.atTime(4, 31));
+        Internals.time(mp).runDueTasks();
+        int runs = Recorder.taskRuns(CRON);
+        assertThat(ofTask(Internals.time(mp).runDueTasks(), "recompute users at 4:30")).as("ran once already").isEmpty();
+
+        mp.bean(TaskManager.class).suspendTasks(java.util.List.of(CRON), 5000, new OperationResult("suspend"));
+        t.clock().advanceTo(at(day.plusDays(1), 5, 0));
+        mp.resumeTask(CRON);
+        Internals.time(mp).runDueTasks();
+        int afterResume = Recorder.taskRuns(CRON) - runs;
+        t.clock().advanceTo(at(day.plusDays(2), 4, 31));
+        Internals.time(mp).runDueTasks();
+        return java.util.List.of(afterResume, Recorder.taskRuns(CRON) - runs - afterResume);
     }
 
     private static java.time.Instant at(java.time.LocalDate date, int hour, int minute) {

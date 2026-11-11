@@ -15,4 +15,3 @@ targets:
   HR:   { connector: mirror, namingAttribute: empno }
   LDAP: { connector: mirror, namingAttribute: dn, referentialIntegrity: true }
 mail: { redirect: true }
-tasks: { recurring: held }

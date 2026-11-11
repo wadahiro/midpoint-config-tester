@@ -84,6 +84,12 @@ class ManifestTest {
                 .hasMessageContaining("config.replace: an empty text cannot be replaced");
     }
 
+    @Test
+    void theRemovedTasksKeySaysToDeleteIt() {
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntasks: { recurring: held }\n"))
+                .hasMessageContaining("tasks: removed, delete it");
+    }
+
     private Manifest read(String yaml) throws IOException {
         Files.createDirectories(dir.resolve("objects"));
         Path file = dir.resolve("midpoint-config-tester.yaml");

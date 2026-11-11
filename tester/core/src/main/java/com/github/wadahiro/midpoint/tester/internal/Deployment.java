@@ -51,8 +51,8 @@ import com.github.wadahiro.midpoint.tester.Run;
  *       system;</li>
  *   <li>midPoint's post-initial import runs on the copy ({@link PostInitialImport}), with Quartz held, as midPoint's
  *       scheduler is not running yet while it imports; the first failing file fails the load;</li>
- *   <li>the recurring tasks are held ({@code tasks.recurring: held}) or left to Quartz; the background work the import
- *       started is awaited; the connection of every resource is tested;</li>
+ *   <li>the recurring tasks are held: they run only when a test runs them; the background work the import started is
+ *       awaited; the connection of every resource is tested;</li>
  *   <li>the database, the target systems and the mapped files are snapshot: {@link #reset()} goes back to it.</li>
  * </ol>
  */
@@ -392,12 +392,7 @@ public final class Deployment {
         try {
             outcome = PostInitialImport.run(harness, mp.drivers(), copy.toFile());
         } finally {
-            if (manifest.recurring == Manifest.Recurring.HELD) {
-                TaskSchedules.holdRegularRuns();
-            } else {
-                // held since the initial import, as midPoint's scheduler starts after the post-initial import
-                TaskSchedules.releaseRegularRuns();
-            }
+            TaskSchedules.holdRegularRuns();
             TaskSchedules.release(scheduler);
             runtime.login(TesterRuntime.ADMINISTRATOR);
         }
@@ -426,7 +421,7 @@ public final class Deployment {
         NamesCheck.check(this, mp, LineSupport.LINE);
         runtime.takeJournal();
         runtime.clearNotifications();
-        state = runtime.snapshot(manifest.recurring == Manifest.Recurring.HELD);
+        state = runtime.snapshot(true);
         writeReport();
     }
 
@@ -486,7 +481,7 @@ public final class Deployment {
             throw new IOException("the resources are not the cached ones: " + resourceOids + " / "
                     + meta.get("resourceOids"));
         }
-        runtime.restoreDatabase(cache.entry.resolve("db"), manifest.recurring == Manifest.Recurring.HELD, () -> {
+        runtime.restoreDatabase(cache.entry.resolve("db"), true, () -> {
             for (Map.Entry<String, String> resource : resourceOids.entrySet()) {
                 ManagedTarget target = runtime.findTarget(resource.getValue());
                 if (target != null && targets.containsKey(resource.getValue())) {
@@ -510,7 +505,7 @@ public final class Deployment {
         NamesCheck.check(this, mp, LineSupport.LINE);
         runtime.takeJournal();
         runtime.clearNotifications();
-        state = runtime.snapshot(manifest.recurring == Manifest.Recurring.HELD);
+        state = runtime.snapshot(true);
         writeReport();
         Timing.end("cache.restore.total", t);
     }
@@ -821,8 +816,6 @@ public final class Deployment {
             sb.append("  ").append(name).append(" (").append(oid).append("): ")
                     .append(target != null ? target.connector : "mirror").append('\n');
         });
-        sb.append("\nRecurring tasks: ").append(manifest.recurring.name().toLowerCase(java.util.Locale.ROOT))
-                .append('\n');
         if (!warnings.isEmpty()) {
             sb.append("\nWarnings:\n");
             warnings.forEach(w -> sb.append("  ").append(w).append('\n'));
@@ -863,7 +856,7 @@ public final class Deployment {
 
     /**
      * Back to the deployment as loaded: database, target systems, mapped files, the clock at the real time, the
-     * recurring tasks as the manifest says; logged in as the administrator, no mails or notifications.
+     * regular runs of recurring tasks held; logged in as the administrator, no mails or notifications.
      */
     public void reset() {
         useConstants();

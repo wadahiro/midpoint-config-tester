@@ -6,4 +6,3 @@ config:
   overlays:
     "4.8": { dirs: [overlays/4.8] }
 mail: { redirect: true }
-tasks: { recurring: held }

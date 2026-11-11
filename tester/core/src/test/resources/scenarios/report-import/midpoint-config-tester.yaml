@@ -5,4 +5,3 @@ config:
   overlays:
     "4.0": { dirs: [overlays/4.0], remove: [100-report-import-descriptions.xml] }
 mail: { redirect: true }
-tasks: { recurring: held }

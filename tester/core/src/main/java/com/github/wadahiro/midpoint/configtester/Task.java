@@ -46,8 +46,8 @@ public final class Task {
 
     /**
      * Runs the task now, as the GUI's "Run now", and waits for it and the work it starts; fails if the task fails,
-     * on all or (unless {@link #allowPartialErrors()}) some of its objects. A recurring task held by the manifest
-     * ({@code tasks.recurring: held}) runs this way, once.
+     * on all or (unless {@link #allowPartialErrors()}) some of its objects. A recurring task, which the tester
+     * holds, runs this way, once.
      */
     public Task run() {
         MidPoint mp = tester.deployment().api();
@@ -66,11 +66,12 @@ public final class Task {
     }
 
     /**
-     * Resumes the task, as the GUI's "Resume": a task the deployment ships suspended. A recurring task held by the
-     * manifest does not start on it, though midPoint may start one at once (a missed run, an interval task that never
-     * ran): it still runs only by {@link #run()} or the due tasks of {@link MidPointConfigTester#clock()}. Other tasks
-     * are left to midPoint. The reset after each test restores the task's state, so resume it where the state the
-     * tests start from is set up.
+     * Resumes the task, as the GUI's "Resume": a task the deployment ships suspended. A recurring task (loosely
+     * bound), which the tester holds, does not start on it: it runs by {@link #run()}, or with the due tasks of
+     * {@link MidPointConfigTester#clock()} when midPoint would start it (a run missed while suspended at once with
+     * {@code misfireAction} executeImmediately, at its next regular time with reschedule). Single-run and tightly
+     * bound tasks start on it as in midPoint. The reset after each test restores the task's state, so resume it where
+     * the state the tests start from is set up.
      */
     public Task resume() {
         tester.deployment().api().resumeTask(name);
