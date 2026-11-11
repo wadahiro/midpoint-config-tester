@@ -1,3 +1,14 @@
+# [0.5.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.4.0...v0.5.0) (2026-11-11)
+
+
+* feat(task)!: a run that failed on some objects fails alike everywhere, unless allowPartialErrors() ([70628b6](https://github.com/wadahiro/midpoint-config-tester/commit/70628b67621cce38d3b8d99190ec064e2be33383))
+
+
+### BREAKING CHANGES
+
+* t.clock().runDue() fails when a due task failed on some of its
+objects (PARTIAL_ERROR); t.clock().allowPartialErrors().runDue() passes it.
+
 # [0.4.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.3.0...v0.4.0) (2026-11-10)
 
 
