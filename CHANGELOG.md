@@ -1,3 +1,20 @@
+# [0.6.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.5.0...v0.6.0) (2026-11-11)
+
+
+* fix(task)!: run resumed tasks as midPoint does and drop tasks.recurring ([ca01b8e](https://github.com/wadahiro/midpoint-config-tester/commit/ca01b8ee920b825f9aceaec6e152ac8a009133b9))
+
+
+### Bug Fixes
+
+* **task:** say why a suspended task cannot run ([11f7210](https://github.com/wadahiro/midpoint-config-tester/commit/11f7210d57eff36797fca0c28e8f9233251daeab))
+* **task:** wait for a single-run task that 4.0 binds tightly ([2f7cf5e](https://github.com/wadahiro/midpoint-config-tester/commit/2f7cf5e44b02999ccdbfd0168e6e3de019e1922a))
+
+
+### BREAKING CHANGES
+
+* a manifest with a tasks key fails to load; delete the line
+(tasks: { recurring: held } was the default).
+
 # [0.5.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.4.0...v0.5.0) (2026-11-11)
 
 
