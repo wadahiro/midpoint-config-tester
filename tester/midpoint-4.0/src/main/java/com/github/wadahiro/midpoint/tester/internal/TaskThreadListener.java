@@ -20,12 +20,20 @@ final class TaskThreadListener implements TaskListener {
 
     @Override
     public void onTaskStart(Task task) {
-        Recorder.taskRunStarted(task.getOid(), clock.currentTimeMillis(), task.isTightlyBound());
+        Recorder.taskRunStarted(task.getOid(), clock.currentTimeMillis(), sleepsBetweenRuns(task));
     }
 
     @Override
     public void onTaskFinish(Task task, TaskRunResult runResult) {
-        Recorder.taskRunFinished(task.getOid(), task.isTightlyBound());
+        Recorder.taskRunFinished(task.getOid(), sleepsBetweenRuns(task));
+    }
+
+    /**
+     * A recurring tightly bound task: its thread sleeps between runs. Not a single-run task, which 4.0 binds tightly
+     * by default ({@code TaskQuartzImpl.DEFAULT_BINDING_TYPE}): its thread ends after the run.
+     */
+    private static boolean sleepsBetweenRuns(Task task) {
+        return task.isRecurring() && task.isTightlyBound();
     }
 
     @Override
