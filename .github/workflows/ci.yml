@@ -48,9 +48,21 @@ jobs:
           java-version: |
             21
             ${{ matrix.java }}
-          cache: maven
+      # the Maven repository, one cache per line: setup-java's cache has one key for all the jobs, which run side by
+      # side, so only the first to finish saved it, with its own line's dependencies alone. The key changes with the
+      # POMs, which every release changes (the versions), so a miss restores the latest one of the line instead of
+      # downloading everything
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.line }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.line }}-
       - if: matrix.installed
         run: mvn -B install -DskipTests -Pnon-lts -pl ${{ matrix.modules }} -am
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
       - run: mvn -B test -Pnon-lts -pl ${{ matrix.modules }} ${{ !matrix.installed && '-am' || '' }}
+      # what the jobs build is not a dependency to keep: the next run builds it again
+      - if: always()
+        run: rm -rf ~/.m2/repository/io/github/wadahiro/midpoint

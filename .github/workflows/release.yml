@@ -47,12 +47,20 @@ jobs:
           distribution: temurin
           # the deployment compiles and packages every line (-DskipTests): JDK 21 does, 4.0 and 4.4 with --release 11
           java-version: 21
-          cache: maven
           server-id: central
           server-username: MAVEN_CENTRAL_USERNAME
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ vars.RELEASE_TO_CENTRAL == 'true' && secrets.GPG_PRIVATE_KEY || '' }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      # the Maven repository, in a cache of its own (the line jobs of ci.yml keep one each). The key changes with the
+      # POMs, which every release changes (the versions): a miss restores the latest release cache, or the 4.8 line's
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-release-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-release-
+            maven-4.8-
       - uses: cycjimmy/semantic-release-action@v4
         id: semantic
         with:
@@ -75,3 +83,6 @@ jobs:
           git add -A
           git commit -m "chore: release ${{ steps.semantic.outputs.new_release_version }}"
           git push origin HEAD:mvn-repo
+      # what the release built is not a dependency to keep
+      - if: always()
+        run: rm -rf ~/.m2/repository/io/github/wadahiro/midpoint
