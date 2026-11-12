@@ -1,3 +1,15 @@
+# [0.7.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.6.0...v0.7.0) (2026-11-12)
+
+
+* feat!: each line on the JDK its midPoint supports, without a toolchain ([b4f6c55](https://github.com/wadahiro/midpoint-config-tester/commit/b4f6c5514d6d7eec3fbbb8afbb14e55e9a1b3aa7))
+
+
+### BREAKING CHANGES
+
+* the profile jdk11-toolchain is gone: run Maven on JDK 11
+for a config repository on 4.0, and on a JDK the line supports for the
+others (a build on another one fails before the tests).
+
 # [0.6.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.5.0...v0.6.0) (2026-11-11)
 
 
