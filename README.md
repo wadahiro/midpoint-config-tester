@@ -701,6 +701,31 @@ owner, sources old -> new, condition, output, task and channel). The sample depl
 `tester/core/src/test/java/com/github/wadahiro/midpoint/configtester`; what each phase built is in
 [docs/next-design.md](docs/next-design.md).
 
+### Starting states midPoint would not make: `t.raw()`
+
+A state made through midPoint (a role assigned, an account provisioned) is the normal start of a test. Some states
+midPoint would not make now: values an earlier version of the configuration or a migration left, an account that is
+linked but gone from the target system, a value on the target system that drifted. Made through the model, such a
+state already runs the rule the test is about, so a broken rule changes it while it is made and the test of the
+behaviour passes. `t.raw()` writes past the model (no mappings, no provisioning, no policies, no audit), and reads
+back what it wrote:
+
+```java
+t.raw().user("jdoe").set("extension/token", "legacy-1");                 // add, delete: the other values
+t.raw().user("jdoe").link("Directory", "legacy-1", s -> s.tag("legacy")); // target object, shadow and link
+t.target("Directory").delete("legacy-1");                                // linked, but gone from the target
+t.raw().user("jdoe").unlink("Directory", "legacy-1");                    // the link only
+t.raw().shadow("Directory", "orphan").add();                             // a shadow nobody links
+```
+
+A linked account is three records: the object on the target system, its shadow in the repository, the focus's link
+to the shadow. `link` writes the three (the object with the shadow's `attribute(...)`s if the target system does not
+have it; the shadow of the resource's object type, `kind(...)`/`intent(...)` or the default account type, with the
+target system's identifiers); the others write one each, so that the inconsistent states are made by combining them.
+The read side names the place it reads, without provisioning (which would act on what it finds):
+`t.user("jdoe").account("Directory").shadow().hasTag("legacy")`, `...onTarget().exists()`,
+`t.user("jdoe").accounts("Directory")` (`RawScenarioTest`, on the mirror and on LDAP).
+
 ### Nested classes: tests that share a prefix
 
 A test of a business flow often repeats the same first steps: start a certification campaign, then check the
@@ -741,8 +766,7 @@ class CampaignTest {
   after the checkpoint: they are part of the test, not of the prefix.
 - Fields the prefix set (`campaign` above) are not checkpointed: they stay as the prefix left them, which is right
   for what the prefix created; do not change them in a test.
-- What a checkpoint does not cover: midPoint's in-memory state that a reset does not restore either, and a mail
-  recipient rejected with `t.mailServer().reject(...)` (set it in the test that needs it).
+- What a checkpoint does not cover: midPoint's in-memory state that a reset does not restore either.
 - Saving: a prefix shared by n tests runs once instead of n times; a checkpoint costs a database snapshot and a reset
   per test. Heavy prefixes (a synchronization, a report import, due tasks after a moved clock) gain most: about a
   third of a certification flow's time on a 4.10 deployment (5 tests, 35 s to 23 s, as with Kotest); light ones (a
@@ -761,11 +785,13 @@ values, and tests are named by sentences.
 class CampaignSpec : MidPointConfigSpec({
     "the campaign has started" - {
         val campaign = t.startCampaign()             // once
+        precondition("the campaign is in its first stage") { ... }
         "a reminder 22 days before the deadline" { ... }
         "an undecided case stays after the deadline" { ... }
         "a revocation past the deadline" - {
             t.decide(campaign, "revoke")             // once, on the started campaign
             t.clock().advanceTo(campaign.deadline).runDue()
+            precondition("the revocation is decided, the deadline passed") { ... }
             "the campaign is closed" { ... }
             "the report lists the revocation" { ... } // from the revocation, not after the test above
         }
@@ -779,6 +805,12 @@ class CampaignSpec : MidPointConfigSpec({
 
 - Each root starts from the deployment, as a JUnit test method does; `t` is its tester. A failed assertion gets the
   mappings behind the values it read, as in JUnit (`ExplanationSpec`).
+- A container whose body changes midPoint (a driver call, a `t.raw()` write, a target system, a file, the clock...)
+  checks what it made in its first test, a `precondition("...") { }`: the test only reads, and its name says what the
+  tests after it depend on. When it fails, the container's other tests fail without running (they are not skipped),
+  each by its name, the nested ones too: a test of a rule cannot pass on a state the body never made. A first test
+  that is no precondition after such a body fails, as a precondition that is not the first test or that changes
+  midPoint (`PreconditionSpec`). A body that only reads needs none; `steps` follow the same rule.
 - Work in a container between its tests would be undone after the next test: the next test fails and says so (put it
   before the first test, in a container of its own, or use `steps`).
 - Kotlin values the prefix computed (`campaign` above) are not checkpointed, as the fields of a nested class are not;

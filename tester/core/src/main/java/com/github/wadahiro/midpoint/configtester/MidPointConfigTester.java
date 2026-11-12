@@ -56,6 +56,14 @@ public final class MidPointConfigTester {
         return new Resource(this, resource);
     }
 
+    /**
+     * Writes past midPoint's model ({@link Raw}): the state a test starts from that midPoint's processing would not
+     * make now, so that a broken rule fails the test of the behaviour, not the making of the state.
+     */
+    public Raw raw() {
+        return new Raw(this);
+    }
+
     /** A target system by its resource name (e.g. the directory), to check its accounts. */
     public Resource target(String resource) {
         return new Resource(this, resource);

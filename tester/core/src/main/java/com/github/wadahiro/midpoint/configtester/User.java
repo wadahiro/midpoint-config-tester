@@ -222,6 +222,34 @@ public final class User {
         return this;
     }
 
+    /**
+     * The account the user links on the resource: its one live shadow there, in the repository and on the target
+     * system ({@link Projection}). Fails if the user links none, or several (name it: {@link #account(String, String)}).
+     */
+    public Projection account(String resource) {
+        List<String> names = accounts(resource);
+        if (names.size() != 1) {
+            throw new AssertionError("User " + name + ": expected one account on " + resource + ", but links "
+                    + (names.isEmpty() ? "none" : names + "; name it: account(resource, name)"));
+        }
+        return new Projection(tester, name, resource, names.get(0));
+    }
+
+    /** The account of this name (on the target system) the user links on the resource; it need not exist. */
+    public Projection account(String resource, String account) {
+        return new Projection(tester, name, resource, account);
+    }
+
+    /** The names of the accounts the user links on the resource (live shadows), as the repository has them. */
+    public List<String> accounts(String resource) {
+        List<String> out = new ArrayList<>();
+        for (com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType shadow
+                : Projection.linked(tester, existing(), resource, null)) {
+            out.add(shadow.getName().getOrig());
+        }
+        return out;
+    }
+
     public User hasNoAccountOn(String resource) {
         existing();
         Shadow shadow = tester.deployment().api().shadow(name, resource);

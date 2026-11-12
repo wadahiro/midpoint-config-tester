@@ -66,6 +66,12 @@ class PreconditionSpec : FunSpec({
         results.error("a test").message!! shouldContain "is no precondition"
     }
 
+    test("a raw write in a body is a change of midPoint, and the precondition sees it") {
+        val results = launch(RawInBody::class)
+        results.of("precondition: the full name is the legacy one").isSuccess shouldBe true
+        results.of("a test").isSuccess shouldBe true
+    }
+
     test("moving the clock between the tests of a container fails the next test") {
         val results = launch(ClockBetweenTests::class)
         results.of("precondition: the user is there").isSuccess shouldBe true
@@ -209,5 +215,15 @@ class StepsWithPrecondition : MidPointConfigSpec({
         t.addUser("steps")
         precondition("the user is there") { t.userNames() shouldContain "steps" }
         "a step" { Ran.tests += "a step" }
+    }
+})
+
+@EnabledIf(Launched::class)
+@MidPointConfigTest(ACCESS)
+class RawInBody : MidPointConfigSpec({
+    "jack has a legacy full name" - {
+        t.raw().user("jack").set("fullName", "Legacy")
+        precondition("the full name is the legacy one") { t.user("jack").hasFullName("Legacy") }
+        "a test" { t.user("jack").hasFullName("Legacy") }
     }
 })

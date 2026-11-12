@@ -8,10 +8,13 @@ import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.model.api.ModelExecuteOptions;
 import com.evolveum.midpoint.prism.PrismContext;
+import com.evolveum.midpoint.prism.PrismObject;
+import com.evolveum.midpoint.prism.delta.ItemDelta;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.FocusType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.SynchronizationSituationType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 
@@ -288,6 +291,27 @@ public interface MidPoint {
      */
     void step(String name);
 
+    // ---- writing without the model ---------------------------------------------------------------------------
+
+    /**
+     * Adds the object to the repository as it is: no mappings, no provisioning, no policies, no audit. For the state a
+     * test starts from that midPoint's processing would not produce (data an earlier version or a migration left). The
+     * {@code *Raw} writes fail with an {@link IllegalStateException} when the repository refuses them.
+     */
+    void addRaw(PrismObject<? extends ObjectType> object);
+
+    /**
+     * Gives the attributes of a shadow read from the repository the definitions of its resource (typed values), as
+     * provisioning reads it; e.g. before changing a copy for {@link #addRaw}.
+     */
+    void applyDefinitions(PrismObject<ShadowType> shadow);
+
+    /** Applies the modifications to the stored object as they are, like {@link #addRaw}. */
+    <O extends ObjectType> void modifyRaw(Class<O> type, String oid, Collection<? extends ItemDelta<?, ?>> modifications);
+
+    /** Deletes the stored object, like {@link #addRaw}: a shadow's account stays on the target system. */
+    <O extends ObjectType> void deleteRaw(Class<O> type, String oid);
+
     // ---- reading ---------------------------------------------------------------------------------------------
 
     /** The object with this name or OID, or null. */
@@ -295,6 +319,9 @@ public interface MidPoint {
 
     /** The user with this name, or null. */
     UserType user(String name);
+
+    /** The shadows on the resource (by name or OID) with this name, as the repository has them: dead ones too. */
+    List<ShadowType> shadows(String resource, String name);
 
     /**
      * The shadow linked to the focus (a user, else any focus, by name or OID) on the resource (by name or OID), as the

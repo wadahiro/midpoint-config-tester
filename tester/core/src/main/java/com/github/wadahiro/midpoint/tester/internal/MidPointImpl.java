@@ -33,6 +33,7 @@ import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.prism.polystring.PolyString;
 import com.evolveum.midpoint.prism.query.ObjectQuery;
+import com.evolveum.midpoint.provisioning.api.ProvisioningService;
 import com.evolveum.midpoint.repo.api.RepositoryService;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.MiscSchemaUtil;
@@ -1076,6 +1077,23 @@ final class MidPointImpl implements MidPoint {
     }
 
     @Override
+    public List<ShadowType> shadows(String resource, String name) {
+        String resourceOid = resourceOid(resource);
+        return query("shadows " + name + " on " + resource, (task, result) -> {
+            ObjectQuery query = prismContext().queryFor(ShadowType.class)
+                    .item(ShadowType.F_RESOURCE_REF).ref(resourceOid)
+                    .and().item(ShadowType.F_NAME).eqPoly(name).matchingOrig()
+                    .build();
+            List<ShadowType> out = new ArrayList<>();
+            for (PrismObject<ShadowType> shadow : harness.bean(RepositoryService.class)
+                    .searchObjects(ShadowType.class, query, null, result)) {
+                out.add(shadow.asObjectable());
+            }
+            return out;
+        });
+    }
+
+    @Override
     public UserType user(String name) {
         return find(UserType.class, name);
     }
@@ -1210,6 +1228,45 @@ final class MidPointImpl implements MidPoint {
 
     /** Whether the driver call on this thread only reads ({@link #read}). */
     private final ThreadLocal<Boolean> reading = ThreadLocal.withInitial(() -> false);
+
+    @Override
+    public void addRaw(PrismObject<? extends ObjectType> object) {
+        Writes.count();
+        written("add raw " + object, (task, result) -> {
+            if (object.asObjectable() instanceof ShadowType) {
+                // the attributes need the resource's definitions to be stored
+                harness.bean(ProvisioningService.class).applyDefinition(object, task, result);
+            }
+            return harness.bean(RepositoryService.class).addObject(object, null, result);
+        });
+    }
+
+    @Override
+    public void applyDefinitions(PrismObject<ShadowType> shadow) {
+        written("apply definitions " + shadow, (task, result) -> {
+            harness.bean(ProvisioningService.class).applyDefinition(shadow, task, result);
+            return null;
+        });
+    }
+
+    @Override
+    public <O extends ObjectType> void modifyRaw(Class<O> type, String oid,
+            Collection<? extends ItemDelta<?, ?>> modifications) {
+        Writes.count();
+        written("modify raw " + nameOf(type, oid), (task, result) -> {
+            harness.bean(RepositoryService.class).modifyObject(type, oid, modifications, result);
+            return null;
+        });
+    }
+
+    @Override
+    public <O extends ObjectType> void deleteRaw(Class<O> type, String oid) {
+        Writes.count();
+        written("delete raw " + nameOf(type, oid), (task, result) -> {
+            harness.bean(RepositoryService.class).deleteObject(type, oid, result);
+            return null;
+        });
+    }
 
     private Run runAsTimed(String user, String name, Operation operation, boolean failOnError) {
         // the caller applies to this call, not to the lookups and runs it makes itself
@@ -1457,6 +1514,18 @@ final class MidPointImpl implements MidPoint {
             throw new AssertionError(name + " failed: " + result.getStatus() + " " + firstMessage(result));
         }
         return value;
+    }
+
+    /**
+     * {@link #query} of a write past the model: a failure is one of making the state the test starts from (the
+     * repository refused it), not one of midPoint's behaviour, so an {@link IllegalStateException}.
+     */
+    private <T> T written(String name, Query<T> query) {
+        try {
+            return query(name, query);
+        } catch (AssertionError e) {
+            throw new IllegalStateException(e.getMessage(), e.getCause() != null ? e.getCause() : e);
+        }
     }
 
     static String firstMessage(OperationResult result) {

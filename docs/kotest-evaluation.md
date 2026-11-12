@@ -55,13 +55,14 @@ The release profile builds the module's sources jar and a javadoc jar (a pointer
 
 ## Limits found
 
-- A checkpoint does not cover midPoint's in-memory state that the reset does not restore either, nor a mail recipient
-  rejected by the test (`rejectMails`), nor the why-trail's reads of the prefix (a failing test explains its own
-  reads).
+- A checkpoint does not cover midPoint's in-memory state that the reset does not restore either, nor the why-trail's
+  reads of the prefix (a failing test explains its own reads; the mappings of the prefix's driver calls stay with the
+  test).
 - Kotlin values computed by the prefix are not checkpointed (right for what the prefix created; a test must not change
   them).
 - A failure in a container's prefix fails the container; Surefire reports containers as test sets with "Tests run: 0".
-- The guard against work between tests reports an error of the container, not of a leaf.
+- (Solved since: a mail recipient rejected by the test is part of the checkpoint; the guard against work between
+  tests and the precondition's rules report an error of the leaf, by its name.)
 - Kotest 6.2.6 runs on the JUnit Platform of each line's BOM (checked here on 4.0, 4.8 and 4.10); its Kotlin libraries
   need managing over midPoint's BOM (in the parent POMs now). IntelliJ needs the Kotest plugin to run one test.
 
