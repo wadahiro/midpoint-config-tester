@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wadahiro.midpoint</groupId>
+        <artifactId>midpoint-config-tester-base-4.8</artifactId>
+        <version>0.7.0</version>
+        <relativePath>../base-4.8/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>midpoint-config-tester-4.9</artifactId>
+    <name>midPoint Config Tester for midPoint 4.9</name>
+
+    <properties>
+        <tester.names.skip>false</tester.names.skip>
+        <tester.gui.skip>false</tester.gui.skip>
+        <midpoint.version>${midpoint49.version}</midpoint.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex), not on the classpath -->
+                        <id>gui-jars</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/gui</outputDirectory>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.gui</groupId>
+                                    <artifactId>admin-gui</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.model</groupId>
+                                    <artifactId>authentication-impl</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                                <!-- the URL mappings (EndPointsUrlMapping) from 4.9 on -->
+                                <artifactItem>
+                                    <groupId>com.evolveum.midpoint.model</groupId>
+                                    <artifactId>authentication-api</artifactId>
+                                    <version>${midpoint.version}</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
