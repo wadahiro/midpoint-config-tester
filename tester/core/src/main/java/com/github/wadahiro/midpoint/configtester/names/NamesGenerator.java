@@ -5,8 +5,10 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -328,7 +330,7 @@ public final class NamesGenerator {
 
     // ---- writing ------------------------------------------------------------------------------------------------
 
-    private static List<String> write(Path outputDir, Map<Path, String> files) {
+    static List<String> write(Path outputDir, Map<Path, String> files) {
         List<String> written = new ArrayList<>();
         try {
             Files.createDirectories(outputDir);
@@ -342,15 +344,30 @@ public final class NamesGenerator {
                 Files.write(path, content);
                 written.add(outputDir.relativize(path).toString());
             }
+            // the generated files by identity, not by path: on macOS, JDK 11 writes and reads names decomposed (NFD)
+            // and JDK 17+ as they are (NFC), and the file system takes both for one file. A class with a kana with
+            // dakuten in its name that the other JDK wrote is the same file, not a stale one
+            Set<Object> generated = new HashSet<>();
+            for (Path path : files.keySet()) {
+                generated.add(fileKey(path));
+            }
             try (Stream<Path> walk = Files.walk(outputDir)) {
                 for (Path stale : walk.filter(p -> p.toString().endsWith(".java") && !files.containsKey(p))
                         .sorted(Comparator.reverseOrder()).collect(Collectors.toList())) {
-                    Files.delete(stale);
+                    if (!generated.contains(fileKey(stale))) {
+                        Files.delete(stale);
+                    }
                 }
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot write the names to " + outputDir, e);
         }
         return written;
+    }
+
+    /** What identifies the file: its file key (device and inode), or its real path where the file system has none */
+    private static Object fileKey(Path path) throws IOException {
+        Object key = Files.readAttributes(path, BasicFileAttributes.class).fileKey();
+        return key != null ? key : path.toRealPath();
     }
 }

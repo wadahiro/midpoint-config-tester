@@ -7,7 +7,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.Normalizer;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,6 +55,20 @@ class NamesGeneratorTest {
         write("out/com/example/names/Orgs.java", "// stale");
         assertThat(NamesGenerator.generate(out, List.of(dir))).isEmpty();
         assertThat(out.resolve("com/example/names/Orgs.java")).doesNotExist();
+    }
+
+    @Test
+    void aClassWrittenInTheOtherUnicodeFormStays() throws IOException {
+        // a JDK writes a name with a kana with dakuten decomposed (NFD) on macOS (JDK 11), another composed (NFC, JDK
+        // 17+): the class the generator writes again must not be taken for a stale one
+        String composed = "\u30d1\u30fc\u30c8\u30ca\u30fcAttrs.java";
+        Path names = Files.createDirectories(dir.resolve("com/example/names"));
+        Files.writeString(names.resolve(Normalizer.normalize(composed, Normalizer.Form.NFD)), "// earlier");
+        NamesGenerator.write(dir, Map.of(names.resolve(composed), "class A {}"));
+        assertThat(read(names.resolve(composed))).isEqualTo("class A {}");
+        try (Stream<Path> files = Files.list(names)) {
+            assertThat(files.count()).isEqualTo(1);
+        }
     }
 
     @Test
