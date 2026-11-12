@@ -1,3 +1,10 @@
+## [0.7.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.7.0...v0.7.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **names:** keep a generated class that another JDK wrote in the other Unicode form ([7ad6ec7](https://github.com/wadahiro/midpoint-config-tester/commit/7ad6ec7388bfa3479b8d056cd88ef30b2dff356d))
+
 # [0.7.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.6.0...v0.7.0) (2026-11-12)
 
 
