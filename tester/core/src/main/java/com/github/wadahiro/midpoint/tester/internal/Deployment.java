@@ -886,7 +886,7 @@ public final class Deployment {
         Clock clock = clock();
         return new Checkpoint(state, dbs, (Long) clockField(clock, "override"), (Long) clockField(clock, "overrideOffset"),
                 mp.drivers().mails().size(), mp.drivers().notifications().size(), LogCapture.count(),
-                HttpStandIn.captureIfStarted(), mp.testMarks(), TaskSchedules.scheduledAt());
+                HttpStandIn.captureIfStarted(), mp.testMarks(), TaskSchedules.scheduledAt(), runtime.mailsRejected());
     }
 
     /**
@@ -908,13 +908,17 @@ public final class Deployment {
         clock.overrideOffset(checkpoint.clockOffset);
         TimeAgent.sync(clock);
         mp.drivers().keepMailsAndNotifications(checkpoint.mails, checkpoint.notifications);
+        runtime.rejectMails(checkpoint.mailsRejected);
         LogCapture.keep(checkpoint.logs);
         HttpStandIn.restore(checkpoint.http);
         mp.restoreTestMarks(checkpoint.marks);
         runtime.takeJournal();
     }
 
-    /** How much midPoint was asked to do so far (driver calls, API calls, task starts): grows with every call. */
+    /**
+     * How often midPoint was changed so far (driver calls, writes past the model to what a checkpoint restores, task
+     * starts): grows with every change, not with reads.
+     */
     public long activity() {
         return runtime.activityCount();
     }
@@ -948,7 +952,7 @@ public final class Deployment {
 
     /** Makes the tester's SMTP server refuse the mails to the recipients the predicate accepts; null: none. */
     public void rejectMails(java.util.function.Predicate<String> recipient) {
-        mp.drivers().rejectMails(recipient);
+        runtime.rejectMails(recipient);
     }
 
     /** The cache entry this deployment was restored from; null when it was loaded afresh. */
@@ -1085,6 +1089,7 @@ public final class Deployment {
      * of recurring tasks until the reset, as {@code Time.advance} does. Fails if the instant is not in the future.
      */
     public void advanceTo(Instant instant) {
+        Writes.count();
         Clock clock = clock();
         long offset = instant.toEpochMilli() - clock.currentTimeMillis();
         if (offset <= 0) {
@@ -1102,6 +1107,7 @@ public final class Deployment {
      * regular runs of recurring tasks as {@link #advanceTo} does. Fails if the instant is not in the future.
      */
     public void stopAt(Instant instant) {
+        Writes.count();
         Clock clock = clock();
         if (!instant.isAfter(now())) {
             throw new IllegalArgumentException("Cannot move the clock back: " + instant + " is not after " + now());

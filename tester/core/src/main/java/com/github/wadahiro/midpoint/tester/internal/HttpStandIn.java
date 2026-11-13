@@ -170,6 +170,7 @@ public final class HttpStandIn {
      * or an array, else text; null: none), until {@link #clear()}. The last answer given for a request wins.
      */
     public void respond(String method, String prefix, int status, String body) {
+        Writes.count();
         answers.add(0, new Answer(method, prefix, status, body));
     }
 

@@ -47,6 +47,8 @@ public final class TesterRuntime {
     /** Driver calls journaled since the start, and how often {@link #api()} was handed out ({@link #activity()}). */
     private long driverCalls;
     private long apiCalls;
+    /** The recipients whose mails the SMTP server refuses ({@link #rejectMails}); null: none. */
+    private java.util.function.Predicate<String> mailsRejected;
     /**
      * {@link #activity()} at the end of the last reset to the baseline; null when anything else was reset since, or
      * that reset failed. See {@link #resetToBaseline()}.
@@ -191,11 +193,13 @@ public final class TesterRuntime {
         return instance;
     }
 
-    /** Called for every driver call's run, also one that failed. */
-    void journal(Run run) {
+    /** Called for every driver call's run, also one that failed; {@code changes}: unless it only read. */
+    void journal(Run run, boolean changes) {
         synchronized (journal) {
             journal.add(run);
-            driverCalls++;
+            if (changes) {
+                driverCalls++;
+            }
         }
     }
 
@@ -475,10 +479,13 @@ public final class TesterRuntime {
         return initialImport;
     }
 
-    /** How much midPoint was asked to do so far: driver calls, API calls, background task starts. */
+    /**
+     * How often midPoint was changed so far: driver calls, writes past the model ({@link Writes}), background task
+     * starts. Reads are not counted.
+     */
     long activityCount() {
         synchronized (journal) {
-            return driverCalls + apiCalls + Recorder.backgroundStarts();
+            return driverCalls + Writes.total() + Recorder.backgroundStarts();
         }
     }
 
@@ -491,7 +498,8 @@ public final class TesterRuntime {
             return null;
         }
         synchronized (journal) {
-            return new long[] { driverCalls, apiCalls, Recorder.backgroundStarts(), Recorder.runningTaskThreads(), jobs };
+            return new long[] { driverCalls, apiCalls, Writes.total(), Recorder.backgroundStarts(),
+                    Recorder.runningTaskThreads(), jobs };
         }
     }
 
@@ -511,7 +519,20 @@ public final class TesterRuntime {
         api.markAuditStart();
         api.drivers().clearMails();
         api.drivers().rejectMails(null);
+        mailsRejected = null;
         HttpStandIn.clearIfStarted();
+    }
+
+    /** Makes the SMTP server refuse the mails to the recipients the predicate accepts; null: none. */
+    void rejectMails(java.util.function.Predicate<String> recipient) {
+        Writes.count();
+        api.drivers().rejectMails(recipient);
+        mailsRejected = recipient;
+    }
+
+    /** What {@link #rejectMails} was given last, since the last clearing of the notifications. */
+    java.util.function.Predicate<String> mailsRejected() {
+        return mailsRejected;
     }
 
     public void login(String username) {

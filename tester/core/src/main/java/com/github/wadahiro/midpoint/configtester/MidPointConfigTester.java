@@ -13,6 +13,7 @@ import com.github.wadahiro.midpoint.configtester.names.TaskRef;
 import com.github.wadahiro.midpoint.configtester.names.UserRef;
 import com.github.wadahiro.midpoint.tester.MidPoint;
 import com.github.wadahiro.midpoint.tester.Run;
+import com.github.wadahiro.midpoint.tester.internal.Checkpoint;
 import com.github.wadahiro.midpoint.tester.internal.Deployment;
 
 /**
@@ -29,6 +30,8 @@ public final class MidPointConfigTester {
 
     private final Deployment deployment;
     private final List<Run> runs = new ArrayList<>();
+    /** How many runs the test had at each of its checkpoints ({@link #restoreRuns}). */
+    private final Map<Checkpoint, Integer> runsAt = new java.util.IdentityHashMap<>();
     /** What the values read through the views came from, by the value read, in the order last read. */
     private final Map<String, Supplier<String>> reads = new LinkedHashMap<>();
     /** The users whose object the test read ({@link User#asObject()}), in the order last read. */
@@ -443,5 +446,26 @@ public final class MidPointConfigTester {
     List<Run> runs() {
         runs.addAll(deployment.takeRuns());
         return runs;
+    }
+
+    /** Notes the runs at the checkpoint, taken right after. */
+    void keepRuns(Checkpoint checkpoint) {
+        runsAt.put(checkpoint, runs().size());
+    }
+
+    /**
+     * Back to the runs at the checkpoint: those of the test before it stay (what explains a failure after the
+     * restore), the later ones go.
+     */
+    void restoreRuns(Checkpoint checkpoint) {
+        deployment.takeRuns();
+        Integer size = runsAt.get(checkpoint);
+        if (size != null && size < runs.size()) {
+            runs.subList(size, runs.size()).clear();
+        }
+    }
+
+    void forgetRuns(Checkpoint checkpoint) {
+        runsAt.remove(checkpoint);
     }
 }

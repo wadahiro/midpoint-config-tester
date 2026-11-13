@@ -64,19 +64,26 @@ public final class MidPointConfigTestLifecycle {
 
     /** midPoint as the test has it now ({@link Deployment#checkpoint()}). */
     public static Checkpoint checkpoint(MidPointConfigTester tester) {
-        return tester.deployment().checkpoint();
+        Checkpoint checkpoint = tester.deployment().checkpoint();
+        tester.keepRuns(checkpoint);
+        return checkpoint;
     }
 
     /** Back to the checkpoint ({@link Deployment#restore(Checkpoint)}). */
     public static void restore(MidPointConfigTester tester, Checkpoint checkpoint) {
         tester.deployment().restore(checkpoint);
+        tester.restoreRuns(checkpoint);
     }
 
     public static void release(MidPointConfigTester tester, Checkpoint checkpoint) {
         tester.deployment().release(checkpoint);
+        tester.forgetRuns(checkpoint);
     }
 
-    /** midPoint's activity so far (driver calls, API calls, task starts): a container's work between its tests. */
+    /**
+     * How often midPoint was changed so far (driver calls that do not only read, writes past the model, task starts):
+     * a container's work in its body or between its tests, a precondition that changes midPoint.
+     */
     public static long activity(MidPointConfigTester tester) {
         return tester.deployment().activity();
     }

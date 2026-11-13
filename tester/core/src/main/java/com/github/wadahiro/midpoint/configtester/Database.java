@@ -50,6 +50,7 @@ public final class Database {
 
     /** Runs a statement with parameters ({@code ?}); returns the update count. */
     public int execute(String sql, Object... parameters) {
+        com.github.wadahiro.midpoint.tester.internal.Writes.count();
         try (Connection c = connect(); PreparedStatement st = prepare(c, sql, parameters)) {
             return st.executeUpdate();
         } catch (SQLException e) {

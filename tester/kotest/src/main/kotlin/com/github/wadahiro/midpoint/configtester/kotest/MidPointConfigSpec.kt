@@ -10,6 +10,7 @@ import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.core.spec.style.scopes.FreeSpecContainerScope
 import io.kotest.core.test.TestCase
+import io.kotest.core.test.TestScope
 import io.kotest.core.test.TestType
 import io.kotest.engine.concurrency.TestExecutionMode
 import io.kotest.engine.test.TestResult
@@ -41,18 +42,39 @@ import io.kotest.engine.test.TestResult
  * Work in a container's body between its tests would run on the state after a test's restore and be lost for the
  * tests after the next one: it fails the next test. `steps` is the other kind of container: its tests run in order
  * on one state, each continuing the last (a scenario's steps), stopping at the first failure.
+ *
+ * A container whose body changes midPoint (a driver call, a raw write, a target system, a file, the clock...) checks
+ * what it made in its first test, a [precondition]: the test only reads, and when it fails, the container's other tests
+ * fail without running (they are not skipped), each by its name. A first test that is no precondition after such a
+ * body fails, as a precondition that is not the first test or that changes midPoint:
+ *
+ * ```
+ * "jdoe has the legacy token" - {
+ *     t.user("jdoe").modify("extension/token", "legacy-1")
+ *     precondition("the token is there") { t.user("jdoe").hasItem("extension/token", "legacy-1") }
+ *     "recomputing keeps it" { t.effectsOf { t.user("jdoe").recompute() }.none() }
+ * }
+ * ```
  */
 abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : FreeSpec() {
 
     /** The tag of the `steps` containers. */
     object Steps : Tag()
 
+    /** The tag of the [precondition] tests. */
+    object Precondition : Tag()
+
     private var deployment: Deployment? = null
     private var current: MidPointConfigTester? = null
-    /** The checkpoint of each running container that shares its prefix, by its test case. */
+    /** What each running container keeps between its tests, by its test case. */
     private val frames = HashMap<TestCase, Frame>()
 
-    private class Frame {
+    /**
+     * A running container: midPoint's activity when its body started, its checkpoint (not for steps), and why its
+     * tests do not run (its precondition failed or was missing, or the container's one did).
+     */
+    private class Frame(val activityAtStart: Long, val steps: Boolean, var failure: Throwable?) {
+        var started = false
         var checkpoint: Checkpoint? = null
         /** midPoint's activity right after the last restore: the container's body must not add to it. */
         var activityAfterRestore: Long? = null
@@ -81,7 +103,7 @@ abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : Fr
             val tester = MidPointConfigTestLifecycle.begin(loaded)
             current = tester
             try {
-                return explained(tester, runContainer(testCase, execute))
+                return explained(tester, runContainer(testCase, execute, null))
             } finally {
                 current = null
                 MidPointConfigTestLifecycle.end()
@@ -89,32 +111,91 @@ abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : Fr
         }
         val tester = t
         MidPointConfigTestLifecycle.bind(tester)
-        val frame = frames[parent]
-            ?: return explained(tester, runContainer(testCase, execute)) // a test of steps: on the state as it is
-        val checkpoint = frame.checkpoint
-        if (checkpoint == null) {
-            frame.checkpoint = MidPointConfigTestLifecycle.checkpoint(tester)
-        } else if (frame.activityAfterRestore != MidPointConfigTestLifecycle.activity(tester)) {
-            throw IllegalStateException("The container '${parent.name.name}' worked on midPoint between its tests"
-                    + " (before '${testCase.name.name}'): each test starts from the container's prefix, and that work"
-                    + " would be undone after the next test. Do it before the container's first test, or in a container"
-                    + " of its own, or use steps for tests that continue each other")
+        val frame = frames[parent] ?: return explained(tester, runContainer(testCase, execute, null))
+        frame.failure?.let { return notRun(testCase, execute, parent, it) }
+        val first = !frame.started
+        frame.started = true
+        val precondition = testCase.config?.tags?.contains(Precondition) == true
+        val misuse = when {
+            first && !precondition && MidPointConfigTestLifecycle.activity(tester) != frame.activityAtStart ->
+                "The container '${parent.name.name}' changed midPoint in its body, and its first test" +
+                        " '${testCase.name.name}' is no precondition: check what the body made with" +
+                        " precondition(\"...\") { } as the container's first test, before the tests that depend on it"
+            !first && precondition ->
+                "The precondition '${testCase.name.name}' is not the first test of '${parent.name.name}': write it" +
+                        " right after the container's body, before the tests that depend on it"
+            else -> null
         }
+        if (misuse != null) {
+            val failure = IllegalStateException(misuse)
+            frame.failure = failure
+            return if (testCase.type == TestType.Container) notRun(testCase, execute, parent, failure)
+            else failing(testCase, execute, failure)
+        }
+        if (!frame.steps) {
+            if (frame.checkpoint == null) {
+                frame.checkpoint = MidPointConfigTestLifecycle.checkpoint(tester)
+            } else if (frame.activityAfterRestore != MidPointConfigTestLifecycle.activity(tester)) {
+                return failing(testCase, execute, IllegalStateException("The container '${parent.name.name}'"
+                        + " worked on midPoint between its tests (before '${testCase.name.name}'): each test starts"
+                        + " from the container's prefix, and that work would be undone after the next test. Do it"
+                        + " before the container's first test, or in a container of its own, or use steps for tests"
+                        + " that continue each other"))
+            }
+        }
+        val before = MidPointConfigTestLifecycle.activity(tester)
         try {
-            return explained(tester, runContainer(testCase, execute))
+            val result = explained(tester, runContainer(testCase, execute, null))
+            if (!precondition) {
+                return result
+            }
+            if (MidPointConfigTestLifecycle.activity(tester) != before) {
+                val failure = IllegalStateException("The precondition '${testCase.name.name}' of" +
+                        " '${parent.name.name}' changed midPoint: a precondition only reads what the container's" +
+                        " body made; change midPoint in the body")
+                frame.failure = failure
+                return TestResult.Error(result.duration, failure)
+            }
+            frame.failure = result.errorOrNull
+            return result
         } finally {
-            MidPointConfigTestLifecycle.restore(tester, frame.checkpoint!!)
-            MidPointConfigTestLifecycle.bind(tester)
-            frame.activityAfterRestore = MidPointConfigTestLifecycle.activity(tester)
+            frame.checkpoint?.let {
+                MidPointConfigTestLifecycle.restore(tester, it)
+                MidPointConfigTestLifecycle.bind(tester)
+                frame.activityAfterRestore = MidPointConfigTestLifecycle.activity(tester)
+            }
         }
     }
 
-    /** Runs the test; a container that shares its prefix gets its frame, released when it ends. */
-    private suspend fun runContainer(testCase: TestCase, execute: suspend (TestCase) -> TestResult): TestResult {
-        if (testCase.type != TestType.Container || testCase.config?.tags?.contains(Steps) == true) {
+    /**
+     * A test of a container whose precondition failed or was missing: a leaf fails without running; a container runs
+     * its body, so that its tests are known, and each of them fails so.
+     */
+    private suspend fun notRun(testCase: TestCase, execute: suspend (TestCase) -> TestResult, parent: TestCase,
+            cause: Throwable): TestResult {
+        if (testCase.type == TestType.Container) {
+            return runContainer(testCase, execute, cause)
+        }
+        val message = "Not run: the precondition of '${parent.name.name}' failed or is missing"
+        return failing(testCase, execute,
+                if (cause is AssertionError) AssertionError(message, cause) else IllegalStateException(message, cause))
+    }
+
+    /** The test, run with a body that throws the error instead of its own (Kotest reports it as any other test). */
+    private suspend fun failing(testCase: TestCase, execute: suspend (TestCase) -> TestResult, error: Throwable) =
+        execute(testCase.copy(test = { throw error }))
+
+    /**
+     * Runs the test; a container gets its frame, released when it ends. A container of a container whose precondition
+     * did not hold gets the failure: its tests do not run.
+     */
+    private suspend fun runContainer(testCase: TestCase, execute: suspend (TestCase) -> TestResult,
+            failure: Throwable?): TestResult {
+        if (testCase.type != TestType.Container) {
             return execute(testCase)
         }
-        val frame = Frame()
+        val frame = Frame(MidPointConfigTestLifecycle.activity(t), testCase.config?.tags?.contains(Steps) == true,
+                failure)
         frames[testCase] = frame
         try {
             return execute(testCase)
@@ -136,6 +217,14 @@ abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : Fr
     fun steps(name: String, test: suspend FreeSpecContainerScope.() -> Unit) =
         name.config(failfast = true, tags = setOf(Steps)) - test
 }
+
+/**
+ * The container's first test, which checks what the container's body made before the tests that depend on it: it only
+ * reads midPoint. Required after a body that changes midPoint ([MidPointConfigSpec]); when it fails, the container's
+ * other tests fail without running.
+ */
+suspend fun FreeSpecContainerScope.precondition(name: String, test: suspend TestScope.() -> Unit) =
+    "precondition: $name".config(tags = setOf(MidPointConfigSpec.Precondition), test = test)
 
 /** [MidPointConfigSpec.steps] in a container. */
 suspend fun FreeSpecContainerScope.steps(name: String, test: suspend FreeSpecContainerScope.() -> Unit) =

@@ -4,6 +4,7 @@ import com.github.wadahiro.midpoint.configtester.MidPointConfigTest
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTestLifecycle
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester
 import com.github.wadahiro.midpoint.configtester.kotest.MidPointConfigSpec
+import com.github.wadahiro.midpoint.configtester.kotest.precondition
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -25,6 +26,8 @@ class ExplanationSpec : MidPointConfigSpec({
 
     "John is hired in Sales" - {
         t.hire("1001", "John", "Doe", "Sales")
+
+        precondition("John has his LDAP account") { t.target("LDAP").account(JOHN).value("ou") shouldBe "Sales" }
 
         "a failure on his LDAP account explains the ou" {
             val failure = shouldThrow<AssertionError> { t.target("LDAP").account(JOHN).value("ou") shouldBe "Marketing" }

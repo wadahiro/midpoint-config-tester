@@ -164,6 +164,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void loadLdif(String ldif) {
+        Writes.count();
         try (LDIFReader reader = new LDIFReader(new java.io.BufferedReader(new StringReader(ldif)))) {
             LDIFRecord record;
             while ((record = reader.readLDIFRecord()) != null) {
@@ -182,6 +183,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void loadLdif(File file) {
+        Writes.count();
         try {
             loadLdif(Files.readString(file.toPath()));
         } catch (IOException e) {
@@ -244,21 +246,25 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void addAccount(String name, Map<String, ?> attributes) {
+        Writes.count();
         addObject(accountClass(), name, attributes);
     }
 
     @Override
     public void modifyAccount(String name, String attribute, Object... values) {
+        Writes.count();
         modifyObject(accountClass(), name, attribute, values);
     }
 
     @Override
     public void renameAccount(String name, String newName) {
+        Writes.count();
         renameObject(accountClass(), name, newName);
     }
 
     @Override
     public void deleteAccount(String name) {
+        Writes.count();
         deleteObject(accountClass(), name);
     }
 
@@ -297,6 +303,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void setEnabled(String account, boolean enabled) {
+        Writes.count();
         if (simulatedActivation == null) {
             throw new IllegalStateException("An LDAP entry has no standard activation (the LDAP connector has no"
                     + " native one) and resource " + resourceOid + " simulates none; modify its attributes instead");
@@ -312,6 +319,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void setPassword(String account, String password) {
+        Writes.count();
         existing(account);
         try {
             server.modify(account, password == null ? new Modification(ModificationType.DELETE, "userPassword")
@@ -323,16 +331,19 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void addGroup(String name, Map<String, ?> attributes) {
+        Writes.count();
         addObject(groupClass(), name, attributes);
     }
 
     @Override
     public void modifyGroup(String name, String attribute, Object... values) {
+        Writes.count();
         modifyObject(groupClass(), name, attribute, values);
     }
 
     @Override
     public void deleteGroup(String name) {
+        Writes.count();
         deleteObject(groupClass(), name);
     }
 
@@ -353,6 +364,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void addObject(String objectClass, String name, Map<String, ?> attributes) {
+        Writes.count();
         try {
             DN dn = new DN(name);
             Entry entry = new Entry(dn);
@@ -382,6 +394,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void modifyObject(String objectClass, String name, String attribute, Object... values) {
+        Writes.count();
         existing(name);
         try {
             server.modify(name, new Modification(ModificationType.REPLACE, attribute,
@@ -393,6 +406,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void renameObject(String objectClass, String name, String newName) {
+        Writes.count();
         existing(name);
         try {
             DN newDn = new DN(newName);
@@ -405,6 +419,7 @@ final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
 
     @Override
     public void deleteObject(String objectClass, String name) {
+        Writes.count();
         existing(name);
         try {
             server.delete(name);

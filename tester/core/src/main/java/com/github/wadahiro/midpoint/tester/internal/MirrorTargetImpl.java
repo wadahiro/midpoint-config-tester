@@ -75,21 +75,25 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void addAccount(String name, Map<String, ?> attributes) {
+        Writes.count();
         addObject(accountClass(), name, attributes);
     }
 
     @Override
     public void modifyAccount(String name, String attribute, Object... values) {
+        Writes.count();
         modifyObject(accountClass(), name, attribute, values);
     }
 
     @Override
     public void renameAccount(String name, String newName) {
+        Writes.count();
         renameObject(accountClass(), name, newName);
     }
 
     @Override
     public void deleteAccount(String name) {
+        Writes.count();
         deleteObject(accountClass(), name);
     }
 
@@ -130,6 +134,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void setEnabled(String account, boolean enabled) {
+        Writes.count();
         if (simulatedActivation != null) {
             simulatedActivation.setEnabled(this, account, enabled);
             return;
@@ -150,6 +155,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void setPassword(String account, String password) {
+        Writes.count();
         if (!resource.byName(accountClass()).password) {
             throw new IllegalStateException("Resource " + resource.instanceId + " has no password capability");
         }
@@ -158,16 +164,19 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void addGroup(String name, Map<String, ?> attributes) {
+        Writes.count();
         addObject(groupClass(), name, attributes);
     }
 
     @Override
     public void modifyGroup(String name, String attribute, Object... values) {
+        Writes.count();
         modifyObject(groupClass(), name, attribute, values);
     }
 
     @Override
     public void deleteGroup(String name) {
+        Writes.count();
         deleteObject(groupClass(), name);
     }
 
@@ -190,6 +199,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void addObject(String objectClass, String name, Map<String, ?> attributes) {
+        Writes.count();
         MirrorClass c = resource.byName(objectClass);
         MirrorObject object = new MirrorObject();
         object.name = name;
@@ -205,6 +215,7 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void modifyObject(String objectClass, String name, String attribute, Object... values) {
+        Writes.count();
         rejectComputed(resource.byName(objectClass), attribute);
         MirrorObject object = existing(objectClass, name);
         if (values.length == 0) {
@@ -216,11 +227,13 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public void renameObject(String objectClass, String name, String newName) {
+        Writes.count();
         resource.rename(resource.byName(objectClass), existing(objectClass, name), newName);
     }
 
     @Override
     public void deleteObject(String objectClass, String name) {
+        Writes.count();
         MirrorClass c = resource.byName(objectClass);
         resource.delete(c, existing(objectClass, name).uid);
     }

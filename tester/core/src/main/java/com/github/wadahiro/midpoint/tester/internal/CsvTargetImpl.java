@@ -121,6 +121,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void write(List<? extends Map<String, ?>> rows) {
+        Writes.count();
         List<String> header = header();
         List<Map<String, String>> converted = new ArrayList<>();
         for (Map<String, ?> row : rows) {
@@ -131,6 +132,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void addRow(Map<String, ?> row) {
+        Writes.count();
         List<Map<String, String>> rows = rows();
         rows.add(convert(header(), row));
         writeRows(header(), rows);
@@ -147,6 +149,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void writeText(String text) {
+        Writes.count();
         try {
             Files.writeString(path, text, charset);
         } catch (IOException e) {
@@ -169,6 +172,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void addAccount(String name, Map<String, ?> attributes) {
+        Writes.count();
         if (account(name) != null) {
             throw new IllegalArgumentException("Row " + name + " already exists in " + path);
         }
@@ -182,6 +186,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void modifyAccount(String name, String attribute, Object... values) {
+        Writes.count();
         List<Map<String, String>> rows = rows();
         Map<String, String> row = existing(rows, name);
         checkColumn(header(), attribute);
@@ -191,6 +196,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void renameAccount(String name, String newName) {
+        Writes.count();
         List<Map<String, String>> rows = rows();
         existing(rows, name).put(nameColumn, newName);
         writeRows(header(), rows);
@@ -198,6 +204,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void deleteAccount(String name) {
+        Writes.count();
         List<Map<String, String>> rows = rows();
         rows.remove(existing(rows, name));
         writeRows(header(), rows);
@@ -254,6 +261,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void setEnabled(String account, boolean enabled) {
+        Writes.count();
         if (simulatedActivation == null) {
             throw new IllegalStateException("The CSV connector has no activation capability, and resource "
                     + resourceOid + " simulates none (capabilities/configured/activation/status/attribute)");
@@ -272,6 +280,7 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void setPassword(String account, String password) {
+        Writes.count();
         if (passwordColumn == null) {
             throw new IllegalStateException("Resource " + resourceOid + " has no passwordAttribute");
         }
@@ -282,16 +291,19 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void addGroup(String name, Map<String, ?> attributes) {
+        Writes.count();
         throw oneClass();
     }
 
     @Override
     public void modifyGroup(String name, String attribute, Object... values) {
+        Writes.count();
         throw oneClass();
     }
 
     @Override
     public void deleteGroup(String name) {
+        Writes.count();
         throw oneClass();
     }
 
@@ -312,21 +324,25 @@ final class CsvTargetImpl implements ManagedTarget, CsvFile {
 
     @Override
     public void addObject(String objectClass, String name, Map<String, ?> attributes) {
+        Writes.count();
         addAccount(name, attributes);
     }
 
     @Override
     public void modifyObject(String objectClass, String name, String attribute, Object... values) {
+        Writes.count();
         modifyAccount(name, attribute, values);
     }
 
     @Override
     public void renameObject(String objectClass, String name, String newName) {
+        Writes.count();
         renameAccount(name, newName);
     }
 
     @Override
     public void deleteObject(String objectClass, String name) {
+        Writes.count();
         deleteAccount(name);
     }
 

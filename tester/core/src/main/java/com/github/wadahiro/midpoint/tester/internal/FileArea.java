@@ -146,6 +146,7 @@ public final class FileArea implements MappedFiles {
 
     @Override
     public MappedFiles write(String path, byte[] content) {
+        Writes.count();
         Path file = physical(path);
         try {
             Files.createDirectories(file.getParent());

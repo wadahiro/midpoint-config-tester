@@ -1166,6 +1166,20 @@ final class MidPointImpl implements MidPoint {
         return runAs(null, name, operation, failOnError);
     }
 
+    /**
+     * {@link #run} that only reads (a search or an authorization as a user), without failing on an error: not counted
+     * as a change of midPoint ({@link TesterRuntime#activityCount()}).
+     */
+    Run read(String name, Operation operation) {
+        boolean before = reading.get();
+        reading.set(true);
+        try {
+            return run(name, operation, false);
+        } finally {
+            reading.set(before);
+        }
+    }
+
     /** {@link #run} logged in as this user (by name; null: the administrator), in a task the user owns. */
     Run runAs(String user, String name, Operation operation) {
         return runAs(user, name, operation, true);
@@ -1193,6 +1207,9 @@ final class MidPointImpl implements MidPoint {
             caller.set(before);
         }
     }
+
+    /** Whether the driver call on this thread only reads ({@link #read}). */
+    private final ThreadLocal<Boolean> reading = ThreadLocal.withInitial(() -> false);
 
     private Run runAsTimed(String user, String name, Operation operation, boolean failOnError) {
         // the caller applies to this call, not to the lookups and runs it makes itself
@@ -1308,7 +1325,7 @@ final class MidPointImpl implements MidPoint {
                 notifications.subList(Math.min(notificationsBefore, notifications.size()), notifications.size()),
                 mails.subList(Math.min(mailsBefore, mails.size()), mails.size()), step,
                 FileArea.get().written(filesBefore, filesAfter), FileArea.get().deleted(filesBefore, filesAfter));
-        runtime.journal(run);
+        runtime.journal(run, !reading.get());
         if (!failOnError) {
             if (failure == null) {
                 result.computeStatus();

@@ -4,6 +4,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester
 import com.github.wadahiro.midpoint.configtester.kotest.MidPointConfigSpec
+import com.github.wadahiro.midpoint.configtester.kotest.precondition
 import com.github.wadahiro.midpoint.configtester.kotest.steps
 import com.github.wadahiro.midpoint.configtester.kotest.verifyAll
 import io.kotest.matchers.collections.shouldContain
@@ -23,7 +24,8 @@ fun MidPointConfigTester.userNames(): List<String> =
 
 /**
  * What a container shares: its prefix runs once, each of its tests starts from the prefix's midPoint (the users, the
- * clock, the mails seen so far, the open work items), nested containers likewise; steps continue each other.
+ * clock, the mails seen so far, the open work items), nested containers likewise; steps continue each other. A prefix
+ * that changes midPoint is checked by the container's first test, its precondition.
  */
 @MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class CheckpointSpec : MidPointConfigSpec({
@@ -43,6 +45,11 @@ class CheckpointSpec : MidPointConfigSpec({
         t.clock().stopAt(stopped)
         t.actor("jack").request().assign("Privileged Access")
         mailsAfterPrefix = t.mails().count()
+
+        precondition("the request waits for the role owner, at the stopped clock") {
+            t.workItems().assignedTo("role-owner").single()
+            t.clock().now() shouldBe stopped
+        }
 
         "the owner approves, 30 days later" {
             t.clock().advance("P30D")
@@ -66,6 +73,8 @@ class CheckpointSpec : MidPointConfigSpec({
 
         "a nested container" - {
             t.addUser("nested")
+
+            precondition("the nested user is there") { t.userNames() shouldContain "nested" }
 
             "has its own prefix on the outer one" {
                 t.userNames() shouldContain "prefix"

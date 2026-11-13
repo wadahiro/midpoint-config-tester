@@ -216,7 +216,7 @@ final class AccessImpl implements Access {
     private Run as(String name, MidPointImpl.Operation operation) {
         runtime.login(username);
         try {
-            return mp.run(name + " as " + username, operation, false);
+            return mp.read(name + " as " + username, operation);
         } finally {
             runtime.login(TesterRuntime.ADMINISTRATOR);
         }

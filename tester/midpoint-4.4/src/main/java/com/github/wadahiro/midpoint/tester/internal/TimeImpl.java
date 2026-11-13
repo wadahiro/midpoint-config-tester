@@ -27,6 +27,7 @@ final class TimeImpl implements Time {
 
     @Override
     public void advance(String duration) {
+        Writes.count();
         // Quartz keeps the real time: recurring tasks run only through runDueTasks / runTask until the reset
         TaskSchedules.holdRegularRuns();
         clock().overrideDuration(duration);
@@ -35,6 +36,7 @@ final class TimeImpl implements Time {
 
     @Override
     public void reset() {
+        Writes.count();
         clock().resetOverride();
         TimeAgent.sync(clock());
     }
