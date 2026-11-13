@@ -207,6 +207,7 @@ final class MirrorTargetImpl implements ManagedTarget {
             object.enabled = true;
         }
         attributes.forEach((k, v) -> {
+            rejectUnknown(c, k);
             rejectComputed(c, k);
             object.attributes.put(k, asList(v));
         });
@@ -216,6 +217,7 @@ final class MirrorTargetImpl implements ManagedTarget {
     @Override
     public void modifyObject(String objectClass, String name, String attribute, Object... values) {
         Writes.count();
+        rejectUnknown(resource.byName(objectClass), attribute);
         rejectComputed(resource.byName(objectClass), attribute);
         MirrorObject object = existing(objectClass, name);
         if (values.length == 0) {
@@ -305,6 +307,15 @@ final class MirrorTargetImpl implements ManagedTarget {
                     + "; existing: " + objectNames(objectClass));
         }
         return object;
+    }
+
+    /** An attribute the object class does not have: midPoint would never see it (a typo of the test). */
+    private static void rejectUnknown(MirrorClass c, String attribute) {
+        if (!c.attributes.containsKey(attribute) && !attribute.equals(c.namingAttribute)
+                && !attribute.equals(c.uidAttribute)) {
+            throw new IllegalArgumentException("Attribute " + attribute + " is not one of " + c.midPointName
+                    + ": " + String.join(", ", c.attributes.keySet()));
+        }
     }
 
     private static void rejectComputed(MirrorClass c, String attribute) {

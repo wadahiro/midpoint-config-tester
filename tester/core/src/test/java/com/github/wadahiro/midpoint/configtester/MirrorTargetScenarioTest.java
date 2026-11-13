@@ -1,6 +1,7 @@
 package com.github.wadahiro.midpoint.configtester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -54,6 +55,16 @@ class MirrorTargetScenarioTest {
         t.target(Resources.LDAP).account(JOHN).doesNotExist();
         // referential integrity: the deleted account is no member any more
         assertThat(t.target(Resources.LDAP).system().groupValues(IT, "member")).isEmpty();
+    }
+
+    @Test
+    void anAttributeTheObjectClassDoesNotHaveIsRefused(MidPointConfigTester t) {
+        // midPoint would never see it: a typo of the test fails where it is made
+        assertThatThrownBy(() -> t.target(Resources.LDAP).add(JOHN, Map.of("cn", "John Doe", "surname", "Doe")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("surname is not one of");
+        t.target(Resources.LDAP).add(JOHN, Map.of("cn", "John Doe", "sn", "Doe"));
+        assertThatThrownBy(() -> t.target(Resources.LDAP).modify(JOHN, "surname", "Doe"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("surname is not one of");
     }
 
     @Test
