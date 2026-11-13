@@ -6,7 +6,8 @@ package com.github.wadahiro.midpoint.configtester;
  * <pre>{@code
  * Campaign c = t.certification("Role assignments").start();
  * c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "not needed");
- * c.closeStage().remediate();
+ * c.closeStage();
+ * c.remediate();
  * t.user("jack").hasNoRole("Auditor");
  * }</pre>
  */
@@ -26,7 +27,8 @@ public final class Certification {
      */
     public Campaign start() {
         Campaign campaign = create();
-        return campaign.nextStage();
+        campaign.nextStage();
+        return campaign;
     }
 
     /** Creates a campaign of the definition, not started yet ({@link Campaign#nextStage()} starts it). */

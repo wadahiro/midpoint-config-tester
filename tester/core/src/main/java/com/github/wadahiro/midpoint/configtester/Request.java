@@ -25,35 +25,35 @@ public final class Request {
         this.forUser = forUser;
     }
 
-    /** Requests the role (or org, service) of this name for the user. */
-    public Request assign(String role) {
-        submit(tester.deployment().api().change(UserType.class, forUser).assign(role).delta());
-        return this;
+    /**
+     * Requests the role (or org, service) of this name for the user; returns what midPoint did ({@link Effects}): the
+     * case it opened for the approvers, or the assignment and what follows from it.
+     */
+    public Effects assign(String role) {
+        return submit(tester.deployment().api().change(UserType.class, forUser).assign(role).delta());
     }
 
     /** Requests that the user's assignment of the role of this name be removed. */
-    public Request unassign(String role) {
-        submit(tester.deployment().api().change(UserType.class, forUser).unassign(role).delta());
-        return this;
+    public Effects unassign(String role) {
+        return submit(tester.deployment().api().change(UserType.class, forUser).unassign(role).delta());
     }
 
-    public Request assign(AssignableRef role) {
+    public Effects assign(AssignableRef role) {
         return assign(role.on(tester.line()));
     }
 
     /** Requests the role (or org, service) for the user with the relation ({@code SchemaConstants.ORG_OWNER}). */
-    public Request assign(AssignableRef role, QName relation) {
-        submit(tester.deployment().api().change(UserType.class, forUser).assign(role.on(tester.line()), relation)
+    public Effects assign(AssignableRef role, QName relation) {
+        return submit(tester.deployment().api().change(UserType.class, forUser).assign(role.on(tester.line()), relation)
                 .delta());
-        return this;
     }
 
-    public Request unassign(AssignableRef role) {
+    public Effects unassign(AssignableRef role) {
         return unassign(role.on(tester.line()));
     }
 
-    private void submit(ObjectDelta<? extends ObjectType> delta) {
-        tester.deployment().api().approvals().request(actor.name(), delta);
+    private Effects submit(ObjectDelta<? extends ObjectType> delta) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().request(actor.name(), delta));
     }
 
     @Override

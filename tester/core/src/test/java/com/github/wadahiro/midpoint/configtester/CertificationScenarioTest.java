@@ -24,7 +24,8 @@ class CertificationScenarioTest {
         campaign.reviews().forUser(Users.ROLE_OWNER).single().accept(t.actor(Users.SEC_OFFICER));
         campaign.reviews().undecided().none();
 
-        campaign.closeStage().remediate();
+        campaign.closeStage();
+        campaign.remediate();
 
         campaign.hasOutcome(Users.JACK, Roles.AUDITOR, "revoke").hasOutcome(Users.ROLE_OWNER, Roles.AUDITOR, "accept");
         t.user(Users.JACK).hasNoRole(Roles.AUDITOR);

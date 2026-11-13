@@ -53,9 +53,7 @@ class CheckpointSpec : MidPointConfigSpec({
 
         "the owner approves, 30 days later" {
             t.clock().advance("P30D")
-            val approved = t.effectsOf {
-                t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
-            }
+            val approved = t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
             approved.changes().ofType("CaseType").single().paths() shouldContain "stageNumber"  // on to stage 2
             approved.mails().list().isNotEmpty() shouldBe true
             t.addUser("approval")
@@ -103,8 +101,8 @@ class CheckpointSpec : MidPointConfigSpec({
         }
     }
 
-    "a block's effects: what it changed, and nothing else" {
-        t.effectsOf { t.user("jack").recompute() }.none()
+    "a verb's effects, and a block's: what it changed, and nothing else" {
+        t.user("jack").recompute().none()
         t.effectsOf { t.addUser("effects") }.verifyAll {
             changes().of("effects").added().single()
         }

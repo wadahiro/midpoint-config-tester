@@ -76,22 +76,20 @@ public final class WorkItem {
     // ---- decisions --------------------------------------------------------------------------------------------
 
     /** Approves as the approver (who must be an assignee, and authorized to complete work items). */
-    public WorkItem approve(Actor approver) {
+    public Effects approve(Actor approver) {
         return approve(approver, null);
     }
 
-    public WorkItem approve(Actor approver, String comment) {
-        tester.deployment().api().approvals().complete(item, approver.name(), true, comment);
-        return this;
+    public Effects approve(Actor approver, String comment) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().complete(item, approver.name(), true, comment));
     }
 
-    public WorkItem reject(Actor approver) {
+    public Effects reject(Actor approver) {
         return reject(approver, null);
     }
 
-    public WorkItem reject(Actor approver, String comment) {
-        tester.deployment().api().approvals().complete(item, approver.name(), false, comment);
-        return this;
+    public Effects reject(Actor approver, String comment) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().complete(item, approver.name(), false, comment));
     }
 
     /**
@@ -99,18 +97,17 @@ public final class WorkItem {
      * present ones (the GUI's "Delegate", method {@code addAssignees}). The item as found keeps its old assignees: find
      * it again to see the new ones.
      */
-    public WorkItem delegate(Actor delegator, String... users) {
-        tester.deployment().api().approvals().delegate(item, delegator.name(), users);
-        return this;
+    public Effects delegate(Actor delegator, String... users) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().delegate(item, delegator.name(), users));
     }
 
     /** {@link #delegate(Actor, String...)} by the generated users. */
-    public WorkItem delegate(Actor delegator, UserRef... users) {
+    public Effects delegate(Actor delegator, UserRef... users) {
         return delegate(delegator, names(users));
     }
 
     /** {@link #forward(Actor, String...)} by the generated users. */
-    public WorkItem forward(Actor forwarder, UserRef... users) {
+    public Effects forward(Actor forwarder, UserRef... users) {
         return forward(forwarder, names(users));
     }
 
@@ -123,21 +120,18 @@ public final class WorkItem {
     }
 
     /** Forwards the item to these users (by name), as the forwarder: they replace its assignees (the GUI's "Forward"). */
-    public WorkItem forward(Actor forwarder, String... users) {
-        tester.deployment().api().approvals().forward(item, forwarder.name(), users);
-        return this;
+    public Effects forward(Actor forwarder, String... users) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().forward(item, forwarder.name(), users));
     }
 
     /** The user claims the item offered to a group they are a member of, and becomes its assignee. */
-    public WorkItem claim(Actor user) {
-        tester.deployment().api().approvals().claim(item, user.name());
-        return this;
+    public Effects claim(Actor user) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().claim(item, user.name()));
     }
 
     /** The user releases the item they claimed, back to the group. */
-    public WorkItem release(Actor user) {
-        tester.deployment().api().approvals().release(item, user.name());
-        return this;
+    public Effects release(Actor user) {
+        return tester.effectsOf(() -> tester.deployment().api().approvals().release(item, user.name()));
     }
 
     // ---- assertions -------------------------------------------------------------------------------------------

@@ -50,9 +50,9 @@ import io.kotest.engine.test.TestResult
  *
  * ```
  * "jdoe has the legacy token" - {
- *     t.user("jdoe").modify("extension/token", "legacy-1")
+ *     t.raw().user("jdoe").set("extension/token", "legacy-1")
  *     precondition("the token is there") { t.user("jdoe").hasItem("extension/token", "legacy-1") }
- *     "recomputing keeps it" { t.effectsOf { t.user("jdoe").recompute() }.none() }
+ *     "recomputing keeps it" { t.user("jdoe").recompute().none() }
  * }
  * ```
  */

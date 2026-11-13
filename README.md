@@ -203,7 +203,8 @@ assertThat(f.isPolicyViolation()).isTrue();
 
 Campaign c = t.certification("Role assignments").start();
 c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "left the audit");
-c.closeStage().remediate();
+c.closeStage();
+c.remediate();
 t.user("jack").hasNoRole("Auditor");
 
 ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
@@ -459,6 +460,31 @@ object with the items changed; `connectorCalls()`, the calls it made to the conn
 real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repositoryCalls()`, the repository calls
 below midPoint's cache, for looking into what a configuration costs. Selections narrow and check like `t.mails()`.
 
+Every verb that makes midPoint work returns the `Effects` of its call: `User.assign`/`unassign`/`setPassword`/
+`recompute`, `Task.run`/`resume`, `t.reconcile`, `t.importAccounts`, the clock's `runDue` and scanners, a request's
+`assign`/`unassign`, the decisions on work items and reviews, and a campaign's stages. Claim what midPoint derived
+(the accounts and their attributes, the mails, the changes of other objects), not what the test passed in: after
+`assign("Auditor")` succeeded, `hasRole("Auditor")` holds by construction and says nothing about the configuration, so
+an assertion does not chain onto a verb. `hasRole` and `hasItem` are for a precondition and for what midPoint derived
+elsewhere (a role an org membership brings). `effectsOf` is for a block of several calls. Calls that are no work of
+midPoint keep returning their subject: the clock's `advance`/`advanceTo`/`stopAt`, the writes to a source or target
+system (`t.source(...).add`), `t.raw()`, and a report's `run()` (a read).
+
+```kotlin
+t.user("jack").recompute().none()
+t.user("helpdesk").assign("Accountant").verifyAll {
+    changes().of("helpdesk").single().only("assignment", "roleMembershipRef")
+}
+t.actor("jack").request().assign("Privileged Access").verifyAll {    // a role with approvers
+    changes().ofType("CaseType").added().exactly(2)                   // the request and its approval
+    mails().to("role-owner@example.com").single()                     // the work item
+    mails().to("jack@example.com").withSubject("Request submitted").single()
+}
+t.user("jack").hasNoRole("Privileged Access")                         // not before the approvers decide
+```
+
+(`VerbEffectsSpec`, `scenarios/access`.)
+
 A check that something did not happen, and a check of what happened that also proves nothing else did, are
 verifications: in `claims()` (Kotlin: `effects.verifyAll { ... }`) each check claims what it selects (`exactly`,
 `none`, `single`, and `ignored()` for what the test does not care about), and `verifyAll()` fails listing every
@@ -483,7 +509,7 @@ effects.repositoryCalls().reads().perMethod()          // {"getObject UserType"=
 ```
 
 ```java
-Claims claims = t.effectsOf(() -> t.task("Reconcile HR").run()).claims();
+Claims claims = t.task("Reconcile HR").run().claims();
 claims.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
 claims.changes().ofType("ShadowType").added().ignored();               // the group shadows midPoint discovered
 claims.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");

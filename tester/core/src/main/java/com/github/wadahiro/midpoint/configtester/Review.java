@@ -39,20 +39,20 @@ public final class Review {
     }
 
     /** The assignment stays. */
-    public Review accept(Actor reviewer) {
+    public Effects accept(Actor reviewer) {
         return decide(reviewer, "accept", null);
     }
 
-    public Review accept(Actor reviewer, String comment) {
+    public Effects accept(Actor reviewer, String comment) {
         return decide(reviewer, "accept", comment);
     }
 
     /** The assignment goes (at the remediation). */
-    public Review revoke(Actor reviewer) {
+    public Effects revoke(Actor reviewer) {
         return decide(reviewer, "revoke", null);
     }
 
-    public Review revoke(Actor reviewer, String comment) {
+    public Effects revoke(Actor reviewer, String comment) {
         return decide(reviewer, "revoke", comment);
     }
 
@@ -60,9 +60,9 @@ public final class Review {
      * Any of midPoint's responses: {@code accept}, {@code revoke}, {@code reduce}, {@code notDecided},
      * {@code noResponse}.
      */
-    public Review decide(Actor reviewer, String response, String comment) {
-        tester.deployment().api().certification().decide(item, reviewer.name(), response, comment);
-        return this;
+    public Effects decide(Actor reviewer, String response, String comment) {
+        return tester.effectsOf(
+                () -> tester.deployment().api().certification().decide(item, reviewer.name(), response, comment));
     }
 
     @Override

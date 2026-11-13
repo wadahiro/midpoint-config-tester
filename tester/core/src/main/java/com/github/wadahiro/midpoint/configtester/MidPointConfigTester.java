@@ -84,11 +84,11 @@ public final class MidPointConfigTester {
         return task(task.on(line()));
     }
 
-    public MidPointConfigTester reconcile(ResourceRef resource) {
+    public Effects reconcile(ResourceRef resource) {
         return reconcile(resource.on(line()));
     }
 
-    public MidPointConfigTester importAccounts(ResourceRef resource) {
+    public Effects importAccounts(ResourceRef resource) {
         return importAccounts(resource.on(line()));
     }
 
@@ -116,17 +116,15 @@ public final class MidPointConfigTester {
 
     /**
      * Reconciles the resource's default accounts as the GUI's "Reconcile" does (a single-run task, waited for); a
-     * deployed reconciliation task runs with {@link #task}.
+     * deployed reconciliation task runs with {@link #task}. Returns what midPoint did ({@link Effects}).
      */
-    public MidPointConfigTester reconcile(String resource) {
-        deployment.api().reconcile(resource);
-        return this;
+    public Effects reconcile(String resource) {
+        return effectsOf(() -> deployment.api().reconcile(resource));
     }
 
     /** Imports the resource's default accounts as the GUI's "Import" does (a single-run task, waited for). */
-    public MidPointConfigTester importAccounts(String resource) {
-        deployment.api().importAccounts(resource);
-        return this;
+    public Effects importAccounts(String resource) {
+        return effectsOf(() -> deployment.api().importAccounts(resource));
     }
 
     /** A user by name (it need not exist: {@link User#doesNotExist()}). */
@@ -222,10 +220,14 @@ public final class MidPointConfigTester {
     /**
      * Runs the block and returns what midPoint did meanwhile ({@link Effects}): the objects it changed in the
      * repository, its calls to the connectors, the mails, logs and audit records, with the work the block waited for.
-     * The block's exception propagates ({@link #expectFailure} goes inside the block). E.g. in Kotlin
+     * The block's exception propagates ({@link #expectFailure} goes inside the block). A single verb returns its own
+     * effects ({@code t.task("Nightly renewal").run().none()}); a block is for several calls. E.g. in Kotlin
      *
      * <pre>{@code
-     * val effects = t.effectsOf { t.task("Nightly renewal").run() }
+     * val effects = t.effectsOf {
+     *     t.clock().advanceTo(renewalDay)
+     *     t.task("Nightly renewal").run()
+     * }
      * effects.none()                                    // changed nothing, wrote nothing, sent nothing
      * effects.verifyAll {                               // these, and nothing else
      *     changes().of("jdoe").single().only("activation/validTo")

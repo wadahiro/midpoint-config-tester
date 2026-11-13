@@ -106,12 +106,12 @@ public final class WorkItems {
     }
 
     /** {@link #single()}, approved. */
-    public WorkItem approve(Actor approver) {
+    public Effects approve(Actor approver) {
         return single().approve(approver);
     }
 
     /** {@link #single()}, rejected. */
-    public WorkItem reject(Actor approver) {
+    public Effects reject(Actor approver) {
         return single().reject(approver);
     }
 

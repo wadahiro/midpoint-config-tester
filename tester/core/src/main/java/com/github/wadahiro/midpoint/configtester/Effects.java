@@ -23,7 +23,9 @@ import com.github.wadahiro.midpoint.tester.internal.EffectsCapture;
  * What midPoint did while a block of the test ran ({@link MidPointConfigTester#effectsOf(Runnable)}): the objects it
  * changed in its repository, the calls it made to the connectors of its resources, the mails it sent, and the audit
  * records and logs it wrote, including the work the block waited for (a task's background work). Taken when the block
- * returns; later calls of the test do not add to it.
+ * returns; later calls of the test do not add to it. Every verb that makes midPoint work returns the effects of its call
+ * ({@link User#assign(String)}, {@link Task#run()}, {@link TestClock#runDue()}...): claim what midPoint derived from
+ * it, not what the test passed in.
  *
  * <p>Read it ({@code effects.mails().to("jdoe@example.com").single()}), or verify it exhaustively: in
  * {@link #claims()} (Kotlin: {@code effects.verifyAll { ... }}) each check claims what it selects, and

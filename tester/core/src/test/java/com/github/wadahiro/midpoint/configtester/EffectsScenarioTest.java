@@ -13,7 +13,7 @@ import com.github.wadahiro.midpoint.configtester.sample.hr.Resources;
 import com.github.wadahiro.midpoint.configtester.sample.hr.Tasks;
 
 /**
- * What a block did ({@link MidPointConfigTester#effectsOf}) over the sample deployment ({@code scenarios/hr}): the
+ * What a verb or a block did ({@link MidPointConfigTester#effectsOf}) over the sample deployment ({@code scenarios/hr}): the
  * objects changed in the repository, the connector calls, the mails; read, or verified exhaustively.
  */
 @MidPointConfigTest("classpath:scenarios/hr/midpoint-config-tester.yaml")
@@ -30,7 +30,7 @@ class EffectsScenarioTest {
         t.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
                 .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales")
                 .set(HrAttrs.START_DATE, LocalDate.of(2020, 4, 1).toString()));
-        hired = t.effectsOf(() -> t.task(Tasks.RECONCILE_HR).run());
+        hired = t.task(Tasks.RECONCILE_HR).run();
     }
 
     @Test
@@ -49,7 +49,7 @@ class EffectsScenarioTest {
 
     @Test
     void reconcilingAgainChangesNothing(MidPointConfigTester t) {
-        Effects again = t.effectsOf(() -> t.task(Tasks.RECONCILE_HR).run());
+        Effects again = t.task(Tasks.RECONCILE_HR).run();
 
         again.none();
         assertThat(again.connectorCalls().to("HR").operation("search").count()).isPositive();
@@ -57,14 +57,14 @@ class EffectsScenarioTest {
 
     @Test
     void recomputingChangesNothing(MidPointConfigTester t) {
-        t.effectsOf(() -> t.user("e1001").recompute()).none();
+        t.user("e1001").recompute().none();
     }
 
     @Test
     void aMoverChangesOnlyTheDepartment(MidPointConfigTester t) {
         t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
 
-        Effects moved = t.effectsOf(() -> t.task(Tasks.RECONCILE_HR).run());
+        Effects moved = t.task(Tasks.RECONCILE_HR).run();
 
         Claims claims = moved.claims();
         claims.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
@@ -80,7 +80,7 @@ class EffectsScenarioTest {
     void whatIsNotClaimedFails(MidPointConfigTester t) {
         t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
 
-        Effects moved = t.effectsOf(() -> t.task(Tasks.RECONCILE_HR).run());
+        Effects moved = t.task(Tasks.RECONCILE_HR).run();
 
         Claims claims = moved.claims();
         claims.changes().of("e1001").single();
@@ -92,6 +92,21 @@ class EffectsScenarioTest {
         assertThatThrownBy(moved::none).isInstanceOf(AssertionError.class).hasMessageContaining("UserType e1001");
         assertThatThrownBy(() -> moved.changes().of("e1001").single().only("costCenter"))
                 .isInstanceOf(AssertionError.class).hasMessageContaining("but also: assignment");
+    }
+
+    @Test
+    void aBlockHasWhatEachOfItsVerbsDid(MidPointConfigTester t) {
+        t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
+
+        Effects[] reconciled = new Effects[1];
+        Effects block = t.effectsOf(() -> {
+            reconciled[0] = t.task(Tasks.RECONCILE_HR).run();
+            t.user("e1001").recompute();
+        });
+
+        reconciled[0].connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
+        block.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
+        block.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
     }
 
     @Test

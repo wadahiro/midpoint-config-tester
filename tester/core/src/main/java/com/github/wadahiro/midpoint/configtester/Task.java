@@ -47,22 +47,23 @@ public final class Task {
     /**
      * Runs the task now, as the GUI's "Run now", and waits for it and the work it starts; fails if the task fails,
      * on all or (unless {@link #allowPartialErrors()}) some of its objects. A recurring task, which the tester
-     * holds, runs this way, once.
+     * holds, runs this way, once. Returns what midPoint did ({@link Effects}):
+     * {@code t.task("Nightly renewal").run().verifyAll { ... }}.
      */
-    public Task run() {
+    public Effects run() {
         MidPoint mp = tester.deployment().api();
         if (stopAfter < 0) {
-            Internals.allowingPartialErrors(mp, partialErrorsAllowed, () -> mp.runTask(name));
-            return this;
+            return tester.effectsOf(() -> Internals.allowingPartialErrors(mp, partialErrorsAllowed,
+                    () -> mp.runTask(name)));
         }
         String oid = mp.find(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType.class, name).getOid();
         com.github.wadahiro.midpoint.tester.internal.TaskStop.stopAfter(oid, stopAfter);
         try {
-            Internals.allowingPartialErrors(mp, partialErrorsAllowed, () -> mp.runTask(name));
+            return tester.effectsOf(() -> Internals.allowingPartialErrors(mp, partialErrorsAllowed,
+                    () -> mp.runTask(name)));
         } finally {
             com.github.wadahiro.midpoint.tester.internal.TaskStop.clear();
         }
-        return new Task(tester, name, -1, partialErrorsAllowed);
     }
 
     /**
@@ -73,9 +74,8 @@ public final class Task {
      * bound tasks start on it as in midPoint. The reset after each test restores the task's state, so resume it where
      * the state the tests start from is set up.
      */
-    public Task resume() {
-        tester.deployment().api().resumeTask(name);
-        return this;
+    public Effects resume() {
+        return tester.effectsOf(() -> tester.deployment().api().resumeTask(name));
     }
 
     public String name() {

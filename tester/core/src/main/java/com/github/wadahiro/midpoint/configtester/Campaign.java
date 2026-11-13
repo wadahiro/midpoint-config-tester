@@ -64,29 +64,25 @@ public final class Campaign {
     // ---- moving on --------------------------------------------------------------------------------------------
 
     /** Opens the next stage (the first one of a campaign just created): its reviewers get their work items. */
-    public Campaign nextStage() {
-        tester.deployment().api().certification().openNextStage(oid);
-        return this;
+    public Effects nextStage() {
+        return tester.effectsOf(() -> tester.deployment().api().certification().openNextStage(oid));
     }
 
     /** Closes the current stage: the cases get the stage's outcome. */
-    public Campaign closeStage() {
-        tester.deployment().api().certification().closeCurrentStage(oid);
-        return this;
+    public Effects closeStage() {
+        return tester.effectsOf(() -> tester.deployment().api().certification().closeCurrentStage(oid));
     }
 
     /**
      * Starts the remediation after the last stage: with automated remediation, midPoint removes the revoked
      * assignments (waited for).
      */
-    public Campaign remediate() {
-        tester.deployment().api().certification().startRemediation(oid);
-        return this;
+    public Effects remediate() {
+        return tester.effectsOf(() -> tester.deployment().api().certification().startRemediation(oid));
     }
 
-    public Campaign close() {
-        tester.deployment().api().certification().closeCampaign(oid);
-        return this;
+    public Effects close() {
+        return tester.effectsOf(() -> tester.deployment().api().certification().closeCampaign(oid));
     }
 
     // ---- assertions -------------------------------------------------------------------------------------------

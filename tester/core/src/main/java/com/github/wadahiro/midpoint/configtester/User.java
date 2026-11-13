@@ -161,11 +161,11 @@ public final class User {
         return hasNoRole(role.on(tester.line()));
     }
 
-    public User assign(AssignableRef role) {
+    public Effects assign(AssignableRef role) {
         return assign(role.on(tester.line()));
     }
 
-    public User unassign(AssignableRef role) {
+    public Effects unassign(AssignableRef role) {
         return unassign(role.on(tester.line()));
     }
 
@@ -301,35 +301,36 @@ public final class User {
 
     // ---- changes ----------------------------------------------------------------------------------------------
 
-    /** Assigns the role (or org, service) of this name, as an administrator in the GUI would. */
-    public User assign(String role) {
-        tester.deployment().api().assign(UserType.class, name, role);
-        return this;
+    /**
+     * Assigns the role (or org, service) of this name, as an administrator in the GUI would; returns what midPoint did
+     * ({@link Effects}): claim what it derived (the accounts, their attributes, the mails), not the assignment the test
+     * made.
+     */
+    public Effects assign(String role) {
+        return tester.effectsOf(() -> tester.deployment().api().assign(UserType.class, name, role));
     }
 
-    public User unassign(String role) {
-        tester.deployment().api().unassign(UserType.class, name, role);
-        return this;
+    public Effects unassign(String role) {
+        return tester.effectsOf(() -> tester.deployment().api().unassign(UserType.class, name, role));
     }
 
     /**
      * Sets the user's password, as an administrator in the GUI would; midPoint checks it against the password policy
      * of the user's security policy (a value that violates it fails: {@link MidPointConfigTester#expectFailure}).
      */
-    public User setPassword(String password) {
+    public Effects setPassword(String password) {
         com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType value =
                 new com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType();
         value.setClearValue(password);
-        tester.deployment().api().modify(UserType.class, name, ItemPath.create(UserType.F_CREDENTIALS,
-                com.evolveum.midpoint.xml.ns._public.common.common_3.CredentialsType.F_PASSWORD,
-                com.evolveum.midpoint.xml.ns._public.common.common_3.PasswordType.F_VALUE), value);
-        return this;
+        return tester.effectsOf(() -> tester.deployment().api().modify(UserType.class, name,
+                ItemPath.create(UserType.F_CREDENTIALS,
+                        com.evolveum.midpoint.xml.ns._public.common.common_3.CredentialsType.F_PASSWORD,
+                        com.evolveum.midpoint.xml.ns._public.common.common_3.PasswordType.F_VALUE), value));
     }
 
-    /** Recomputes the user, as the GUI's "Recompute". */
-    public User recompute() {
-        tester.deployment().api().recompute(UserType.class, name);
-        return this;
+    /** Recomputes the user, as the GUI's "Recompute"; {@code t.user("jdoe").recompute().none()}: it changed nothing. */
+    public Effects recompute() {
+        return tester.effectsOf(() -> tester.deployment().api().recompute(UserType.class, name));
     }
 
     // ---- why ------------------------------------------------------------------------------------------------

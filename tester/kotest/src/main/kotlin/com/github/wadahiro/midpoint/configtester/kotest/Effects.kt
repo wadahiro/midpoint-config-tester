@@ -9,7 +9,7 @@ import com.github.wadahiro.midpoint.configtester.Effects
  * ([Claims.verifyAll]).
  *
  * ```
- * t.effectsOf { t.task("Nightly renewal").run() }.verifyAll {
+ * t.task("Nightly renewal").run().verifyAll {
  *     changes().of("jdoe").single().only("activation/validTo")
  *     mails().to("jdoe@example.com").withSubject("renewed").single()
  * }
