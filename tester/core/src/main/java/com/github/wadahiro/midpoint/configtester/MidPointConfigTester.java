@@ -35,7 +35,8 @@ public final class MidPointConfigTester {
     /** What the values read through the views came from, by the value read, in the order last read. */
     private final Map<String, Supplier<String>> reads = new LinkedHashMap<>();
     /** The users whose object the test read ({@link User#asObject()}), in the order last read. */
-    private final java.util.Set<String> objectsRead = new java.util.LinkedHashSet<>();
+    /** The focuses whose objects the test read ({@link Focus#asObject()}), by type and name, oldest first. */
+    private final java.util.Map<String, Focus<?>> objectsRead = new java.util.LinkedHashMap<>();
 
     private static final ThreadLocal<MidPointConfigTester> CURRENT = new ThreadLocal<>();
 
@@ -130,6 +131,33 @@ public final class MidPointConfigTester {
     /** A user by name (it need not exist: {@link User#doesNotExist()}). */
     public User user(String name) {
         return new User(this, name);
+    }
+
+    /** A role by name (it need not exist: {@link Role#doesNotExist()}). */
+    public Role role(String name) {
+        return new Role(this, name);
+    }
+
+    public Role role(com.github.wadahiro.midpoint.configtester.names.RoleRef role) {
+        return role(role.on(line()));
+    }
+
+    /** An org by name (it need not exist: {@link Org#doesNotExist()}). */
+    public Org org(String name) {
+        return new Org(this, name);
+    }
+
+    public Org org(com.github.wadahiro.midpoint.configtester.names.OrgRef org) {
+        return org(org.on(line()));
+    }
+
+    /** A service by name (it need not exist: {@link Service#doesNotExist()}). */
+    public Service service(String name) {
+        return new Service(this, name);
+    }
+
+    public Service service(com.github.wadahiro.midpoint.configtester.names.ServiceRef service) {
+        return service(service.on(line()));
     }
 
     /** midPoint's clock and the work that becomes due with time. */
@@ -355,9 +383,10 @@ public final class MidPointConfigTester {
         }
     }
 
-    void readObject(String user) {
-        objectsRead.remove(user);
-        objectsRead.add(user);
+    void readObject(Focus<?> focus) {
+        String key = focus.type.getSimpleName() + "/" + focus.name;
+        objectsRead.remove(key);
+        objectsRead.put(key, focus);
     }
 
     /**
@@ -387,16 +416,17 @@ public final class MidPointConfigTester {
             return "";
         }
         String haystack = actual.toLowerCase(java.util.Locale.ROOT);
-        List<String> users = new ArrayList<>(objectsRead);
-        java.util.Collections.reverse(users);
+        List<Focus<?>> focuses = new ArrayList<>(objectsRead.values());
+        java.util.Collections.reverse(focuses);
         StringBuilder sb = new StringBuilder();
-        for (String user : users) {
+        for (Focus<?> focus : focuses) {
+            String user = focus.name;
             for (String item : Why.targets(this, user)) {
                 List<String> values;
                 try {
-                    values = user(user).describedValues(item);
+                    values = focus.describedValues(item);
                 } catch (RuntimeException | AssertionError e) {
-                    // the user is gone: nothing to match
+                    // the focus is gone: nothing to match
                     continue;
                 }
                 boolean appears = values.stream().anyMatch(v -> v != null && !v.isEmpty()

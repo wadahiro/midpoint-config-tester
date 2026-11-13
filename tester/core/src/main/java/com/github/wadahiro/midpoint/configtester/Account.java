@@ -17,69 +17,30 @@ import com.github.wadahiro.midpoint.tester.internal.Deployment;
  * mappings behind the values it read. The assertions return the account for chaining and fail with what is there and
  * the mappings behind it.
  */
-public final class Account {
-
-    private final MidPointConfigTester tester;
-    private final Resource resource;
-    private final String name;
+public final class Account extends TargetObject {
 
     Account(MidPointConfigTester tester, Resource resource, String name) {
-        this.tester = tester;
-        this.resource = resource;
-        this.name = name;
+        super(tester, resource, null, name);
     }
 
-    public String name() {
-        return name;
-    }
-
-    /**
-     * The mappings that set the attribute of this account in this test (outbounds of the resource, constructions of
-     * roles), for the user who owns the account (any user when it has none), oldest first.
-     */
-    public Why why(String attribute) {
-        String owner = owner();
-        return Why.of(tester, attribute, owner, attribute + " of " + name + " on " + resource.name());
-    }
-
-    /** The name of the user the account's shadow is linked to; null when none. */
-    private String owner() {
-        String resourceOid = tester.deployment().resourceOid(resource.name());
-        if (resourceOid == null) {
-            return null;
-        }
-        try {
-            return tester.deployment().owner(resourceOid, name);
-        } catch (RuntimeException e) {
-            // only to narrow the mappings shown
-            return null;
-        }
-    }
-
+    @Override
     public Account exists() {
-        existing();
-        return this;
+        return (Account) super.exists();
     }
 
+    @Override
     public Account doesNotExist() {
-        Map<String, List<Object>> account = resource.system().account(name);
-        if (account != null) {
-            throw new AssertionError("Expected no account " + name + " on " + resource.name() + ", but it exists: "
-                    + new TreeMap<>(account));
-        }
-        return this;
+        return (Account) super.doesNotExist();
     }
 
-    /** The attribute has exactly these values, in any order (compared as text); no values: it has none. */
+    @Override
     public Account hasAttribute(String attribute, Object... expected) {
-        List<String> actual = attributeValues(attribute);
-        List<String> wanted = Values.texts(expected);
-        if (!Values.sameValues(wanted, actual)) {
-            throw new AssertionError("Account " + name + " on " + resource.name() + ": " + attribute + " expected "
-                    + wanted + " but was " + actual + "; attributes: " + new TreeMap<>(existing())
-                    + Why.mappings(tester, attribute, owner(), attribute + " on " + resource.name()));
-        }
-        return this;
+        return (Account) super.hasAttribute(attribute, expected);
+    }
+
+    @Override
+    public Account hasNoAttribute(String attribute) {
+        return (Account) super.hasNoAttribute(attribute);
     }
 
     /** {@link #hasAttribute(String, Object...)} by the generated attribute ({@code LdapAttrs.OU}). */
@@ -99,35 +60,8 @@ public final class Account {
         return why(resource.attribute(attribute));
     }
 
-    public Account hasNoAttribute(String attribute) {
-        return hasAttribute(attribute);
-    }
-
-    /** The values of the attribute as text. */
-    public List<String> values(String attribute) {
-        tester.readWhy(resource.name() + "/" + name + "/" + attribute, () -> why(attribute));
-        return attributeValues(attribute);
-    }
-
-    /** The value of a single-valued attribute as text; null when it has none. */
-    public String value(String attribute) {
-        List<String> values = values(attribute);
-        if (values.size() > 1) {
-            throw new AssertionError("Account " + name + " on " + resource.name() + ": " + attribute
-                    + " has several values " + values);
-        }
-        return values.isEmpty() ? null : values.get(0);
-    }
-
     public String value(AttributeRef attribute) {
         return value(resource.attribute(attribute));
-    }
-
-    /** All attributes, by name, as text, sorted by name. */
-    public Map<String, List<String>> attributes() {
-        Map<String, List<String>> out = new TreeMap<>();
-        existing().forEach((attribute, values) -> out.put(attribute, Values.texts(values)));
-        return out;
     }
 
     /**
@@ -158,10 +92,6 @@ public final class Account {
         tester.readWhy(resource.name() + "/" + name + "/status", () -> Why.of(tester,
                 "activation/administrativeStatus", owner, "the status of " + name + " on " + resource.name()));
         return status;
-    }
-
-    private List<String> attributeValues(String attribute) {
-        return Values.texts(existing().get(attribute));
     }
 
     /**
@@ -209,17 +139,23 @@ public final class Account {
 
     // ---- helpers ----------------------------------------------------------------------------------------------
 
-    private Map<String, List<Object>> existing() {
-        Map<String, List<Object>> account = resource.system().account(name);
-        if (account == null) {
-            List<String> names = resource.accounts();
-            throw new AssertionError("Expected an account " + name + " on " + resource.name() + ", but there is none;"
-                    + " accounts: " + (names.size() > 20 ? names.subList(0, 20) + "..." : names));
-        }
-        return account;
+    @Override
+    String what() {
+        return "Account";
     }
 
-    private boolean isMemberOf(String group) {
+    @Override
+    Map<String, List<Object>> read() {
+        return resource.system().account(name);
+    }
+
+    @Override
+    List<String> others() {
+        return resource.accounts();
+    }
+
+    /** Whether the account is a member of the group, as {@link #memberOf} says. */
+    boolean isMemberOf(String group) {
         Map<String, List<Object>> account = existing();
         List<Deployment.Association> associations = tester.deployment().associations(resource.name());
         if (associations.isEmpty()) {

@@ -324,6 +324,12 @@ public interface MidPoint {
     List<ShadowType> shadows(String resource, String name);
 
     /**
+     * The focuses whose {@code roleMembershipRef} points to the role, org or service of this OID with the default
+     * relation (members, not managers or owners), as the repository has them.
+     */
+    List<com.evolveum.midpoint.xml.ns._public.common.common_3.FocusType> members(String abstractRoleOid);
+
+    /**
      * The shadow linked to the focus (a user, else any focus, by name or OID) on the resource (by name or OID), as the
      * repository has it: situation, kind and intent, linked or dead, synchronization timestamps. Shadows the focus
      * links with any relation count (a dead one is linked as {@code related}); a live one is preferred to dead ones.

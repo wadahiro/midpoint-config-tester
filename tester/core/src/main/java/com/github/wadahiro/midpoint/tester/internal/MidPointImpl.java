@@ -1077,6 +1077,27 @@ final class MidPointImpl implements MidPoint {
     }
 
     @Override
+    public List<FocusType> members(String abstractRoleOid) {
+        return query("members of " + abstractRoleOid, (task, result) -> {
+            ObjectQuery query = prismContext().queryFor(FocusType.class)
+                    .item(FocusType.F_ROLE_MEMBERSHIP_REF).ref(abstractRoleOid)
+                    .build();
+            List<FocusType> out = new ArrayList<>();
+            for (PrismObject<FocusType> focus : harness.bean(RepositoryService.class)
+                    .searchObjects(FocusType.class, query, null, result)) {
+                // the relation is checked here: what a ref filter without one matches differs between repositories
+                boolean member = focus.asObjectable().getRoleMembershipRef().stream()
+                        .anyMatch(ref -> abstractRoleOid.equals(ref.getOid()) && (ref.getRelation() == null
+                                || "default".equals(ref.getRelation().getLocalPart())));
+                if (member) {
+                    out.add(focus.asObjectable());
+                }
+            }
+            return out;
+        });
+    }
+
+    @Override
     public List<ShadowType> shadows(String resource, String name) {
         String resourceOid = resourceOid(resource);
         return query("shadows " + name + " on " + resource, (task, result) -> {

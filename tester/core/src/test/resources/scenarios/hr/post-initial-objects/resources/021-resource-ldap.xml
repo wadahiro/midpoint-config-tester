@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     The directory as deployed (LDAP connector): accounts are inetOrgPerson under ou=people, department groups are
-    groupOfNames under ou=groups whose member attribute holds the account DNs. The generic LDAP connector has no
+    groupOfNames under ou=groups whose member attribute holds the account DNs; a project org gets a group of its own. The generic LDAP connector has no
     activation: the status is simulated in employeeType ("active" / "disabled"), following the user's effective status
     (so an account is disabled when the user's end date has passed). 4.0 format, read by every line.
     The tester keeps the LDAP connector and points it at an in-memory server (targets.LDAP in the manifest).
@@ -102,11 +102,18 @@
             <kind>entitlement</kind>
             <intent>group</intent>
             <objectClass>ri:groupOfNames</objectClass>
+            <!-- a focus's own group (a project org's, see 040-role-project.xml), named after the focus -->
             <attribute>
                 <ref>ri:dn</ref>
+                <outbound>
+                    <name>ldap-group-dn</name>
+                    <source><path>name</path></source>
+                    <expression><script><code>'cn=' + name + ',ou=groups,{{ldapBase}}'</code></script></expression>
+                </outbound>
             </attribute>
             <attribute>
                 <ref>ri:cn</ref>
+                <outbound><name>ldap-group-cn</name><strength>strong</strength><source><path>name</path></source></outbound>
             </attribute>
         </objectType>
     </schemaHandling>

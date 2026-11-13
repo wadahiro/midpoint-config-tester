@@ -30,6 +30,10 @@ public final class Resource {
         return name;
     }
 
+    MidPointConfigTester tester() {
+        return tester;
+    }
+
     /** Adds an account (a row, an entry) with these attributes, e.g. {@code add("1001", Map.of("firstName", "John"))}. */
     public Resource add(String account, Map<String, ?> attributes) {
         system().addAccount(account, attributes);
@@ -67,8 +71,8 @@ public final class Resource {
         String naming = namingAttribute();
         Object id = r.attributes().get(naming);
         if (id == null) {
-            throw new AssertionError("The row added to " + name + " has no value of its naming attribute " + naming
-                    + ": " + r.attributes().keySet());
+            throw new IllegalArgumentException("The row added to " + name + " has no value of its naming attribute "
+                    + naming + ": " + r.attributes().keySet());
         }
         Map<String, Object> attributes = new LinkedHashMap<>(r.attributes());
         attributes.remove(naming);
@@ -89,7 +93,7 @@ public final class Resource {
     String namingAttribute() {
         String naming = tester.deployment().namingAttribute(name);
         if (naming == null) {
-            throw new AssertionError("No resource " + name + " in the deployment (resources: "
+            throw new IllegalArgumentException("No resource " + name + " in the deployment (resources: "
                     + tester.deployment().resources() + ")");
         }
         return naming;
@@ -130,12 +134,34 @@ public final class Resource {
         return system().accountNames();
     }
 
+    /** A group of the system (the first object class of the resource that is not its accounts'); it need not exist. */
+    public Group group(String group) {
+        return new Group(tester, this, null, group);
+    }
+
+    /** The names of the groups on the system now. */
+    public List<String> groups() {
+        return system().groupNames();
+    }
+
+    /**
+     * An object of any class of the system, by the name the resource uses for the class ({@code "groupOfNames"}, as in
+     * its {@code schemaHandling}); it need not exist.
+     */
+    public TargetObject object(String objectClass, String name) {
+        return new TargetObject(tester, this, objectClass, name);
+    }
+
+    public List<String> objects(String objectClass) {
+        return system().objectNames(objectClass);
+    }
+
     /** The PoC's view of the system (groups, other object classes, passwords). */
     public TargetSystem system() {
         try {
             return tester.deployment().api().target(name);
         } catch (IllegalArgumentException | AssertionError e) {
-            throw new AssertionError("No resource " + name + " in the deployment: " + e.getMessage(), e);
+            throw new IllegalArgumentException("No resource " + name + " in the deployment: " + e.getMessage(), e);
         }
     }
 }

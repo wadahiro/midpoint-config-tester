@@ -108,34 +108,7 @@ mail: { redirect: true }                # midPoint's mail servers -> the tester'
 ```
 
 A file that midPoint exports, `<object xsi:type="c:RoleType">`, is read as the `<role>` it is (resources moved to
-their stand-ins, typed names, expression places). A task the deployment ships suspended is resumed with
-`t.task(name).resume()` (`mp.resumeTask`), as an operator does. The tester holds the recurring tasks (loosely bound
-ones, the usual kind): they run only by `t.task(name).run()` or `t.clock().runDue()`, so a resume does not start one
-(`TaskRunsTest.aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`); the due tasks then run it when midPoint would. A
-task suspended after it was runnable keeps its standard trigger paused, and resuming it fires a run missed meanwhile at
-once when `misfireAction` is `executeImmediately` (the default), at its next regular time with `reschedule`; a trigger
-midPoint builds anew on the resume (a task deployed suspended has none; 4.4 re-creates the one of an activity task)
-starts now: an interval task at once, a cron task at its next cron time, whatever the misfire action
-(`TaskRunsTest.aRunMissedWhileSuspendedIsDueAtOnceByDefault`, `…WaitsForTheNextCronTimeWithReschedule`). Quartz's
-misfire threshold (60 s) is not applied: a test moves the clock further. Single-run and tightly bound tasks are not
-held: a suspended single-run task runs on the resume, within the call
-(`TaskRunsTest.aSuspendedSingleRunTaskRunsOnTheResume`); so does a tightly bound one, whose thread then sleeps until its
-next run: the driver calls do not wait for it, and the reset after the test suspends it (`ResumedTasksTest`). Both
-follow midPoint's clock only, the time a test sets: to run the task whatever its schedule, a test calls
-`t.task(name).run()` after the resume; `t.clock().runDue()` says whether midPoint would start it by then, so a test that
-uses it fixes the clock (`t.clock().startAt`, `stopAt`, `advanceTo`), or the due tasks on the real time may cross a cron
-time. A run of a task still suspended fails, saying so (`SuspendedTaskScenarioTest`). The reset after each test restores
-the task's state with the rest, so resume it where the state the tests start from is set up (a container of a spec), not
-in an earlier test.
-`t.task(name).stopAfter(n).run()` stops the run after n items, as an operator's Suspend stops a task in the middle:
-midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the task's progress, or the items
-an activity processed on 4.4+), so a handler or a script that checks it between items ends there and records what it
-did; the task itself is left as it was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
-`t.task(name).run()` fails when the run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying
-the last object that failed and why; `t.task(name).allowPartialErrors().run()` passes a run that failed on some objects,
-as tasks often do in production, and still fails one that could not run (`TaskErrorsTest`). `t.clock().runDue()` and its
-scanners fail alike, the due tasks after they all ran; `t.clock().allowPartialErrors().runDue()` passes their partial
-errors.
+their stand-ins, typed names, expression places).
 
 Once per JVM the tester starts the line's midPoint, imports **the line's initial objects** as midPoint does on its
 first start (system configuration, administrator, End user and Approver roles, default security and password
@@ -210,6 +183,94 @@ t.user("jack").hasNoRole("Auditor");
 ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
 out.hasRows(2).hasRowWith("User", "jack");
 ```
+
+### Three rules, and the shapes of the calls
+
+1. **A verb returns what midPoint did.** `assign`, `recompute`, `run`, `runDue`, `approve`, `closeStage`... return
+   the `Effects` of their call ([What a block did](#what-a-block-did)). Claim what midPoint derived (accounts,
+   attributes, mails, other objects), not what the test passed in: `assign("Auditor")` followed by
+   `hasRole("Auditor")` proves nothing about the configuration.
+2. **A state midPoint would not make now is written with `t.raw()`** ([Starting states midPoint would not
+   make](#starting-states-midpoint-would-not-make-traw)): a value an earlier version left, an account linked but gone.
+3. **In a Kotest spec, a container whose body changed midPoint checks it in its first test, a `precondition`**
+   ([Kotest specs](#kotest-specs-the-same-in-kotlin)).
+
+| Call | What it is | Returns, fails with |
+|---|---|---|
+| `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember` | a claim about midPoint now | its subject; `AssertionError` |
+| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members` | a read, for AssertJ | the value |
+| `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
+| `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
+| `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` (and `ignored` for effects) |
+| `effects.claims()` | claims nothing until `verifyAll()` | `Claims` |
+
+Two verbs return what they make, not `Effects`: `t.certification(name).start()` its `Campaign`, and
+`t.report(name).run()` its `ReportOutput` (an export task runs: it is no read). Their effects: `effectsOf { }`.
+
+The exceptions say whose mistake it is: `AssertionError`, midPoint is not as the test claims;
+`IllegalArgumentException`, the test names what the deployment does not have (a resource, an item, an attribute);
+`IllegalStateException`, the tester could not make the state the test asked for (a raw write the repository refused or
+did not keep), or a spec breaks a rule of its structure (a missing precondition).
+
+### Users, roles, orgs and services
+
+`t.user(name)`, `t.role(name)`, `t.org(name)` and `t.service(name)` (or the generated `Users.X`, `Roles.X`, `Orgs.X`,
+`Services.X`) are focuses alike: `exists`, `hasItem`, `values`, `hasRole` (any assignment: a role, an org, a service,
+an archetype), `isEnabled`, `asObject`, `why`, and the verbs `assign` (with a relation too:
+`assign("IT", SchemaConstants.ORG_MANAGER)`), `unassign`, `recompute`. A role, org or service has its `members()`
+(`roleMembershipRef` with the default relation: not its managers or owners), an org its `parents()`
+(`FocusScenarioTest`).
+
+What a focus links on a resource is a projection, keyed as midPoint keys one: kind, intent and tag.
+`projections(resource)` selects them all, `accounts(resource)` and `entitlements(resource)` those of the kind; a
+selection narrows (`intent`, `tag`, `named`) and ends in `single()`, `exactly(n)` or `none()`, which check the
+repository: the links and their live shadows. A projection is in two places, `shadow()` in the repository and
+`onTarget()` on the target system, read as its shadow's kind and object class say: an `Account`, a `Group` (with
+its `members()`, as the resource's associations store them) or a `TargetObject` of its class. `hasAccountOn` and
+`hasEntitlementOn`, with an intent or without, claim both places. A failure lists every shadow the focus links on
+the resource and why the selection left it out (`RawScenarioTest`):
+
+```java
+t.user("jdoe").hasAccountOn("Directory", "admin").hasNoAccountOn("Directory", "service");
+t.user("jdoe").accounts("Directory").intent("admin").single().onTarget().hasAttribute("description", "admin");
+t.user("jdoe").accounts("Directory").intent("default").tag("tenant-b").none();   // accounts of one intent, by tag
+t.role("Sales").hasEntitlementOn("Directory");
+t.role("Sales").entitlement("Directory").onTarget().hasMember("uid=jdoe,ou=people,dc=example,dc=com");
+t.target("Directory").group("cn=sales,ou=groups,dc=example,dc=com").hasMember("uid=jdoe,ou=people,dc=example,dc=com");
+// User jdoe: expected one account on Directory, but links 2 (narrow them: intent, tag or named); linked on
+// Directory: jdoe (account/default), jdoe-admin (account/admin), sales (entitlement/group; not an account)
+```
+
+### Tasks
+
+A task the deployment ships suspended is resumed with
+`t.task(name).resume()` (`mp.resumeTask`), as an operator does. The tester holds the recurring tasks (loosely bound
+ones, the usual kind): they run only by `t.task(name).run()` or `t.clock().runDue()`, so a resume does not start one
+(`TaskRunsTest.aRecurringTaskAddedAfterTheClockHasMovedIsHeldToo`); the due tasks then run it when midPoint would. A
+task suspended after it was runnable keeps its standard trigger paused, and resuming it fires a run missed meanwhile at
+once when `misfireAction` is `executeImmediately` (the default), at its next regular time with `reschedule`; a trigger
+midPoint builds anew on the resume (a task deployed suspended has none; 4.4 re-creates the one of an activity task)
+starts now: an interval task at once, a cron task at its next cron time, whatever the misfire action
+(`TaskRunsTest.aRunMissedWhileSuspendedIsDueAtOnceByDefault`, `…WaitsForTheNextCronTimeWithReschedule`). Quartz's
+misfire threshold (60 s) is not applied: a test moves the clock further. Single-run and tightly bound tasks are not
+held: a suspended single-run task runs on the resume, within the call
+(`TaskRunsTest.aSuspendedSingleRunTaskRunsOnTheResume`); so does a tightly bound one, whose thread then sleeps until its
+next run: the driver calls do not wait for it, and the reset after the test suspends it (`ResumedTasksTest`). Both
+follow midPoint's clock only, the time a test sets: to run the task whatever its schedule, a test calls
+`t.task(name).run()` after the resume; `t.clock().runDue()` says whether midPoint would start it by then, so a test that
+uses it fixes the clock (`t.clock().startAt`, `stopAt`, `advanceTo`), or the due tasks on the real time may cross a cron
+time. A run of a task still suspended fails, saying so (`SuspendedTaskScenarioTest`). The reset after each test restores
+the task's state with the rest, so resume it where the state the tests start from is set up (a container of a spec), not
+in an earlier test.
+`t.task(name).stopAfter(n).run()` stops the run after n items, as an operator's Suspend stops a task in the middle:
+midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the task's progress, or the items
+an activity processed on 4.4+), so a handler or a script that checks it between items ends there and records what it
+did; the task itself is left as it was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
+`t.task(name).run()` fails when the run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying
+the last object that failed and why; `t.task(name).allowPartialErrors().run()` passes a run that failed on some objects,
+as tasks often do in production, and still fails one that could not run (`TaskErrorsTest`). `t.clock().runDue()` and its
+scanners fail alike, the due tasks after they all ran; `t.clock().allowPartialErrors().runDue()` passes their partial
+errors.
 
 ### What the GUI shows a user
 
@@ -468,7 +529,9 @@ Every verb that makes midPoint work returns the `Effects` of its call: `User.ass
 an assertion does not chain onto a verb. `hasRole` and `hasItem` are for a precondition and for what midPoint derived
 elsewhere (a role an org membership brings). `effectsOf` is for a block of several calls. Calls that are no work of
 midPoint keep returning their subject: the clock's `advance`/`advanceTo`/`stopAt`, the writes to a source or target
-system (`t.source(...).add`), `t.raw()`, and a report's `run()` (a read).
+system (`t.source(...).add`) and `t.raw()`. Two verbs return what they make instead: `t.certification(name).start()`
+its `Campaign`, `t.report(name).run()` its `ReportOutput` (an export task runs: in a Kotest container's body it is a
+change, which a precondition then checks); `effectsOf { }` gives their effects.
 
 ```kotlin
 t.user("jack").recompute().none()
@@ -486,7 +549,7 @@ t.user("jack").hasNoRole("Privileged Access")                         // not bef
 (`VerbEffectsSpec`, `scenarios/access`.)
 
 A check that something did not happen, and a check of what happened that also proves nothing else did, are
-verifications: in `claims()` (Kotlin: `effects.verifyAll { ... }`) each check claims what it selects (`exactly`,
+verifications: in `claims()` (Kotest: `effects.verifyAll { ... }`, from `midpoint-config-tester-kotest`) each check claims what it selects (`exactly`,
 `none`, `single`, and `ignored()` for what the test does not care about), and `verifyAll()` fails listing every
 changed object, connector write, mail and error logged that no check claimed. `none()` is a verification without
 checks. Connector reads, logs below ERROR and audit records need no claim.
@@ -659,8 +722,8 @@ assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).
 
 | Type | Values |
 |---|---|
-| `User` | `asObject()` (the `UserType`), `values(item)` (an item by path or typed name, e.g. an extension item) |
-| `Account` | `value(attribute)`, `values(attribute)`, `attributes()`, `groups()`, `status()` |
+| `User`, `Role`, `Org`, `Service` | `asObject()` (the `UserType`...), `values(item)` (an item by path or typed name, e.g. an extension item), `members()`, `parents()` (an org), `projections(resource).names()`/`list()`/`count()` |
+| `Account`, `Group`, `TargetObject` | `value(attribute)`, `values(attribute)`, `attributes()`; an account's `groups()`, `status()`; a group's `members()` |
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |
 
@@ -737,7 +800,7 @@ behaviour passes. `t.raw()` writes past the model (no mappings, no provisioning,
 back what it wrote:
 
 ```java
-t.raw().user("jdoe").set("extension/token", "legacy-1");                 // add, delete: the other values
+t.raw().user("jdoe").set("extension/token", "legacy-1");                 // addValues, removeValues: keep others
 t.raw().user("jdoe").link("Directory", "legacy-1", s -> s.tag("legacy")); // target object, shadow and link
 t.target("Directory").delete("legacy-1");                                // linked, but gone from the target
 t.raw().user("jdoe").unlink("Directory", "legacy-1");                    // the link only
@@ -750,7 +813,10 @@ have it; the shadow of the resource's object type, `kind(...)`/`intent(...)` or 
 target system's identifiers); the others write one each, so that the inconsistent states are made by combining them.
 The read side names the place it reads, without provisioning (which would act on what it finds):
 `t.user("jdoe").account("Directory").shadow().hasTag("legacy")`, `...onTarget().exists()`,
-`t.user("jdoe").accounts("Directory")` (`RawScenarioTest`, on the mirror and on LDAP).
+`t.user("jdoe").accounts("Directory").names()` (`RawScenarioTest`, on the mirror and on LDAP). `hasAccountOn("Directory")`
+claims all three: the link, its live shadow and the object on the target system. A role's group is linked alike:
+`t.raw().role("Sales").link("Directory", "cn=sales,ou=groups,dc=example,dc=com", s -> s.kind("entitlement").intent("group"))`;
+`t.raw()` has `user`, `role`, `org` and `service` by name.
 
 ### Nested classes: tests that share a prefix
 
@@ -767,9 +833,9 @@ prefix and adds its own.
 class CampaignTest {
     @Nested @TestInstance(Lifecycle.PER_CLASS)          // PER_CLASS: a @BeforeAll on the instance, fields it sets
     class TheCampaignHasStarted {
-        AccessCertificationCampaignType campaign;
+        Campaign campaign;
 
-        @BeforeAll void start(MidPointConfigTester t) { campaign = startCampaign(t); }   // once
+        @BeforeAll void start(MidPointConfigTester t) { campaign = t.certification("Role assignments").start(); }  // once
 
         @Test void aReminder22DaysBeforeTheDeadline(MidPointConfigTester t) { ... }
         @Test void anUndecidedCaseStaysAfterTheDeadline(MidPointConfigTester t) { ... }
@@ -777,8 +843,8 @@ class CampaignTest {
         @Nested @TestInstance(Lifecycle.PER_CLASS)
         class ARevocationPastTheDeadline {
             @BeforeAll void revoke(MidPointConfigTester t) {                            // once, on the started one
-                decide(t, campaign, "revoke");
-                pastTheDeadline(t, campaign);
+                campaign.reviews().forUser("jdoe").forRole("Auditor").single().revoke(t.actor("sec-officer"));
+                t.clock().advance("P30D").runDue();                                     // past the deadline
             }
 
             @Test void theCampaignIsClosed(MidPointConfigTester t) { ... }
@@ -810,14 +876,16 @@ values, and tests are named by sentences.
 @MidPointConfigTest
 class CampaignSpec : MidPointConfigSpec({
     "the campaign has started" - {
-        val campaign = t.startCampaign()             // once
-        precondition("the campaign is in its first stage") { ... }
+        val campaign = t.certification("Role assignments").start()          // once
+        precondition("the campaign is in its first stage") { campaign.isInStage(1) }
         "a reminder 22 days before the deadline" { ... }
         "an undecided case stays after the deadline" { ... }
         "a revocation past the deadline" - {
-            t.decide(campaign, "revoke")             // once, on the started campaign
-            t.clock().advanceTo(campaign.deadline).runDue()
-            precondition("the revocation is decided, the deadline passed") { ... }
+            campaign.reviews().forUser("jdoe").forRole("Auditor").single().revoke(t.actor("sec-officer"))
+            t.clock().advance("P30D").runDue()                               // once, on the started campaign
+            precondition("the revocation is decided") {
+                campaign.reviews().forUser("jdoe").forRole("Auditor").single().response() shouldBe "revoke"
+            }
             "the campaign is closed" { ... }
             "the report lists the revocation" { ... } // from the revocation, not after the test above
         }
@@ -836,7 +904,8 @@ class CampaignSpec : MidPointConfigSpec({
   tests after it depend on. When it fails, the container's other tests fail without running (they are not skipped),
   each by its name, the nested ones too: a test of a rule cannot pass on a state the body never made. A first test
   that is no precondition after such a body fails, as a precondition that is not the first test or that changes
-  midPoint (`PreconditionSpec`). A body that only reads needs none; `steps` follow the same rule.
+  midPoint (`PreconditionSpec`). A body that only reads needs none; `steps` follow the same rule. The test is named
+  `precondition: <name>` in the reports and for a filter.
 - Work in a container between its tests would be undone after the next test: the next test fails and says so (put it
   before the first test, in a container of its own, or use `steps`).
 - Kotlin values the prefix computed (`campaign` above) are not checkpointed, as the fields of a nested class are not;
@@ -844,7 +913,9 @@ class CampaignSpec : MidPointConfigSpec({
 - Set up: the parent POMs manage Kotlin and Kotest and run `*Spec` classes; a repository adds, as test dependencies,
   `midpoint-config-tester-kotest`, `io.kotest:kotest-runner-junit5-jvm`, `org.jetbrains.kotlin:kotlin-stdlib` and the
   `kotlin-maven-plugin` (`examples/kotest-scenarios`, on 4.0 with JDK 11 and on 4.8). IntelliJ needs the Kotest plugin
-  to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name.
+  to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name. `precondition`, `steps` and
+  `verifyAll { }` are functions of the Kotest layer, imported from `com.github.wadahiro.midpoint.configtester.kotest`
+  as `MidPointConfigSpec` is.
 
 ## The low-level API (`t.midpoint()`)
 
@@ -927,7 +998,8 @@ written to `<workDir>/tester-resources/`.
 (from the stored `<schema>` of a definition exported from midPoint; without one, the object classes and attributes
 `schemaHandling` uses, as strings) and its activation and password capabilities. A `TargetSystem` reads and changes it
 with the real resource's names: objects by their naming attribute (`icfs:name`, or e.g. the DN), attributes by local
-name. Validity dates (ConnId's `__ENABLE_DATE__` / `__DISABLE_DATE__`, midPoint's `activation/validFrom` / `validTo`)
+name. A test's write of an attribute the object class does not have (`t.target(...).add`, `modify`) is refused
+(`IllegalArgumentException`): midPoint would never see it, so it is a typo of the test. Validity dates (ConnId's `__ENABLE_DATE__` / `__DISABLE_DATE__`, midPoint's `activation/validFrom` / `validTo`)
 are there when the native capabilities list them, or, without those, when `schemaHandling` maps them; they are
 attributes in milliseconds (`attribute(account, "__ENABLE_DATE__")`). A status simulated with an attribute
 (`capabilities/configured/activation/status/attribute`) is that attribute, as on the real connector: the mirror then

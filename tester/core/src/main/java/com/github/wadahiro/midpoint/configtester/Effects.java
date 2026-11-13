@@ -28,7 +28,7 @@ import com.github.wadahiro.midpoint.tester.internal.EffectsCapture;
  * it, not what the test passed in.
  *
  * <p>Read it ({@code effects.mails().to("jdoe@example.com").single()}), or verify it exhaustively: in
- * {@link #claims()} (Kotlin: {@code effects.verifyAll { ... }}) each check claims what it selects, and
+ * {@link #claims()} (Kotest: {@code effects.verifyAll { ... }}) each check claims what it selects, and
  * {@link Claims#verifyAll()} fails if a changed object, a connector write, a mail or an error logged was not
  * claimed, so a check of what should happen also proves nothing else did. {@link #none()} is a verification
  * without checks: the block changed nothing.</p>

@@ -86,6 +86,8 @@ class HrLifecycleScenarioTest {
         assertThat(ldap.value(LdapAttrs.OU)).isEqualTo("Sales");
         assertThat(ldap.value(LdapAttrs.MAIL)).isEqualTo("e1001@example.com");
         assertThat(ldap.groups()).containsExactly(SALES);
+        t.target(Resources.LDAP).group(SALES).exists().hasMember(JOHN).hasAttribute("cn", "sales");
+        assertThat(t.target(Resources.LDAP).group(IT).members()).doesNotContain(JOHN);
         assertThat(ldap.status()).isEqualTo(ENABLED);
         assertThat(t.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
 

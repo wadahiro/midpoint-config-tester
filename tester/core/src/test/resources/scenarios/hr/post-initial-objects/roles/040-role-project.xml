@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The metarole of the project orgs: a project (an org that has this role) gets a group of its own on LDAP, and the
+    members of the project (the users assigned the org) get the membership of that group on their LDAP account.
+-->
+<role oid="20000000-0000-0000-0000-00000000c010"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <name>Project</name>
+    <inducement>
+        <!-- to the project itself -->
+        <construction>
+            <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+            <kind>entitlement</kind>
+            <intent>group</intent>
+        </construction>
+    </inducement>
+    <inducement>
+        <!-- to the members of the project: the group the project links -->
+        <construction>
+            <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+            <kind>account</kind>
+            <intent>default</intent>
+            <association>
+                <ref>ri:group</ref>
+                <outbound>
+                    <name>project-group</name>
+                    <expression>
+                        <associationFromLink>
+                            <projectionDiscriminator>
+                                <kind>entitlement</kind>
+                                <intent>group</intent>
+                            </projectionDiscriminator>
+                        </associationFromLink>
+                    </expression>
+                </outbound>
+            </association>
+        </construction>
+        <order>2</order>
+    </inducement>
+</role>

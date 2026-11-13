@@ -19,7 +19,7 @@ import com.github.wadahiro.midpoint.tester.Mail;
  * claims.verifyAll();
  * }</pre>
  *
- * In Kotlin: {@code effects.verifyAll { changes().of("jdoe").single(); ... }}. Connector reads, logs below ERROR and
+ * In a Kotest spec: {@code effects.verifyAll { changes().of("jdoe").single(); ... }}. Connector reads, logs below ERROR and
  * audit records need no claim.
  */
 public final class Claims {

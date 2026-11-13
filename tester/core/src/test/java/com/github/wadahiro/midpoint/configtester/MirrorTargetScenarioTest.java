@@ -42,6 +42,8 @@ class MirrorTargetScenarioTest {
                 .hasAttribute(LdapAttrs.CN, "John Doe")
                 .hasAttribute(LdapAttrs.OU, "Sales")
                 .memberOf(SALES).notMemberOf(IT).isEnabled();
+        t.target(Resources.LDAP).group(SALES).hasMember(JOHN);
+        t.target(Resources.LDAP).group(IT).hasNoMember(JOHN);
         assertThat(t.target(Resources.LDAP).accounts()).containsExactly(JOHN);
 
         t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");

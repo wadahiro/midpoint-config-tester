@@ -69,7 +69,22 @@ public final class Raw {
         return new RawObject(UserType.class, name);
     }
 
-    /** The existing object of the type by name (a role, an org, a service...). */
+    /** The existing role by name. */
+    public RawObject role(String name) {
+        return new RawObject(com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType.class, name);
+    }
+
+    /** The existing org by name. */
+    public RawObject org(String name) {
+        return new RawObject(com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType.class, name);
+    }
+
+    /** The existing service by name. */
+    public RawObject service(String name) {
+        return new RawObject(com.evolveum.midpoint.xml.ns._public.common.common_3.ServiceType.class, name);
+    }
+
+    /** The existing object of the type by name (an archetype, a task...). */
     public RawObject object(Class<? extends ObjectType> type, String name) {
         return new RawObject(type, name);
     }
@@ -143,8 +158,8 @@ public final class Raw {
             return this;
         }
 
-        /** Adds the values to the item. */
-        public RawObject add(String path, Object... values) {
+        /** Adds the values to the item, keeping the ones it has. */
+        public RawObject addValues(String path, Object... values) {
             ObjectType object = existing();
             Located item = located(object.asPrismObject(), path);
             Object[] typed = item.typed(values);
@@ -157,8 +172,8 @@ public final class Raw {
             return this;
         }
 
-        /** Deletes the values from the item. */
-        public RawObject delete(String path, Object... values) {
+        /** Removes the values from the item, keeping the others. */
+        public RawObject removeValues(String path, Object... values) {
             ObjectType object = existing();
             Located item = located(object.asPrismObject(), path);
             Object[] typed = item.typed(values);
@@ -166,7 +181,7 @@ public final class Raw {
                     .asItemDeltas()));
             List<String> now = values(path);
             if (Values.texts(values).stream().anyMatch(now::contains)) {
-                throw unlike("delete " + Values.texts(values) + " from " + path + " of " + name, now);
+                throw unlike("remove " + Values.texts(values) + " from " + path + " of " + name, now);
             }
             return this;
         }
