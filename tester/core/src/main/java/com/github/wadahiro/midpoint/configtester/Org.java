@@ -23,6 +23,21 @@ public final class Org extends AbstractRole<Org> {
     }
 
     @Override
+    NewOrg newFocus() {
+        return new NewOrg(tester, name);
+    }
+
+    /**
+     * Adds the org through the model with what the spec gives it besides its name, e.g.
+     * {@code t.org("apollo").add(o -> o.parent("IT").assign("Project"))}; returns what midPoint did.
+     */
+    public Effects add(java.util.function.Consumer<NewOrg> spec) {
+        NewOrg focus = newFocus();
+        spec.accept(focus);
+        return add(focus);
+    }
+
+    @Override
     public OrgType asObject() {
         return (OrgType) super.asObject();
     }

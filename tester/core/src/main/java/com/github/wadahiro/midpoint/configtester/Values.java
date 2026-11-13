@@ -27,8 +27,14 @@ final class Values {
             return null;
         }
         if (value instanceof com.evolveum.midpoint.prism.PrismContainerValue) {
+            com.evolveum.midpoint.prism.PrismContainerValue<?> container =
+                    (com.evolveum.midpoint.prism.PrismContainerValue<?>) value;
+            if (container.getCompileTimeClass() == null) {
+                // a structured item of the extension schema: no Java class
+                return structure(container);
+            }
             // the output of a mapping to a container (an assignment, the activation)
-            Object containerable = ((com.evolveum.midpoint.prism.PrismContainerValue<?>) value).asContainerable();
+            Object containerable = container.asContainerable();
             return containerable != null ? text(containerable) : value.toString();
         }
         if (value instanceof com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentType
@@ -56,6 +62,39 @@ final class Values {
             }
         }
         return value.toString();
+    }
+
+    /**
+     * A container value of the extension schema as text: its items in the order of its definition, each value as
+     * {@code name value}, a container in it the same: {@code (street Main, city Prague, phone (kind mobile, number 1))}.
+     */
+    static String structure(com.evolveum.midpoint.prism.PrismContainerValue<?> container) {
+        List<com.evolveum.midpoint.prism.Item<?, ?>> items = new ArrayList<>();
+        com.evolveum.midpoint.prism.ComplexTypeDefinition definition = container.getComplexTypeDefinition();
+        if (definition != null) {
+            for (com.evolveum.midpoint.prism.ItemDefinition<?> item : definition.getDefinitions()) {
+                com.evolveum.midpoint.prism.Item<?, ?> found = container.findItem(item.getItemName());
+                if (found != null) {
+                    items.add(found);
+                }
+            }
+        }
+        for (com.evolveum.midpoint.prism.Item<?, ?> item : container.getItems()) {
+            if (!items.contains(item)) {
+                items.add(item);
+            }
+        }
+        List<String> parts = new ArrayList<>();
+        for (com.evolveum.midpoint.prism.Item<?, ?> item : items) {
+            for (com.evolveum.midpoint.prism.PrismValue value : item.getValues()) {
+                Object real = value instanceof com.evolveum.midpoint.prism.PrismPropertyValue
+                        ? ((com.evolveum.midpoint.prism.PrismPropertyValue<?>) value).getValue()
+                        : value instanceof com.evolveum.midpoint.prism.PrismReferenceValue
+                        ? ((com.evolveum.midpoint.prism.PrismReferenceValue) value).getOid() : value;
+                parts.add(item.getElementName().getLocalPart() + " " + text(real));
+            }
+        }
+        return "(" + String.join(", ", parts) + ")";
     }
 
     static List<String> texts(Collection<?> values) {

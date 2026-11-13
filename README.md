@@ -199,7 +199,7 @@ out.hasRows(2).hasRowWith("User", "jack");
 |---|---|---|
 | `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember` | a claim about midPoint now | its subject; `AssertionError` |
 | `values`, `value`, `asObject`, `state`, `tag`, `names`, `members` | a read, for AssertJ | the value |
-| `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
+| `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` (and `ignored` for effects) |
 | `effects.claims()` | claims nothing until `verifyAll()` | `Claims` |
@@ -220,6 +220,53 @@ an archetype), `isEnabled`, `asObject`, `why`, and the verbs `assign` (with a re
 `assign("IT", SchemaConstants.ORG_MANAGER)`), `unassign`, `recompute`. A role, org or service has its `members()`
 (`roleMembershipRef` with the default relation: not its managers or owners), an org its `parents()`
 (`FocusScenarioTest`).
+
+A test adds, modifies and deletes a focus through the model, as an administrator in the GUI, and gets what midPoint
+did (`FocusWriteScenarioTest`):
+
+```java
+t.user("jdoe").add(u -> u.givenName("John").familyName("Doe").assign(Roles.SALES)
+        .assign("IT", SchemaConstants.ORG_MANAGER).set(UserExtension.SITE, "Prague")
+        .validTo(Instant.parse("2030-04-01T00:00:00Z")).password("Secret.123"));
+t.org("apollo").add(o -> o.parent("Projects").assign("Project"));   // the Project metarole gives it its LDAP group
+t.role("Directory admin").add();                                     // the name only: the templates do the rest
+t.user("jdoe").modify(m -> m.set("telephoneNumber", "+1 555").addValues("extension/tags", "vip")
+        .removeValues("extension/tags", "new").assign("Auditor").unassign(Roles.SALES));   // one delta
+t.user("jdoe").modify(m -> m.set("costCenter", "IT").reconcile());   // reconcile(): alone, the focus's reconciliation
+t.user("jdoe").delete();
+String oid = t.user("jdoe").oid();
+```
+
+`add` sets items by path (`extension/hrId`, as `hasItem` names them) or by the generated name, assignments with a
+relation, `lifecycleState`, `disabled()`, `validFrom`/`validTo`, an `oid`, a user's names and `password`, an org's
+`parent`; `object(o -> ...)` edits the object for the rest (an inducement, an authorization). In Kotlin the spec is
+`it`: `t.user("jdoe").add { it.givenName("John") }`. A name that is taken fails, `t.expectFailure(...)
+.isAlreadyExists()`; `t.callAs(Caller.user("jack"), () -> t.role("x").add())` adds as another user. `modify` takes
+`set`, `addValues`, `removeValues`, `assign`, `unassign`, `password` and `reconcile()`, in one delta.
+
+A value is read as its item's type, by the tester, the same on every line: `"5"` or `5` for an int, `true`, `false`,
+`1` or `0` for a boolean, an `Instant`, `ZonedDateTime`, `LocalDate` (the start of the day) or an ISO text with an
+offset for a date, `{ns}local` for a QName, an enumeration by its XML value (midPoint's and the extension schema's);
+a value the item cannot take is the test's mistake (`IllegalArgumentException`: `extension/vip (xsd:boolean): not a
+value: yes`). `hasItem` reads its expected values the same way, so `hasItem("extension/headcount", "5")` and a date
+with an offset compare as midPoint stores them. A structured item of the extension schema (a named `complexType`
+annotated `a:container`; midPoint reads no other kind) takes `Struct`s, its fields by local name, nested:
+
+```java
+t.user("jdoe").add(u -> u.set("extension/address",
+        Struct.of("street", "Main", "city", "Prague", "phone", Struct.of("kind", "mobile", "number", "123"))));
+t.user("jdoe").modify(m -> m.addValues("extension/address", Struct.of("street", "Side", "city", "Brno")));
+t.user("jdoe").modify(m -> m.removeValues("extension/address", Struct.of("street", "Side", "city", "Brno")));
+t.user("jdoe").modify(m -> m.set("extension/home/city", "Brno"));              // a field of a single-valued one
+t.user("jdoe").hasItem("extension/address", Struct.of("street", "Main", "city", "Prague",
+        "phone", Struct.of("kind", "mobile", "number", "123")));                // a whole value
+t.user("jdoe").hasItem("extension/address/city", "Prague");                     // a field: UserExtension.ADDRESS.child("city")
+Struct.xml("<home><street>Home</street></home>")                                // as XML, parsed by the item's definition
+```
+
+A value removed is the one with exactly those fields; a field of a multi-valued structure is not set alone (set the
+whole value). A failure shows a value as `(street Main, city Prague, phone (kind mobile, number 123))`, its fields in
+the order of the definition (`ExtensionScenarioTest`).
 
 What a focus links on a resource is a projection, keyed as midPoint keys one: kind, intent and tag.
 `projections(resource)` selects them all, `accounts(resource)` and `entitlements(resource)` those of the kind; a
@@ -521,8 +568,8 @@ object with the items changed; `connectorCalls()`, the calls it made to the conn
 real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repositoryCalls()`, the repository calls
 below midPoint's cache, for looking into what a configuration costs. Selections narrow and check like `t.mails()`.
 
-Every verb that makes midPoint work returns the `Effects` of its call: `User.assign`/`unassign`/`setPassword`/
-`recompute`, `Task.run`/`resume`, `t.reconcile`, `t.importAccounts`, the clock's `runDue` and scanners, a request's
+Every verb that makes midPoint work returns the `Effects` of its call: a focus's `add`/`modify`/`delete`/`assign`/
+`unassign`/`recompute`, a user's `setPassword`, `Task.run`/`resume`, `t.reconcile`, `t.importAccounts`, the clock's `runDue` and scanners, a request's
 `assign`/`unassign`, the decisions on work items and reviews, and a campaign's stages. Claim what midPoint derived
 (the accounts and their attributes, the mails, the changes of other objects), not what the test passed in: after
 `assign("Auditor")` succeeded, `hasRole("Auditor")` holds by construction and says nothing about the configuration, so
@@ -797,7 +844,8 @@ midPoint would not make now: values an earlier version of the configuration or a
 linked but gone from the target system, a value on the target system that drifted. Made through the model, such a
 state already runs the rule the test is about, so a broken rule changes it while it is made and the test of the
 behaviour passes. `t.raw()` writes past the model (no mappings, no provisioning, no policies, no audit), and reads
-back what it wrote:
+back what it wrote; through the model is `t.user(...).add/modify`, past it `t.raw()`, the values typed alike
+(`Struct`s for a structured item):
 
 ```java
 t.raw().user("jdoe").set("extension/token", "legacy-1");                 // addValues, removeValues: keep others
@@ -1837,7 +1885,7 @@ user by default) and `.channel(uri)`. Hooks, scripts, authorizations, approvals 
 calls as in production; a call of the block that names its own user (`t.actor(...)`) keeps it (`CallerScenarioTest`).
 
 ```java
-t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.midpoint().addObjectXml(serviceXml));
+t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.service("Directory API").add());
 t.callAs(Caller.user("api-client").owner("jdoe"), () -> t.midpoint().bulkAction(script));
 ```
 

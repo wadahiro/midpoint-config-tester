@@ -1,6 +1,5 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import javax.xml.namespace.QName;
@@ -11,9 +10,7 @@ import com.evolveum.midpoint.prism.PrismContainerDefinition;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.delta.ItemDelta;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
-import com.evolveum.midpoint.prism.path.ItemName;
 import com.evolveum.midpoint.prism.path.ItemPath;
-import com.evolveum.midpoint.prism.polystring.PolyString;
 import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.constants.SchemaConstants;
 import com.evolveum.midpoint.util.QNameUtil;
@@ -23,7 +20,6 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentHolderType
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
-import com.evolveum.prism.xml.ns._public.types_3.PolyStringType;
 import com.github.wadahiro.midpoint.tester.Change;
 import com.github.wadahiro.midpoint.tester.Run;
 
@@ -163,22 +159,23 @@ final class ChangeImpl<O extends ObjectType> implements Change {
         if (definition == null) {
             throw new IllegalArgumentException("No item " + path + " in " + type.getSimpleName());
         }
-        Object[] converted = new Object[values.length];
-        for (int i = 0; i < values.length; i++) {
-            converted[i] = convert(prismContext(), definition, values[i]);
-        }
+        Object[] converted = ItemValues.typed(prismContext(), path.toString(), definition, values);
         try {
             var entry = prismContext().deltaFor(type).item(path, definition);
             ItemDelta<?, ?> delta;
+            Object[] forDelta = ItemValues.forDelta(converted);
+            boolean prism = forDelta instanceof com.evolveum.midpoint.prism.PrismValue[];
+            com.evolveum.midpoint.prism.PrismValue[] prismValues = prism
+                    ? (com.evolveum.midpoint.prism.PrismValue[]) forDelta : null;
             switch (kind) {
                 case REPLACE:
-                    delta = entry.replace(converted).asItemDelta();
+                    delta = (prism ? entry.replace(prismValues) : entry.replace(converted)).asItemDelta();
                     break;
                 case ADD:
-                    delta = entry.add(converted).asItemDelta();
+                    delta = (prism ? entry.add(prismValues) : entry.add(converted)).asItemDelta();
                     break;
                 default:
-                    delta = entry.delete(converted).asItemDelta();
+                    delta = (prism ? entry.delete(prismValues) : entry.delete(converted)).asItemDelta();
             }
             modifications.add(delta);
         } catch (Exception e) {
@@ -187,42 +184,9 @@ final class ChangeImpl<O extends ObjectType> implements Change {
         return this;
     }
 
-    /** Plain strings for polystrings and enumerations (by XML value); other values as given. */
-    private static Object convert(PrismContext prismContext, ItemDefinition<?> definition, Object value) {
-        if (!(value instanceof String)) {
-            return value;
-        }
-        if (PolyStringType.COMPLEX_TYPE.equals(definition.getTypeName())) {
-            return PolyString.fromOrig((String) value);
-        }
-        Class<?> type = prismContext.getSchemaRegistry().determineClassForType(definition.getTypeName());
-        if (type != null && type.isEnum()) {
-            try {
-                Method fromValue = type.getMethod("fromValue", String.class);
-                return fromValue.invoke(null, value);
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalArgumentException("Not a value of " + type.getSimpleName() + ": " + value, e);
-            }
-        }
-        return value;
-    }
-
     /** A path given by element names, each matched against the definitions (which give the namespaces). */
     private ItemPath path(String path) {
-        List<Object> segments = new ArrayList<>();
-        PrismContainerDefinition<?> container = objectDefinition();
-        for (String name : path.split("/")) {
-            if (container == null) {
-                throw new IllegalArgumentException("No item " + path + " in " + type.getSimpleName());
-            }
-            ItemDefinition<?> item = container.findItemDefinition(new ItemName(name));
-            if (item == null) {
-                throw new IllegalArgumentException("No item " + name + " of " + path + " in " + type.getSimpleName());
-            }
-            segments.add(item.getItemName());
-            container = item instanceof PrismContainerDefinition ? (PrismContainerDefinition<?>) item : null;
-        }
-        return ItemPath.create(segments);
+        return ItemValues.locate(objectDefinition(), path, type.getSimpleName()).path;
     }
 
     private PrismContainerDefinition<O> objectDefinition() {

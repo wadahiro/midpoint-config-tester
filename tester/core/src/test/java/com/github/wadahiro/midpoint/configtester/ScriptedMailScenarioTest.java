@@ -10,8 +10,7 @@ class ScriptedMailScenarioTest {
 
     @org.junit.jupiter.api.Test
     void aMailGoesToTheTestersServer(MidPointConfigTester t) {
-        t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>jdoe</name><emailAddress>jdoe@example.com</emailAddress></user>");
+        t.user("jdoe").add(u -> u.emailAddress("jdoe@example.com"));
 
         t.mails().to("jdoe@example.com").withSubject("Welcome jdoe").exactly(1);
     }

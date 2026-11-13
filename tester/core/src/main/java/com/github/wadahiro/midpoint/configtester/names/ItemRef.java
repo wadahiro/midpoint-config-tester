@@ -30,6 +30,14 @@ public final class ItemRef extends DeploymentName {
         return name();
     }
 
+    /**
+     * A field of this structured item ({@code UserExtension.ADDRESS.child("city")}: {@code extension/address/city}),
+     * for a check of one field of its values.
+     */
+    public ItemRef child(String local) {
+        return new ItemRef(ownerType, namespace, path() + "/" + local, lines());
+    }
+
     @Override
     public String kind() {
         return "item of " + ownerType;

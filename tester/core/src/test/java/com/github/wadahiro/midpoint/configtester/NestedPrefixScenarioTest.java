@@ -27,11 +27,10 @@ import com.github.wadahiro.midpoint.configtester.sample.access.Users;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class NestedPrefixScenarioTest {
 
-    static final String NS = "http://midpoint.evolveum.com/xml/ns/public/common/common-3";
     static int prefixRuns;
 
     static void addUser(MidPointConfigTester t, String name) {
-        t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>" + name + "</name></user>");
+        t.user(name).add();
     }
 
     static List<String> userNames(MidPointConfigTester t) {

@@ -13,10 +13,8 @@ import io.kotest.matchers.shouldBe
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-const val NS = "http://midpoint.evolveum.com/xml/ns/public/common/common-3"
-
 fun MidPointConfigTester.addUser(name: String) {
-    midpoint().addObjectXml("<user xmlns='$NS'><name>$name</name></user>")
+    user(name).add()
 }
 
 fun MidPointConfigTester.userNames(): List<String> =

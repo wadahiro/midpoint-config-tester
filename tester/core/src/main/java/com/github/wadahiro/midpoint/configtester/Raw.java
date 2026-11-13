@@ -34,6 +34,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.evolveum.prism.xml.ns._public.types_3.PolyStringType;
 import com.github.wadahiro.midpoint.tester.MidPoint;
 import com.github.wadahiro.midpoint.tester.TargetSystem;
+import com.github.wadahiro.midpoint.tester.internal.ItemValues;
 
 /**
  * Writes past midPoint's model ({@link MidPointConfigTester#raw()}): to the repository as it is (no mappings, no
@@ -147,13 +148,18 @@ public final class Raw {
          */
         public RawObject set(String path, Object... values) {
             ObjectType object = existing();
-            Located item = located(object.asPrismObject(), path);
-            Object[] typed = item.typed(values);
-            modify(object, built(() -> api().prismContext().deltaFor(type).item(item.path).replace(typed)
-                    .asItemDeltas()));
+            ItemValues.Located item = located(object.asPrismObject(), path);
+            Object[] typed = Struct.values(api().prismContext(), path, item.definition, values);
+            modify(object, built(() -> {
+                var entry = api().prismContext().deltaFor(type).item(item.path);
+                Object[] prism = ItemValues.forDelta(typed);
+                return (prism instanceof com.evolveum.midpoint.prism.PrismValue[]
+                        ? entry.replace((com.evolveum.midpoint.prism.PrismValue[]) prism) : entry.replace(typed))
+                        .asItemDeltas();
+            }));
             List<String> now = values(path);
-            if (!Values.sameValues(Values.texts(values), now)) {
-                throw unlike("set " + path + " of " + name + " to " + Values.texts(values), now);
+            if (!Values.sameValues(Values.texts(typed), now)) {
+                throw unlike("set " + path + " of " + name + " to " + Values.texts(typed), now);
             }
             return this;
         }
@@ -161,13 +167,18 @@ public final class Raw {
         /** Adds the values to the item, keeping the ones it has. */
         public RawObject addValues(String path, Object... values) {
             ObjectType object = existing();
-            Located item = located(object.asPrismObject(), path);
-            Object[] typed = item.typed(values);
-            modify(object, built(() -> api().prismContext().deltaFor(type).item(item.path).add(typed)
-                    .asItemDeltas()));
+            ItemValues.Located item = located(object.asPrismObject(), path);
+            Object[] typed = Struct.values(api().prismContext(), path, item.definition, values);
+            modify(object, built(() -> {
+                var entry = api().prismContext().deltaFor(type).item(item.path);
+                Object[] prism = ItemValues.forDelta(typed);
+                return (prism instanceof com.evolveum.midpoint.prism.PrismValue[]
+                        ? entry.add((com.evolveum.midpoint.prism.PrismValue[]) prism) : entry.add(typed))
+                        .asItemDeltas();
+            }));
             List<String> now = values(path);
-            if (!now.containsAll(Values.texts(values))) {
-                throw unlike("add " + Values.texts(values) + " to " + path + " of " + name, now);
+            if (!now.containsAll(Values.texts(typed))) {
+                throw unlike("add " + Values.texts(typed) + " to " + path + " of " + name, now);
             }
             return this;
         }
@@ -175,13 +186,20 @@ public final class Raw {
         /** Removes the values from the item, keeping the others. */
         public RawObject removeValues(String path, Object... values) {
             ObjectType object = existing();
-            Located item = located(object.asPrismObject(), path);
-            Object[] typed = item.typed(values);
-            modify(object, built(() -> api().prismContext().deltaFor(type).item(item.path).delete(typed)
-                    .asItemDeltas()));
+            ItemValues.Located item = located(object.asPrismObject(), path);
+            Object[] typed = Struct.byIds(path, item.definition, object.asPrismObject().findItem(item.path),
+                    Struct.values(api().prismContext(), path, item.definition, values));
+            List<String> removed = Values.texts(Struct.values(api().prismContext(), path, item.definition, values));
+            modify(object, built(() -> {
+                var entry = api().prismContext().deltaFor(type).item(item.path);
+                Object[] prism = ItemValues.forDelta(typed);
+                return (prism instanceof com.evolveum.midpoint.prism.PrismValue[]
+                        ? entry.delete((com.evolveum.midpoint.prism.PrismValue[]) prism) : entry.delete(typed))
+                        .asItemDeltas();
+            }));
             List<String> now = values(path);
-            if (Values.texts(values).stream().anyMatch(now::contains)) {
-                throw unlike("remove " + Values.texts(values) + " from " + path + " of " + name, now);
+            if (removed.stream().anyMatch(now::contains)) {
+                throw unlike("remove " + removed + " from " + path + " of " + name, now);
             }
             return this;
         }
@@ -206,7 +224,7 @@ public final class Raw {
             }
             String oid = live(resource, account);
             if (oid == null) {
-                oid = addShadow(resource, account, spec, target);
+                oid = addShadow(resource, account, spec, target, true);
             }
             String shadowOid = oid;
             if (focus.getLinkRef().stream().noneMatch(link -> shadowOid.equals(link.getOid()))) {
@@ -313,7 +331,7 @@ public final class Raw {
         public RawShadow add(Consumer<NewShadow> shadow) {
             NewShadow spec = new NewShadow();
             shadow.accept(spec);
-            addShadow(resource, name, spec, target(resource, spec));
+            addShadow(resource, name, spec, target(resource, spec), false);
             return this;
         }
 
@@ -400,7 +418,11 @@ public final class Raw {
      * Adds a shadow of the object type, named as the object on the target system, with its identifiers: the primary
      * one the target system's identifier of the object (the name if there is none), the secondary ones the name.
      */
-    private String addShadow(String resource, String name, NewShadow spec, Target target) {
+    /**
+     * Adds a shadow of the resource's object type; a linked one as midPoint keeps a projection it links (iteration 0,
+     * an empty iteration token, the situation linked), so that its next recompute finds nothing of its own to add.
+     */
+    private String addShadow(String resource, String name, NewShadow spec, Target target, boolean linked) {
         MidPoint api = api();
         PrismObject<ShadowType> shadow;
         try {
@@ -418,6 +440,12 @@ public final class Raw {
         bean.setKind(target.type.getKind() != null ? target.type.getKind() : ShadowKindType.ACCOUNT);
         bean.setIntent(intent(target.type));
         bean.setTag(spec.tag);
+        if (linked) {
+            bean.setIteration(0);
+            bean.setIterationToken("");
+            bean.setSynchronizationSituation(
+                    com.evolveum.midpoint.xml.ns._public.common.common_3.SynchronizationSituationType.LINKED);
+        }
         String identifier = target.system.find(target.objectClass.getLocalPart(), name) != null
                 ? target.system.identifier(target.objectClass.getLocalPart(), name) : name;
         bean.setPrimaryIdentifierValue(identifier);
@@ -498,7 +526,9 @@ public final class Raw {
                     continue;
                 }
                 if (i == segments.length - 1) {
-                    out.addAll(item.getRealValues());
+                    out.addAll(item instanceof com.evolveum.midpoint.prism.PrismContainer
+                            && ((com.evolveum.midpoint.prism.PrismContainer<?>) item).getCompileTimeClass() == null
+                            ? item.getValues() : item.getRealValues());
                 } else {
                     for (Object value : item.getValues()) {
                         if (value instanceof PrismContainerValue) {
@@ -512,53 +542,17 @@ public final class Raw {
         return out;
     }
 
-    /** An item's path with the namespaces of the object's definitions, and its definition. */
-    private static final class Located {
-        final ItemPath path;
-        final ItemDefinition<?> definition;
-
-        Located(ItemPath path, ItemDefinition<?> definition) {
-            this.path = path;
-            this.definition = definition;
-        }
-
-        /** The values as the item takes them: a polystring from a string. */
-        Object[] typed(Object[] values) {
-            boolean polyString = PolyStringType.COMPLEX_TYPE.equals(definition.getTypeName());
-            Object[] out = new Object[values.length];
-            for (int i = 0; i < values.length; i++) {
-                out[i] = polyString && values[i] instanceof String ? PolyString.fromOrig((String) values[i]) : values[i];
-            }
-            return out;
-        }
-    }
-
     /** The item at the path of local names, in the object's definitions. */
-    private static Located located(PrismObject<?> object, String path) {
-        List<Object> segments = new ArrayList<>();
-        PrismContainerDefinition<?> container = object.getDefinition();
-        ItemDefinition<?> found = null;
-        String[] names = path.split("/");
-        for (int i = 0; i < names.length; i++) {
-            found = null;
-            if (container != null) {
-                for (ItemDefinition<?> definition : container.getDefinitions()) {
-                    if (definition.getItemName().getLocalPart().equals(names[i])) {
-                        found = definition;
-                        break;
-                    }
-                }
-            }
-            if (found == null) {
-                throw new IllegalArgumentException("raw: no item " + names[i] + " in " + path + " of a "
-                        + object.getCompileTimeClass().getSimpleName());
-            }
-            segments.add(new QName(found.getItemName().getNamespaceURI(), names[i]));
-            container = i + 1 < names.length && found instanceof PrismContainerDefinition
-                    ? (PrismContainerDefinition<?>) found : null;
+    private static ItemValues.Located located(PrismObject<?> object, String path) {
+        ItemValues.Located item = ItemValues.locate(object.getDefinition(), path,
+                "raw: a " + object.getCompileTimeClass().getSimpleName());
+        if (item.throughMultiValuedContainer) {
+            throw new IllegalArgumentException("raw: " + path + " is in a multi-valued container: set the whole value "
+                    + "(Struct.of(...)), not a field");
         }
-        return new Located(ItemPath.create(segments), found);
+        return item;
     }
+
 
     /** Builds deltas; a schema error is a mistake of the test. */
     private static List<ItemDelta<?, ?>> built(DeltaBuilder builder) {

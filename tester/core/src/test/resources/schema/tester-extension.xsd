@@ -3,7 +3,8 @@
     The extension schema of the tester's own tests, as a deployment has it in midPoint's schema directory: the tester
     runs midPoint with -Dtester.extensionSchemaDir (tester/pom.xml points it here). One string item per use in the
     extension tests: the same items extend users, roles and assignments, so that midPoint's merge of extensions into
-    the `assignment` variable of a construction shows which one wins.
+    the `assignment` variable of a construction shows which one wins. Users also have items of other types, and
+    structured ones, for the tests that write them.
 -->
 <xsd:schema elementFormDefault="qualified"
             targetNamespace="http://example.com/xml/ns/tester-extension"
@@ -25,6 +26,48 @@
             <xsd:element name="badge" type="xsd:string" minOccurs="0"/>
             <xsd:element name="grade" type="xsd:string" minOccurs="0"/>
             <xsd:element name="note" type="xsd:string" minOccurs="0"/>
+            <!-- typed and structured items, for the writes of the tests (ExtensionScenarioTest) -->
+            <xsd:element name="headcount" type="xsd:int" minOccurs="0"/>
+            <xsd:element name="vip" type="xsd:boolean" minOccurs="0"/>
+            <xsd:element name="since" type="xsd:dateTime" minOccurs="0"/>
+            <xsd:element name="level" type="tns:LevelType" minOccurs="0"/>
+            <xsd:element name="tags" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="address" type="tns:AddressType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="home" type="tns:AddressType" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="LevelType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="low"/>
+            <xsd:enumeration value="high"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <!-- a structured value: a container (a:container), with a multi-valued container in it -->
+    <xsd:complexType name="AddressType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <a:container/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="street" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="city" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="floor" type="xsd:int" minOccurs="0"/>
+            <xsd:element name="phone" type="tns:PhoneType" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="PhoneType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <a:container/>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="kind" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="number" type="xsd:string" minOccurs="0"/>
         </xsd:sequence>
     </xsd:complexType>
 

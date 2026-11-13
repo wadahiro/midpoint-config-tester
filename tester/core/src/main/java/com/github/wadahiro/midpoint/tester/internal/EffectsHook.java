@@ -19,6 +19,7 @@ import org.springframework.util.ClassUtils;
 import com.evolveum.midpoint.prism.Item;
 import com.evolveum.midpoint.prism.PrismContainer;
 import com.evolveum.midpoint.prism.PrismObject;
+import com.evolveum.midpoint.prism.PrismContainerValue;
 import com.evolveum.midpoint.prism.PrismValue;
 import com.evolveum.midpoint.prism.delta.ItemDelta;
 import com.evolveum.midpoint.prism.path.ItemPath;
@@ -214,7 +215,10 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             List<Object> out = new ArrayList<>();
             if (item != null) {
                 for (Object value : item.getValues()) {
-                    out.add(value instanceof PrismValue ? ((PrismValue) value).getRealValue() : value);
+                    // a container value of the extension schema has no Java class: the value itself compares
+                    boolean runtime = value instanceof PrismContainerValue
+                            && ((PrismContainerValue<?>) value).getCompileTimeClass() == null;
+                    out.add(value instanceof PrismValue && !runtime ? ((PrismValue) value).getRealValue() : value);
                 }
             }
             return out;

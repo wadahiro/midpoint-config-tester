@@ -175,6 +175,43 @@ final class Drivers40 implements LineDrivers {
         });
     }
 
+    /** The change type, object type and OID of an audit delta from its XML, and the status of its row. */
+    private static String deltaOfXml(java.sql.ResultSet rs) throws java.sql.SQLException {
+        byte[] bytes = rs.getBytes("delta");
+        if (bytes == null) {
+            return null;
+        }
+        try {
+            String xml = com.evolveum.midpoint.repo.sql.util.RUtil.getXmlFromByteArray(bytes, true, false);
+            javax.xml.parsers.DocumentBuilderFactory factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            org.w3c.dom.Element root = factory.newDocumentBuilder()
+                    .parse(new org.xml.sax.InputSource(new java.io.StringReader(xml))).getDocumentElement();
+            String changeType = child(root, "changeType");
+            String objectType = child(root, "objectType");
+            if (changeType == null || objectType == null) {
+                return null;
+            }
+            int status = rs.getInt("status");
+            Object resultStatus = rs.wasNull() ? null : com.evolveum.midpoint.repo.sql.data.common.enums
+                    .ROperationResultStatus.values()[status].getStatus();
+            return AuditRecords.delta(com.evolveum.midpoint.prism.delta.ChangeType.valueOf(
+                    changeType.toUpperCase(java.util.Locale.ROOT)),
+                    objectType.substring(objectType.indexOf(':') + 1), child(root, "oid"), resultStatus);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String child(org.w3c.dom.Element parent, String localName) {
+        for (org.w3c.dom.Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
+            if (node instanceof org.w3c.dom.Element && localName.equals(node.getLocalName())) {
+                return node.getTextContent().trim();
+            }
+        }
+        return null;
+    }
+
     private static List<String> deltas40(java.sql.Connection con, long recordId, PrismContext prismContext)
             throws java.sql.SQLException {
         List<String> out = new ArrayList<>();
@@ -187,7 +224,14 @@ final class Drivers40 implements LineDrivers {
                         operation = com.evolveum.midpoint.repo.sql.data.audit.RObjectDeltaOperation.fromRepo(rs,
                                 prismContext, false);
                     } catch (com.evolveum.midpoint.repo.sql.util.DtoTranslationException e) {
-                        throw new IllegalStateException("Cannot read the audit delta of record " + recordId, e);
+                        // 4.0 cannot parse a delta of a structured extension item back (no Java class for it):
+                        // what the record says of the delta is in its XML all the same
+                        String delta = deltaOfXml(rs);
+                        if (delta == null) {
+                            throw new IllegalStateException("Cannot read the audit delta of record " + recordId, e);
+                        }
+                        out.add(delta);
+                        continue;
                     }
                     ObjectDelta<?> delta = operation != null ? operation.getObjectDelta() : null;
                     if (delta != null) {

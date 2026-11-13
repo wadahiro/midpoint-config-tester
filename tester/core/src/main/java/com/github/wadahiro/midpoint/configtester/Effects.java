@@ -160,6 +160,9 @@ public final class Effects {
             return Values.text(value.getRealValue());
         }
         PrismContainerValue<?> container = (PrismContainerValue<?>) value;
+        if (container.getCompileTimeClass() == null) {
+            return Values.text(value);
+        }
         Object containerable = container.asContainerable();
         if (containerable instanceof AssignmentType || containerable instanceof ActivationType) {
             return Values.text(value);

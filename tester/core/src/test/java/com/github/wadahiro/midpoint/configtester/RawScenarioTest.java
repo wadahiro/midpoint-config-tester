@@ -21,15 +21,13 @@ import com.github.wadahiro.midpoint.tester.Shadow;
  */
 abstract class RawScenarioTest {
 
-    static final String NS = "http://midpoint.evolveum.com/xml/ns/public/common/common-3";
     static final String LDAP = "LDAP";
     static final String LEGACY = "uid=legacy," + HrLifecycleScenarioTest.PEOPLE;
     static final String ORPHAN = "uid=orphan," + HrLifecycleScenarioTest.PEOPLE;
     static final String LEGACY_B = "uid=legacy-b," + HrLifecycleScenarioTest.PEOPLE;
 
     static void addUser(MidPointConfigTester t, String name) {
-        t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>" + name + "</name>"
-                + "<givenName>John</givenName><familyName>Doe</familyName></user>");
+        t.user(name).add(u -> u.givenName("John").familyName("Doe"));
     }
 
     @Test
@@ -62,7 +60,11 @@ abstract class RawScenarioTest {
         t.target(LDAP).account(LEGACY).exists().hasAttribute("cn", "Legacy");
         t.user("jdoe").hasAccountOn(LDAP);
         assertThat(t.user("jdoe").accounts(LDAP).names()).containsExactly(LEGACY);
-        t.user("jdoe").account(LDAP).shadow().exists().hasTag("legacy").hasKind("account").hasIntent("default");
+        t.user("jdoe").account(LDAP).shadow().exists().hasTag("legacy").hasKind("account").hasIntent("default")
+                .hasSituation("linked");
+        // as midPoint keeps a projection it links: its next recompute has nothing of its own to add to the shadow
+        assertThat(t.user("jdoe").account(LDAP).shadow().asObject().getIteration()).isEqualTo(0);
+        assertThat(t.user("jdoe").account(LDAP).shadow().asObject().getIterationToken()).isEmpty();
         assertThat(t.user("jdoe").account(LDAP).shadow().tag()).isEqualTo("legacy");
         assertThat(t.user("jdoe").account(LDAP).shadow().kind()).isEqualTo("account");
         t.user("jdoe").account(LDAP).onTarget().hasAttribute("cn", "Legacy");
@@ -247,7 +249,7 @@ abstract class RawScenarioTest {
         assertThatThrownBy(() -> t.raw().user("nobody").set("fullName", "x"))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("no UserType nobody");
         assertThatThrownBy(() -> t.raw().user("jdoe").set("noSuchItem", "x"))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("no item noSuchItem");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("No item noSuchItem");
         assertThatThrownBy(() -> t.raw().user("jdoe").unlink(LDAP, LEGACY))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("links no");
         assertThatThrownBy(() -> t.raw().user("jdoe").link(LDAP, LEGACY, shadow -> shadow.intent("nope")))

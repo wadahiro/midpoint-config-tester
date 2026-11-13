@@ -330,7 +330,12 @@ public final class NamesModel {
                 if (!user) {
                     continue;
                 }
-                for (Element element : Xml.descendants(complexType, "element")) {
+                // the items of the extension, not the fields of a structured one (its own complexType)
+                List<Element> elements = new ArrayList<>();
+                for (Element sequence : Xml.children(complexType, "sequence")) {
+                    elements.addAll(Xml.children(sequence, "element"));
+                }
+                for (Element element : elements) {
                     String name = element.getAttribute("name");
                     if (name.isEmpty() && !element.getAttribute("ref").isEmpty()) {
                         name = localPart(element.getAttribute("ref"));

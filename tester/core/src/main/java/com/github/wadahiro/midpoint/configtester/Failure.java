@@ -24,6 +24,11 @@ public final class Failure {
         return causedBy("PolicyViolationException");
     }
 
+    /** midPoint refused an object of a name (or OID) that another object has. */
+    public boolean isAlreadyExists() {
+        return causedBy("ObjectAlreadyExistsException");
+    }
+
     /** The acting user was not authorized. */
     public boolean isNotAuthorized() {
         return causedBy("SecurityViolationException") || causedBy("AuthorizationException");

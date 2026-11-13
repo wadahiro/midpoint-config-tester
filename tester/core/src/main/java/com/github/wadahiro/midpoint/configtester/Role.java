@@ -15,6 +15,21 @@ public final class Role extends AbstractRole<Role> {
     }
 
     @Override
+    NewRole newFocus() {
+        return new NewRole(tester, name);
+    }
+
+    /**
+     * Adds the role through the model with what the spec gives it besides its name, e.g.
+     * {@code t.role("Auditor").add(r -> r.set("description", "audits"))}; returns what midPoint did.
+     */
+    public Effects add(java.util.function.Consumer<NewRole> spec) {
+        NewRole focus = newFocus();
+        spec.accept(focus);
+        return add(focus);
+    }
+
+    @Override
     public RoleType asObject() {
         return (RoleType) super.asObject();
     }

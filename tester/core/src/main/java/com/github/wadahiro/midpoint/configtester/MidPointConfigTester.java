@@ -197,7 +197,7 @@ public final class MidPointConfigTester {
      * Runs the driver calls of the block as the caller presents them: a service that calls midPoint on a user's behalf
      * (a portal through midPoint's API) logs the user in, maybe privileged, owns the tasks for them and comes through
      * its channel; a hook, a script or an approval then sees the call as in production. E.g.
-     * {@code t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.midpoint().addObjectXml(xml))}.
+     * {@code t.callAs(Caller.user("jdoe").privileged().channel(API_CHANNEL), () -> t.role("x").add())}.
      */
     public void callAs(com.github.wadahiro.midpoint.tester.Caller caller, Runnable calls) {
         deployment.api().callAs(caller, calls);

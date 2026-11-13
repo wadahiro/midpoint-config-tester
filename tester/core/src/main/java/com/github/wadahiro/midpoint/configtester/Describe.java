@@ -26,10 +26,14 @@ public final class Describe {
     public static boolean describes(Object value) {
         return value instanceof AssignmentType || value instanceof ObjectReferenceType || value instanceof PolyString
                 || value instanceof PolyStringType || value instanceof XMLGregorianCalendar
-                || value instanceof ActivationType || value instanceof ObjectType;
+                || value instanceof ActivationType || value instanceof ObjectType
+                || value instanceof com.evolveum.midpoint.prism.PrismContainerValue;
     }
 
     public static String of(Object value) {
+        if (value instanceof com.evolveum.midpoint.prism.PrismContainerValue) {
+            return Values.text(value);
+        }
         if (value instanceof AssignmentType) {
             AssignmentType assignment = (AssignmentType) value;
             if (assignment.getTargetRef() != null) {

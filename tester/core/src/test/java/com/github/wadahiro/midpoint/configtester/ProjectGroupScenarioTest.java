@@ -17,8 +17,6 @@ import com.github.wadahiro.midpoint.configtester.sample.hr.Resources;
  */
 abstract class ProjectGroupScenarioTest {
 
-    static final String NS = "http://midpoint.evolveum.com/xml/ns/public/common/common-3";
-    static final String PROJECT_METAROLE = "20000000-0000-0000-0000-00000000c010";
     static final String APOLLO = "cn=apollo,ou=groups,dc=example,dc=com";
 
     /** The groups the department roles refer to, where the target system does not have them already. */
@@ -29,8 +27,7 @@ abstract class ProjectGroupScenarioTest {
         addDepartmentGroups(t);
         new HrLifecycleScenarioTest.Hr(t).hire("1001", "John", "Doe", "Sales", LocalDate.of(2020, 4, 1));
 
-        Effects created = t.effectsOf(() -> t.midpoint().addObjectXml("<org xmlns='" + NS + "'><name>apollo</name>"
-                + "<assignment><targetRef oid='" + PROJECT_METAROLE + "' type='RoleType'/></assignment></org>"));
+        Effects created = t.org("apollo").add(o -> o.assign("Project"));
         created.connectorCalls().to("LDAP").adds().of(APOLLO).single();
         t.org("apollo").hasEntitlementOn(Resources.LDAP).hasNoAccountOn(Resources.LDAP);
         t.org("apollo").entitlement(Resources.LDAP).shadow().hasKind("entitlement").hasIntent("group");

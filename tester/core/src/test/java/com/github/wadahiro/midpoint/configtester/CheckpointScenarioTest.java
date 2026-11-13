@@ -19,11 +19,10 @@ import com.github.wadahiro.midpoint.tester.internal.Checkpoint;
 @MidPointConfigTest("classpath:scenarios/access/midpoint-config-tester.yaml")
 class CheckpointScenarioTest {
 
-    static final String NS = "http://midpoint.evolveum.com/xml/ns/public/common/common-3";
 
     @Test
     void backToTheCheckpoint(MidPointConfigTester t) {
-        t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>before</name></user>");
+        t.user("before").add();
         Instant stopped = t.clock().now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.SECONDS);
         t.clock().stopAt(stopped);
         t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
@@ -31,7 +30,7 @@ class CheckpointScenarioTest {
         assertThat(mails).isPositive();
         Checkpoint checkpoint = t.deployment().checkpoint();
         try {
-            t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>after</name></user>");
+            t.user("after").add();
             t.clock().advance("P30D");
             t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "fine by me");
             assertThat(t.mails().count()).isGreaterThan(mails);
@@ -46,7 +45,7 @@ class CheckpointScenarioTest {
             t.workItems().assignedTo(Users.ROLE_OWNER).single();
 
             // and the checkpoint serves again
-            t.midpoint().addObjectXml("<user xmlns='" + NS + "'><name>again</name></user>");
+            t.user("again").add();
             t.deployment().restore(checkpoint);
             assertThat(t.midpoint().actor("administrator").search(UserType.class, null).value())
                     .extracting(u -> u.getName().getOrig()).doesNotContain("again");

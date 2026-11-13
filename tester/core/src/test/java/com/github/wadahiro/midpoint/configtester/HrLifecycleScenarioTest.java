@@ -159,8 +159,7 @@ class HrLifecycleScenarioTest {
      */
     @Test
     void anArchivedUsersEffectiveStatus(MidPointConfigTester t) {
-        t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>archived1</name><lifecycleState>archived</lifecycleState></user>");
+        t.user("archived1").add(u -> u.lifecycleState("archived"));
 
         com.evolveum.midpoint.xml.ns._public.common.common_3.ActivationType activation =
                 t.user("archived1").asObject().getActivation();

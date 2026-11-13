@@ -31,9 +31,9 @@ class AuditScenarioTest {
     @Test
     @Order(1)
     void theRecordsOfAChange(MidPointConfigTester t) {
-        String oid = t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>audited</name></user>").oid();
-        t.midpoint().deleteObject(UserType.class, oid);
+        t.user("audited").add();
+        String oid = t.user("audited").oid();
+        t.user("audited").delete();
 
         t.audit().ofType("ADD_OBJECT").target("audited").request().exactly(1);
         AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType("UserType").single();
@@ -53,10 +53,10 @@ class AuditScenarioTest {
     @Test
     @Order(2)
     void theRecordsWrittenWhileTheCodeRan(MidPointConfigTester t) {
-        String oid = t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>captured</name></user>").oid();
+        t.user("captured").add();
+        String oid = t.user("captured").oid();
 
-        Audit deletion = t.audit(() -> t.midpoint().deleteObject(UserType.class, oid));
+        Audit deletion = t.audit(() -> t.user("captured").delete());
 
         deletion.ofType("ADD_OBJECT").none();
         deletion.ofType("DELETE_OBJECT").execution().target(oid).exactly(1);
@@ -70,9 +70,9 @@ class AuditScenarioTest {
     @Test
     @Order(3)
     void theAuditTableAsAnotherSystemReadsIt(MidPointConfigTester t) {
-        String oid = t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>read-over-jdbc</name></user>").oid();
-        t.midpoint().deleteObject(UserType.class, oid);
+        t.user("read-over-jdbc").add();
+        String oid = t.user("read-over-jdbc").oid();
+        t.user("read-over-jdbc").delete();
 
         java.util.List<java.util.Map<String, Object>> rows = "4.0".equals(t.line())
                 ? t.repositoryDatabase().rows("SELECT targetName, outcome FROM m_audit_event"
@@ -91,8 +91,7 @@ class AuditScenarioTest {
     @Test
     @Order(4)
     void midPointsSearchOfTheAuditLog(MidPointConfigTester t) {
-        t.midpoint().addObjectXml("<user xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
-                + "<name>searched</name></user>");
+        t.user("searched").add();
 
         assertThat(t.audit().ofType("ADD_OBJECT").target("searched").count()).isGreaterThan(0);
         Object audit = t.midpoint().bean(com.evolveum.midpoint.model.api.ModelAuditService.class);

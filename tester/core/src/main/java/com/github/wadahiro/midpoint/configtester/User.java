@@ -1,6 +1,5 @@
 package com.github.wadahiro.midpoint.configtester;
 
-import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 
 /**
@@ -17,6 +16,21 @@ public final class User extends Focus<User> {
     @Override
     User self() {
         return this;
+    }
+
+    @Override
+    NewUser newFocus() {
+        return new NewUser(tester, name);
+    }
+
+    /**
+     * Adds the user through the model with what the spec gives it besides its name, e.g.
+     * {@code t.user("jdoe").add(u -> u.fullName("John Doe").assign("Sales"))}; returns what midPoint did.
+     */
+    public Effects add(java.util.function.Consumer<NewUser> spec) {
+        NewUser focus = newFocus();
+        spec.accept(focus);
+        return add(focus);
     }
 
     public User hasFullName(String expected) {
@@ -37,12 +51,6 @@ public final class User extends Focus<User> {
      * of the user's security policy (a value that violates it fails: {@link MidPointConfigTester#expectFailure}).
      */
     public Effects setPassword(String password) {
-        com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType value =
-                new com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType();
-        value.setClearValue(password);
-        return tester.effectsOf(() -> tester.deployment().api().modify(UserType.class, name,
-                ItemPath.create(UserType.F_CREDENTIALS,
-                        com.evolveum.midpoint.xml.ns._public.common.common_3.CredentialsType.F_PASSWORD,
-                        com.evolveum.midpoint.xml.ns._public.common.common_3.PasswordType.F_VALUE), value));
+        return modify(m -> m.password(password));
     }
 }

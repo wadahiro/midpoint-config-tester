@@ -35,14 +35,11 @@ class CallerScenarioTest {
     /** A user without the authorization cannot add a role; privileged, the same user can, and is the initiator. */
     @Test
     void privilegedAddsAllAuthorizations(MidPointConfigTester t) {
-        String role = "<role xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'><name>From the API</name>"
-                + "</role>";
-
-        t.callAs(Caller.user("jack"), () -> assertThat(t.expectFailure(() -> t.midpoint().addObjectXml(role))
+        t.callAs(Caller.user("jack"), () -> assertThat(t.expectFailure(() -> t.role("From the API").add())
                 .isNotAuthorized()).isTrue());
         t.audit().ofType("ADD_OBJECT").execution().target("From the API").outcome("SUCCESS").none();
 
-        t.callAs(Caller.user("jack").privileged(), () -> t.midpoint().addObjectXml(role));
+        t.callAs(Caller.user("jack").privileged(), () -> t.role("From the API").add());
 
         assertThat(t.midpoint().find(RoleType.class, "From the API")).isNotNull();
         assertThat(t.audit().ofType("ADD_OBJECT").execution().target("From the API").outcome("SUCCESS").single()

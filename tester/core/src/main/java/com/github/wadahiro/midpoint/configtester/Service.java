@@ -15,6 +15,21 @@ public final class Service extends AbstractRole<Service> {
     }
 
     @Override
+    NewService newFocus() {
+        return new NewService(tester, name);
+    }
+
+    /**
+     * Adds the service through the model with what the spec gives it besides its name, e.g.
+     * {@code t.service("Directory").add(s -> s.set("description", "the LDAP"))}; returns what midPoint did.
+     */
+    public Effects add(java.util.function.Consumer<NewService> spec) {
+        NewService focus = newFocus();
+        spec.accept(focus);
+        return add(focus);
+    }
+
+    @Override
     public ServiceType asObject() {
         return (ServiceType) super.asObject();
     }

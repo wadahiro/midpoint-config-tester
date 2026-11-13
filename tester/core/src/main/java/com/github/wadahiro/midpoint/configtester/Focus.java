@@ -13,6 +13,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.github.wadahiro.midpoint.configtester.names.AssignableRef;
 import com.github.wadahiro.midpoint.configtester.names.ItemRef;
 import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
+import com.github.wadahiro.midpoint.tester.internal.ItemValues;
 
 /**
  * A focus of the scenario by name: a {@link User}, {@link Role}, {@link Org} or {@link Service}, read anew by every
@@ -40,11 +41,32 @@ public abstract class Focus<SELF extends Focus<SELF>> {
 
     abstract SELF self();
 
+    /** A new focus of this kind with this name, to add. */
+    abstract NewFocus<?, ?> newFocus();
+
     public String name() {
         return name;
     }
 
     // ---- existence --------------------------------------------------------------------------------------------
+
+    /**
+     * Adds the focus through the model with only its name, as an administrator saving a new one in the GUI: the
+     * deployment's object templates and policies fill in the rest. Returns what midPoint did ({@link Effects}).
+     */
+    public Effects add() {
+        return add(newFocus());
+    }
+
+    Effects add(NewFocus<?, ?> spec) {
+        FocusType object = spec.build();
+        return tester.effectsOf(() -> tester.deployment().api().addObject(object));
+    }
+
+    /** The focus's OID as midPoint has it now: the one it was added with, or generated. */
+    public String oid() {
+        return existing().getOid();
+    }
 
     public SELF exists() {
         existing();
@@ -70,12 +92,38 @@ public abstract class Focus<SELF extends Focus<SELF>> {
      */
     public SELF hasItem(String path, Object... expected) {
         List<String> actual = itemValues(path);
-        List<String> wanted = Values.texts(expected);
+        List<String> wanted = Values.texts(expected(path, expected));
         if (!Values.sameValues(wanted, actual)) {
             throw new AssertionError(kind + " " + name + ": " + path + " expected " + wanted + " but was " + actual
                     + Why.mappings(tester, path, name, path + " of " + name));
         }
         return self();
+    }
+
+    /**
+     * The expected values as the item's type has them, so that they compare as midPoint's values do ({@code "5"} and
+     * {@code 5}, a date with an offset and the same instant); as given when the path has no definition.
+     */
+    private Object[] expected(String path, Object[] expected) {
+        com.evolveum.midpoint.prism.ItemDefinition<?> definition;
+        try {
+            definition = ItemValues.locate(tester.deployment().api().prismContext().getSchemaRegistry()
+                    .findObjectDefinitionByCompileTimeClass(type), path, type.getSimpleName()).definition;
+        } catch (IllegalArgumentException e) {
+            return expected;
+        }
+        boolean structured = definition instanceof com.evolveum.midpoint.prism.PrismContainerDefinition
+                && ((com.evolveum.midpoint.prism.PrismContainerDefinition<?>) definition).getCompileTimeClass() == null;
+        if (!(definition instanceof com.evolveum.midpoint.prism.PrismPropertyDefinition) && !structured) {
+            return expected;
+        }
+        List<Object> out = new ArrayList<>();
+        for (Object value : expected) {
+            for (Object one : value instanceof java.util.Collection ? (java.util.Collection<?>) value : List.of(value)) {
+                out.add(Struct.values(tester.deployment().api().prismContext(), path, definition, one)[0]);
+            }
+        }
+        return out.toArray();
     }
 
     /** The values of the item as text (see {@link #hasItem}). */
@@ -122,7 +170,10 @@ public abstract class Focus<SELF extends Focus<SELF>> {
                     continue;
                 }
                 if (i == segments.length - 1) {
-                    out.addAll(item.getRealValues());
+                    // a structured item of the extension schema has no Java class to give its values as
+                    out.addAll(item instanceof com.evolveum.midpoint.prism.PrismContainer
+                            && ((com.evolveum.midpoint.prism.PrismContainer<?>) item).getCompileTimeClass() == null
+                            ? item.getValues() : item.getRealValues());
                 } else {
                     for (Object value : item.getValues()) {
                         if (value instanceof com.evolveum.midpoint.prism.PrismContainerValue) {
@@ -423,6 +474,22 @@ public abstract class Focus<SELF extends Focus<SELF>> {
 
     public Effects unassign(AssignableRef target, QName relation) {
         return unassign(target.on(tester.line()), relation);
+    }
+
+    /**
+     * Modifies the focus through the model, its items and assignments in one delta ({@link Modification}), as an
+     * administrator saves a form in the GUI; returns what midPoint did.
+     */
+    public Effects modify(java.util.function.Consumer<Modification> change) {
+        Modification modification = new Modification(this);
+        change.accept(modification);
+        return tester.effectsOf(modification::execute);
+    }
+
+    /** Deletes the focus through the model: its projections go as the resources say (deleted, or disabled). */
+    public Effects delete() {
+        existing();
+        return tester.effectsOf(() -> tester.deployment().api().deleteObject(type, name));
     }
 
     /**
