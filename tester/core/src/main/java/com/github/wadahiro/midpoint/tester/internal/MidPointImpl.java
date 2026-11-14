@@ -736,6 +736,16 @@ final class MidPointImpl implements MidPoint {
         });
     }
 
+    @Override
+    public Run suspendTask(String taskNameOrOid) {
+        TaskType existing = existing(TaskType.class, taskNameOrOid);
+        String oid = existing.getOid();
+        return run("suspend task " + existing.getName().getOrig(), (task, result) -> {
+            harness.bean(com.evolveum.midpoint.model.api.TaskService.class).suspendTask(oid, 5000, task, result);
+            return Outcome.NONE;
+        });
+    }
+
     /**
      * Runs the recurring tasks due by midPoint's clock ({@link Time#runDueTasks()}): each once, in the order of their
      * names, waiting for each run before the next; fails, after them all, if one of them failed: could not run (fatal

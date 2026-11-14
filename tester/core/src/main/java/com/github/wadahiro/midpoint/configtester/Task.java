@@ -72,10 +72,20 @@ public final class Task {
      * {@link MidPointConfigTester#clock()} when midPoint would start it (a run missed while suspended at once with
      * {@code misfireAction} executeImmediately, at its next regular time with reschedule). Single-run and tightly
      * bound tasks start on it as in midPoint. The reset after each test restores the task's state, so resume it where
-     * the state the tests start from is set up.
+     * the state the tests start from is set up. Returns what midPoint did, the run of a task that starts on it
+     * included; a verb of its own, as {@link #run()} is (in Kotlin, {@code .run()} chained to an {@link Effects} is
+     * the standard library's {@code run {}}): {@code t.task("x").resume()} and {@code t.task("x").run()}, two lines.
      */
     public Effects resume() {
         return tester.effectsOf(() -> tester.deployment().api().resumeTask(name));
+    }
+
+    /**
+     * Suspends the task, as the GUI's "Suspend": a run in progress stops, {@link #run()} then fails until a
+     * {@link #resume()}. Returns what midPoint did.
+     */
+    public Effects suspend() {
+        return tester.effectsOf(() -> tester.deployment().api().suspendTask(name));
     }
 
     public String name() {

@@ -244,6 +244,12 @@ public interface MidPoint {
     Run resumeTask(String task);
 
     /**
+     * Suspends the task (by name or OID), as the GUI's "Suspend" ({@code TaskService.suspendTask}), waiting for a run
+     * in progress to stop; {@link #resumeTask} resumes it.
+     */
+    Run suspendTask(String task);
+
+    /**
      * Reconciles the resource's (by name or OID) default accounts ({@code account/default}) as the GUI's "Reconcile"
      * does: a single-run reconciliation task (an activity on 4.4+, the reconciliation task handler on 4.0), run now and
      * waited for. Its evaluations (inbounds, correlation, reactions, what the focus changes evaluate) are in the run,
