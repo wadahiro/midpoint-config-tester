@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.configtester.sample.hr.HrAttrs;
 import com.github.wadahiro.midpoint.configtester.sample.hr.Resources;
 import com.github.wadahiro.midpoint.configtester.sample.hr.Tasks;
@@ -37,14 +39,14 @@ class EffectsScenarioTest {
     void aJoinerIsCreatedProvisionedAndWelcomed() {
         Claims claims = hired.claims();
         claims.changes().of("e1001").added().single();
-        claims.changes().ofType("ShadowType").added().exactly(3);     // HR row, LDAP account, the group found
+        claims.changes().ofType(ShadowType.class).added().exactly(3);     // HR row, LDAP account, the group found
         claims.connectorCalls().to("LDAP").adds().of(JOHN.toUpperCase()).single();     // names ignore case
         claims.connectorCalls().to("LDAP").modifies().of(SALES).single().only("member");
         claims.mails().to("e1001@example.com").withSubject("Welcome John Doe").single();
         claims.verifyAll();
 
         assertThat(hired.connectorCalls().to("HR").reads().count()).isPositive();
-        assertThat(hired.repositoryCalls().writes().ofType("UserType").count()).isPositive();
+        assertThat(hired.repositoryCalls().writes().ofType(UserType.class).count()).isPositive();
     }
 
     @Test

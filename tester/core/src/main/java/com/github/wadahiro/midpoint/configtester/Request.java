@@ -38,18 +38,30 @@ public final class Request {
         return submit(tester.deployment().api().change(UserType.class, forUser).unassign(role).delta());
     }
 
+    /** Requests the role (or org, service) for the user with the relation ({@code SchemaConstants.ORG_OWNER}). */
+    public Effects assign(String role, QName relation) {
+        return submit(tester.deployment().api().change(UserType.class, forUser).assign(role, relation).delta());
+    }
+
+    /** Requests that the user's assignment of the role with the relation be removed. */
+    public Effects unassign(String role, QName relation) {
+        return submit(tester.deployment().api().change(UserType.class, forUser).unassign(role, relation).delta());
+    }
+
     public Effects assign(AssignableRef role) {
         return assign(role.on(tester.line()));
     }
 
-    /** Requests the role (or org, service) for the user with the relation ({@code SchemaConstants.ORG_OWNER}). */
     public Effects assign(AssignableRef role, QName relation) {
-        return submit(tester.deployment().api().change(UserType.class, forUser).assign(role.on(tester.line()), relation)
-                .delta());
+        return assign(role.on(tester.line()), relation);
     }
 
     public Effects unassign(AssignableRef role) {
         return unassign(role.on(tester.line()));
+    }
+
+    public Effects unassign(AssignableRef role, QName relation) {
+        return unassign(role.on(tester.line()), relation);
     }
 
     private Effects submit(ObjectDelta<? extends ObjectType> delta) {

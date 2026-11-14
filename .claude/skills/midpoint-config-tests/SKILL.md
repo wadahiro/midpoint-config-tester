@@ -131,10 +131,16 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
   naming the manual case IDs), `unit` (functions and scripts).
 - **Calls** (README "Writing tests"):
   - sources and targets: `t.source(r).add(name, attrs)`, `.modify`, `.delete`; `t.reconcile(r)`; `t.target(r).account(n)`
-  - tasks: `t.task(name).run()`; a task shipped suspended: `.resume().run()`; stopped in the middle (an operator's
-    Suspend): `.stopAfter(n).run()`
-  - users: `t.user(n).exists().hasItem(path, v).hasRole(r).hasAccountOn(r).isEnabled()/isDisabled()/isArchived()`;
-    `values(path)` for extension items
+  - tasks: `t.task(name).run()`; a task shipped suspended: `t.task(name).resume()`, then `t.task(name).run()` on its
+    own line (a verb is a statement: never chain onto an `Effects`; in Kotlin `.run()` there is the standard
+    library's); an operator's Suspend: `t.task(name).suspend()`; stopped in the middle: `.stopAfter(n).run()`
+  - users: `t.user(n).exists().hasItem(path, v).hasAssignment(r).hasAccountOn(r).isEnabled()/isDisabled()/isArchived()`;
+    `values(path)` for extension items; `hasAssignment(r)` is the default relation, a manager's
+    `hasAssignment(r, SchemaConstants.ORG_MANAGER)`
+  - focuses by name or OID: `t.org(name).add(...)` for a name the test gives and midPoint keeps; a focus an object
+    template names (or renames): `val org = t.addOrg { ... }` (`addUser`, `addRole`, `addService`), then `org` and
+    `org.oid()` where a name goes, never the name it was added with
+  - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims
   - time: `t.clock().advance("P31D")`; a script's time window at its bounds (`LocalTime.now()` against 22:00):
     `t.clock().stopAt(day.atTime(21, 59, 59, 999_000_000))` stops the clock there, to the millisecond
   - cron tasks at a time of day: start the test at a fixed time first, `t.clock().startAt(day.atTime(12, 0))`, so

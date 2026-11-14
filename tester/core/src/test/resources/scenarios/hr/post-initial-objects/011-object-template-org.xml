@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The org template: an org with an identifier is named after it (P-<identifier>), whatever name it was added with,
+    as a deployment names its project orgs; an org without one keeps its name.
+-->
+<objectTemplate oid="20000000-0000-0000-0000-00000000b002"
+                xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Org template</name>
+    <mapping>
+        <name>org-name</name>
+        <strength>strong</strength>
+        <source><path>identifier</path></source>
+        <condition><script><code>identifier != null</code></script></condition>
+        <expression><script><code>'P-' + identifier</code></script></expression>
+        <target><path>name</path></target>
+    </mapping>
+</objectTemplate>

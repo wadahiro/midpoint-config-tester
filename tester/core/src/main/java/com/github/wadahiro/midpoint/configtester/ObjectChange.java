@@ -16,7 +16,7 @@ import java.util.Set;
 public final class ObjectChange {
 
     /** What the block did to the object. */
-    public enum Kind { ADDED, MODIFIED, DELETED }
+    enum Kind { ADDED, MODIFIED, DELETED }
 
     private final String type;
     private final String oid;
@@ -46,7 +46,12 @@ public final class ObjectChange {
         return name;
     }
 
-    public Kind kind() {
+    /** {@code added}, {@code modified} or {@code deleted}, as the selections name them ({@link Changes#added()}). */
+    public String kind() {
+        return kind.name().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    Kind change() {
         return kind;
     }
 

@@ -19,19 +19,19 @@ public final class Failure {
         return failure.getMessage();
     }
 
-    /** midPoint refused it by a policy rule (an exclusion, a password policy...). */
-    public boolean isPolicyViolation() {
-        return causedBy("PolicyViolationException");
+    /** midPoint refused it by a policy rule (an exclusion, a password policy...); fails with the error if not. */
+    public Failure isPolicyViolation() {
+        return is(causedBy("PolicyViolationException"), "a policy violation");
     }
 
     /** midPoint refused an object of a name (or OID) that another object has. */
-    public boolean isAlreadyExists() {
-        return causedBy("ObjectAlreadyExistsException");
+    public Failure isAlreadyExists() {
+        return is(causedBy("ObjectAlreadyExistsException"), "an object that already exists");
     }
 
     /** The acting user was not authorized. */
-    public boolean isNotAuthorized() {
-        return causedBy("SecurityViolationException") || causedBy("AuthorizationException");
+    public Failure isNotAuthorized() {
+        return is(causedBy("SecurityViolationException") || causedBy("AuthorizationException"), "not authorized");
     }
 
     public Failure hasMessageContaining(String text) {
@@ -50,6 +50,13 @@ public final class Failure {
     @Override
     public String toString() {
         return message();
+    }
+
+    private Failure is(boolean holds, String what) {
+        if (!holds) {
+            throw new AssertionError("Expected the failure to be " + what + ", but it is: " + message(), failure);
+        }
+        return this;
     }
 
     private boolean causedBy(String simpleName) {

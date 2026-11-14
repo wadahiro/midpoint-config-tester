@@ -46,11 +46,4 @@ public final class User extends Focus<User> {
         return (UserType) super.asObject();
     }
 
-    /**
-     * Sets the user's password, as an administrator in the GUI would; midPoint checks it against the password policy
-     * of the user's security policy (a value that violates it fails: {@link MidPointConfigTester#expectFailure}).
-     */
-    public Effects setPassword(String password) {
-        return modify(m -> m.password(password));
-    }
 }

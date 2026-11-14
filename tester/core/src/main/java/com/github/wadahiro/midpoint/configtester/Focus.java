@@ -16,10 +16,10 @@ import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
 import com.github.wadahiro.midpoint.tester.internal.ItemValues;
 
 /**
- * A focus of the scenario by name: a {@link User}, {@link Role}, {@link Org} or {@link Service}, read anew by every
- * call. {@link #asObject()} gives it as midPoint has it now, to check with any assertion library; a failed test then
+ * A focus of the scenario by name or OID: a {@link User}, {@link Role}, {@link Org} or {@link Service}, read anew by
+ * every call. {@link #asObject()} gives it as midPoint has it now, to check with any assertion library; a failed test then
  * shows the mappings of the test that set an item whose value appears in the failure. The assertions
- * ({@code hasRole}, {@code isEnabled}...) return the focus for chaining and fail with what is there and the mappings
+ * ({@code hasAssignment}, {@code isEnabled}...) return the focus for chaining and fail with what is there and the mappings
  * behind it; the verbs ({@code assign}, {@code recompute}) return what midPoint did ({@link Effects}).
  *
  * @param <SELF> the focus's own class, which the assertions return
@@ -44,8 +44,13 @@ public abstract class Focus<SELF extends Focus<SELF>> {
     /** A new focus of this kind with this name, to add. */
     abstract NewFocus<?, ?> newFocus();
 
+    /**
+     * The focus's name as midPoint has it now (an object template may have computed or changed it); the name or OID
+     * the focus was taken by when there is no such focus.
+     */
     public String name() {
-        return name;
+        FocusType focus = tester.deployment().api().find(type, name);
+        return focus != null && focus.getName() != null ? focus.getName().getOrig() : name;
     }
 
     // ---- existence --------------------------------------------------------------------------------------------
@@ -61,6 +66,11 @@ public abstract class Focus<SELF extends Focus<SELF>> {
     Effects add(NewFocus<?, ?> spec) {
         FocusType object = spec.build();
         return tester.effectsOf(() -> tester.deployment().api().addObject(object));
+    }
+
+    /** Adds the focus midPoint names ({@link MidPointConfigTester#addOrg}...) and gives its OID. */
+    static String addNameless(MidPointConfigTester tester, NewFocus<?, ?> spec) {
+        return tester.deployment().api().addObject(spec.build()).oid();
     }
 
     /** The focus's OID as midPoint has it now: the one it was added with, or generated. */
@@ -202,18 +212,26 @@ public abstract class Focus<SELF extends Focus<SELF>> {
 
     private String item(ItemRef item) {
         if (!type.getSimpleName().equals(item.ownerType())) {
-            throw new AssertionError(item + " is not an item of " + type.getSimpleName());
+            throw new IllegalArgumentException(item + " is not an item of " + type.getSimpleName());
         }
         return item.on(tester.line());
     }
 
-    /** {@link #hasRole(String)} by the generated name ({@code Roles.DEPT_SALES}, an org, service or archetype). */
-    public SELF hasRole(AssignableRef role) {
-        return hasRole(role.on(tester.line()));
+    /** {@link #hasAssignment(String)} by the generated name ({@code Roles.DEPT_SALES}, an org, service or archetype). */
+    public SELF hasAssignment(AssignableRef target) {
+        return hasAssignment(target.on(tester.line()));
     }
 
-    public SELF hasNoRole(AssignableRef role) {
-        return hasNoRole(role.on(tester.line()));
+    public SELF hasAssignment(AssignableRef target, QName relation) {
+        return hasAssignment(target.on(tester.line()), relation);
+    }
+
+    public SELF hasNoAssignment(AssignableRef target) {
+        return hasNoAssignment(target.on(tester.line()));
+    }
+
+    public SELF hasNoAssignment(AssignableRef target, QName relation) {
+        return hasNoAssignment(target.on(tester.line()), relation);
     }
 
     public Effects assign(AssignableRef role) {
@@ -232,36 +250,69 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         return hasNoAccountOn(resource.on(tester.line()));
     }
 
-    // ---- roles ------------------------------------------------------------------------------------------------
+    // ---- assignments ------------------------------------------------------------------------------------------
 
-    /** The focus has an assignment of the role (or org, service, archetype) of this name. */
-    public SELF hasRole(String role) {
-        List<String> assigned = assignedNames();
-        if (!assigned.contains(role)) {
-            throw new AssertionError(kind + " " + name + ": expected an assignment of " + role + ", assigned: "
-                    + assigned + Why.mappings(tester, "assignment", name, "assignments of " + name));
+    /**
+     * The focus has an assignment of the target (a role, org, service or archetype, by name or OID) with the default
+     * relation, as {@link #assign(String)} makes it: a manager's or an owner's assignment is not one
+     * ({@link #hasAssignment(String, QName)}). The focus's own assignments, not what they induce.
+     */
+    public SELF hasAssignment(String target) {
+        return hasAssignment(target, null);
+    }
+
+    /** The focus has an assignment of the target with this relation ({@code SchemaConstants.ORG_MANAGER}). */
+    public SELF hasAssignment(String target, QName relation) {
+        if (!assigned(target, relation)) {
+            throw new AssertionError(kind + " " + name + ": expected an assignment of " + target + relationText(relation)
+                    + ", assigned: " + assignments() + Why.mappings(tester, "assignment", name, "assignments of " + name));
         }
         return self();
     }
 
-    public SELF hasNoRole(String role) {
-        List<String> assigned = assignedNames();
-        if (assigned.contains(role)) {
-            throw new AssertionError(kind + " " + name + ": expected no assignment of " + role + ", assigned: "
-                    + assigned + Why.mappings(tester, "assignment", name, "assignments of " + name));
+    public SELF hasNoAssignment(String target) {
+        return hasNoAssignment(target, null);
+    }
+
+    public SELF hasNoAssignment(String target, QName relation) {
+        if (assigned(target, relation)) {
+            throw new AssertionError(kind + " " + name + ": expected no assignment of " + target + relationText(relation)
+                    + ", assigned: " + assignments() + Why.mappings(tester, "assignment", name, "assignments of " + name));
         }
         return self();
     }
 
-    private List<String> assignedNames() {
+    private boolean assigned(String target, QName relation) {
+        String wanted = relation == null ? "default" : relation.getLocalPart();
+        for (AssignmentType assignment : existing().getAssignment()) {
+            ObjectReferenceType ref = assignment.getTargetRef();
+            if (ref != null && (target.equals(ref.getOid()) || target.equals(tester.nameOf(ref)))
+                    && wanted.equals(relationOf(ref))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The assignments' targets, with their relation where it is not the default one ({@code IT (manager)}). */
+    private List<String> assignments() {
         List<String> out = new ArrayList<>();
         for (AssignmentType assignment : existing().getAssignment()) {
             ObjectReferenceType target = assignment.getTargetRef();
             if (target != null) {
-                out.add(tester.nameOf(target));
+                String relation = relationOf(target);
+                out.add(tester.nameOf(target) + ("default".equals(relation) ? "" : " (" + relation + ")"));
             }
         }
         return out;
+    }
+
+    private static String relationOf(ObjectReferenceType ref) {
+        return ref.getRelation() == null ? "default" : ref.getRelation().getLocalPart();
+    }
+
+    private static String relationText(QName relation) {
+        return relation == null ? "" : " with the relation " + relation.getLocalPart();
     }
 
     // ---- projections ------------------------------------------------------------------------------------------
@@ -366,6 +417,14 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         return account(resource.on(tester.line()));
     }
 
+    public Projection<Account> account(ResourceRef resource, String name) {
+        return account(resource.on(tester.line()), name);
+    }
+
+    public Projection<Group> entitlement(ResourceRef resource, String name) {
+        return entitlement(resource.on(tester.line()), name);
+    }
+
     public Projection<Group> entitlement(ResourceRef resource) {
         return entitlement(resource.on(tester.line()));
     }
@@ -384,6 +443,14 @@ public abstract class Focus<SELF extends Focus<SELF>> {
 
     public SELF hasNoEntitlementOn(ResourceRef resource) {
         return hasNoEntitlementOn(resource.on(tester.line()));
+    }
+
+    public SELF hasEntitlementOn(ResourceRef resource, String intent) {
+        return hasEntitlementOn(resource.on(tester.line()), intent);
+    }
+
+    public SELF hasNoEntitlementOn(ResourceRef resource, String intent) {
+        return hasNoEntitlementOn(resource.on(tester.line()), intent);
     }
 
     private SELF hasOn(Projections<?> selection, String resource) {
@@ -520,7 +587,8 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         FocusType focus = tester.deployment().api().find(type, name);
         if (focus == null) {
             throw new AssertionError("Expected a " + kind.toLowerCase(java.util.Locale.ROOT) + " " + name
-                    + ", but there is none");
+                    + ", but there is none (a name an object template computes or changes is no handle: add the "
+                    + "focus by t.add" + kind + "(...) and keep what it returns, or take it by its OID)");
         }
         return focus;
     }

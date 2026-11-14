@@ -36,7 +36,7 @@ class FocusScenarioTest {
     void theMembersOfAnOrgAreThoseWithTheDefaultRelation(MidPointConfigTester t) {
         t.org(Orgs.IT).hasMember("jack").hasNoMember("ann").hasNoMember("it-manager");
         assertThat(t.org("IT").members()).contains("jack");
-        t.user(Users.IT_MANAGER).hasRole(Orgs.IT);                     // assigned, as the manager
+        t.user(Users.IT_MANAGER).hasAssignment(Orgs.IT, SchemaConstants.ORG_MANAGER).hasNoAssignment(Orgs.IT);
         assertThat(t.org("IT").parents()).isEmpty();
         assertThatThrownBy(() -> t.org("IT").hasMember("ann"))
                 .isInstanceOf(AssertionError.class).hasMessageContaining("Org IT: expected a member ann");
@@ -45,7 +45,7 @@ class FocusScenarioTest {
     @Test
     void aVerbOnARoleOrAUserWithARelation(MidPointConfigTester t) {
         t.user("ann").assign("Help desk", SchemaConstants.ORG_OWNER);
-        t.user("ann").hasRole("Help desk");
+        t.user("ann").hasAssignment("Help desk", SchemaConstants.ORG_OWNER).hasNoAssignment("Help desk");
         t.role("Help desk").hasNoMember("ann");                       // an owner is no member
 
         t.role("Auditor").recompute();                                 // as aRoleIsAFocus

@@ -46,8 +46,13 @@ public final class Cases {
         return forRole(role.on(tester.line()));
     }
 
-    /** Cases whose name contains the text. */
-    public Cases named(String text) {
+    /** The cases of this name. */
+    public Cases named(String name) {
+        return and(c -> name.equals(c.name()), "named " + name);
+    }
+
+    /** The cases whose name contains the text (midPoint names an approval case after its request). */
+    public Cases nameContaining(String text) {
         return and(c -> c.name() != null && c.name().contains(text), "named *" + text + "*");
     }
 

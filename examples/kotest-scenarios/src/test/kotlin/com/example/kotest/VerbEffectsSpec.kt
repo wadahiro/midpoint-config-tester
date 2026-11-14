@@ -1,5 +1,6 @@
 package com.example.kotest
 
+import com.evolveum.midpoint.xml.ns._public.common.common_3.CaseType
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest
 import com.github.wadahiro.midpoint.configtester.kotest.MidPointConfigSpec
 import com.github.wadahiro.midpoint.configtester.kotest.verifyAll
@@ -23,10 +24,10 @@ class VerbEffectsSpec : MidPointConfigSpec({
 
     "a request of a role with approvers opens a case and leaves the user as they were" {
         t.actor("jack").request().assign("Privileged Access").verifyAll {
-            changes().ofType("CaseType").added().exactly(2)            // the request and its approval
+            changes().ofType(CaseType::class.java).added().exactly(2)            // the request and its approval
             mails().to("role-owner@example.com").single()                // the work item
             mails().to("jack@example.com").withSubject("Request submitted").single()
         }
-        t.user("jack").hasNoRole("Privileged Access")
+        t.user("jack").hasNoAssignment("Privileged Access")
     }
 })

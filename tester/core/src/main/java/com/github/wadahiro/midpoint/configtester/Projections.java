@@ -49,7 +49,7 @@ public final class Projections<T extends TargetObject> {
     /** The projections of the kind ({@code account}, {@code entitlement}, {@code generic}). */
     public Projections<TargetObject> kind(String kind) {
         if (this.kind != null) {
-            throw new IllegalStateException("These are the " + this.kind + "s already: kind(" + kind + ") is for "
+            throw new IllegalArgumentException("These are the " + this.kind + "s already: kind(" + kind + ") is for "
                     + "projections(resource)");
         }
         return new Projections<>(owner, resource, kind, intent, tag, named, Projection.ANY);

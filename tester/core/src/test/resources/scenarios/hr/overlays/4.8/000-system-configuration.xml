@@ -8,6 +8,10 @@
         <type>UserType</type>
         <objectTemplateRef oid="20000000-0000-0000-0000-00000000b001"/>
     </defaultObjectPolicyConfiguration>
+    <defaultObjectPolicyConfiguration>
+        <type>OrgType</type>
+        <objectTemplateRef oid="20000000-0000-0000-0000-00000000b002"/>
+    </defaultObjectPolicyConfiguration>
     <notificationConfiguration>
         <handler>
             <operation>add</operation>

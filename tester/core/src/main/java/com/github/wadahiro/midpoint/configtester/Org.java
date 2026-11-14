@@ -65,6 +65,10 @@ public final class Org extends AbstractRole<Org> {
         return hasParent(org.on(tester.line()));
     }
 
+    public Org hasNoParent(OrgRef org) {
+        return hasNoParent(org.on(tester.line()));
+    }
+
     public Org hasNoParent(String org) {
         List<String> parents = parents();
         if (parents.contains(org)) {

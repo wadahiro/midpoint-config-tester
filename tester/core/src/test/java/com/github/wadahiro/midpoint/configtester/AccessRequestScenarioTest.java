@@ -30,7 +30,7 @@ class AccessRequestScenarioTest {
         t.actor(Users.JACK).request().assign(Roles.PRIVILEGED_ACCESS);
 
         // nothing assigned yet: the request waits in a case, at the role owner
-        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoAssignment(Roles.PRIVILEGED_ACCESS);
         Case request = t.cases().forUser(Users.JACK).forRole(Roles.PRIVILEGED_ACCESS).single();
         request.isOpen().atStage(1);
         t.workItems().assignedTo(Users.ROLE_OWNER).single().approve(t.actor(Users.ROLE_OWNER), "ok for jack");
@@ -40,7 +40,7 @@ class AccessRequestScenarioTest {
         request.workItems().exactly(2);
         WorkItem officer = t.workItems().assignedTo(Users.SEC_OFFICER).single().atStage(2);
         WorkItem analyst = t.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(2);
-        assertThat(officer.assignees()).containsExactly(Users.SEC_OFFICER);
+        assertThat(officer.assignees()).containsExactly(Users.SEC_OFFICER.name());
         assertThat(officer.candidates()).isEmpty();
 
         // the first decision counts: the other officer's work item is closed without a decision
@@ -48,7 +48,7 @@ class AccessRequestScenarioTest {
         officer.isApprovedBy(Users.SEC_OFFICER);
         analyst.isCancelled();
         request.isApproved();
-        t.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasAssignment(Roles.PRIVILEGED_ACCESS);
         t.workItems().none();
     }
 
@@ -63,7 +63,7 @@ class AccessRequestScenarioTest {
         analyst.isRejectedBy(Users.SEC_ANALYST);
         officer.isCancelled();
         t.cases().forUser(Users.JACK).single().isRejected();
-        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoAssignment(Roles.PRIVILEGED_ACCESS);
         t.workItems().none();
     }
 
@@ -87,7 +87,7 @@ class AccessRequestScenarioTest {
         t.workItems().assignedTo(Users.ROLE_OWNER).single().delegate(t.actor(Users.ROLE_OWNER), Users.SEC_ANALYST);
 
         WorkItem item = t.workItems().assignedTo(Users.SEC_ANALYST).single().atStage(1);
-        assertThat(item.assignees()).containsExactlyInAnyOrder(Users.ROLE_OWNER, Users.SEC_ANALYST);
+        assertThat(item.assignees()).containsExactlyInAnyOrder(Users.ROLE_OWNER.name(), Users.SEC_ANALYST.name());
         item.approve(t.actor(Users.SEC_ANALYST));
         t.cases().forUser(Users.JACK).single().atStage(2);
     }
@@ -96,7 +96,7 @@ class AccessRequestScenarioTest {
     void aRoleWithoutApprovalIsAssignedAtOnce(MidPointConfigTester t) {
         t.actor(Users.JACK).request().assign(Roles.AUDITOR);
 
-        t.user(Users.JACK).hasRole(Roles.AUDITOR);
+        t.user(Users.JACK).hasAssignment(Roles.AUDITOR);
         t.cases().none();
     }
 
@@ -104,8 +104,8 @@ class AccessRequestScenarioTest {
     void aRoleThatIsNotRequestableIsRefused(MidPointConfigTester t) {
         Failure failure = t.expectFailure(() -> t.actor(Users.JACK).request().assign(Roles.ACCOUNTANT));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
-        t.user(Users.JACK).hasNoRole(Roles.ACCOUNTANT);
+        failure.isNotAuthorized();
+        t.user(Users.JACK).hasNoAssignment(Roles.ACCOUNTANT);
     }
 
     @Test
@@ -135,9 +135,9 @@ class AccessRequestScenarioTest {
             return;
         }
         Failure failure = t.expectFailure(() -> item.approve(t.actor(Users.ROLE_OWNER)));
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
         item.isOpen();
-        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoAssignment(Roles.PRIVILEGED_ACCESS);
     }
 
     /** An approver decides only their own work items: another approver's is refused. */
@@ -148,7 +148,7 @@ class AccessRequestScenarioTest {
 
         Failure failure = t.expectFailure(() -> item.approve(t.actor(Users.SEC_OFFICER)));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
         item.isOpen();
     }
 
@@ -160,18 +160,18 @@ class AccessRequestScenarioTest {
 
         Failure failure = t.expectFailure(() -> item.approve(t.actor(Users.JACK)));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
         item.isOpen();
-        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoAssignment(Roles.PRIVILEGED_ACCESS);
     }
 
     @Test
     void theSegregationOfDutiesRuleRefusesAuditorToAnAccountant(MidPointConfigTester t) {
         Failure failure = t.expectFailure(() -> t.user(Users.ANN).assign(Roles.AUDITOR));
 
-        assertThat(failure.isPolicyViolation()).as(failure.message()).isTrue();
+        failure.isPolicyViolation();
         failure.hasMessageContaining("Auditor");
-        t.user(Users.ANN).hasNoRole(Roles.AUDITOR).hasRole(Roles.ACCOUNTANT);
+        t.user(Users.ANN).hasNoAssignment(Roles.AUDITOR).hasAssignment(Roles.ACCOUNTANT);
     }
 
     @Test

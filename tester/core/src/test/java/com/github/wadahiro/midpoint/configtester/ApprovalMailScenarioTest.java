@@ -70,7 +70,7 @@ class ApprovalMailScenarioTest {
 
         // the first decision counts: the other officer's work item is cancelled, with no mail
         t.workItems().none();
-        t.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasAssignment(Roles.PRIVILEGED_ACCESS);
         t.mails().to(JACK).withSubject("Request approved: Privileged Access").single()
                 .hasBodyContaining("Your request for Privileged Access has been approved by Sue Analyst: ok, ticket checked");
         assertThat(t.mails().perRecipient()).isEqualTo(Map.of(JACK, 2, OWNER, 1, OFFICER, 1, ANALYST, 1));
@@ -105,7 +105,7 @@ class ApprovalMailScenarioTest {
                 .reject(t.actor(Users.ROLE_OWNER), "no privileged access without a ticket");
 
         t.cases().forUser(Users.JACK).forRole(Roles.PRIVILEGED_ACCESS).single().isRejected();
-        t.user(Users.JACK).hasNoRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasNoAssignment(Roles.PRIVILEGED_ACCESS);
         t.mails().to(JACK).withSubject("Request rejected: Privileged Access").single()
                 .hasBodyContaining("has been rejected by Rose Owner: no privileged access without a ticket");
         // no stage 2, so no Security officer is mailed
@@ -142,7 +142,7 @@ class ApprovalMailScenarioTest {
         // the deputy approves, then a Security officer: the request is done
         escalated.approve(t.actor(Users.OWNER_DEPUTY));
         t.workItems().assignedTo(Users.SEC_OFFICER).single().approve(t.actor(Users.SEC_OFFICER));
-        t.user(Users.JACK).hasRole(Roles.PRIVILEGED_ACCESS);
+        t.user(Users.JACK).hasAssignment(Roles.PRIVILEGED_ACCESS);
         t.mails().to(JACK).withSubject("Request approved: Privileged Access").single()
                 .hasBodyContaining("has been approved by Sam Officer.");
         assertThat(t.mails().perRecipient())

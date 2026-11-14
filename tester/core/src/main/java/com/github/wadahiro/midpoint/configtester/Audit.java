@@ -63,9 +63,10 @@ public final class Audit {
                 " of target " + nameOrOid);
     }
 
-    /** The records whose target is of this type ({@code UserType}, {@code RoleType}...). */
-    public Audit targetType(String type) {
-        return select(r -> type.equals(r.targetType()), " of a " + type);
+    /** The records whose target is of this type ({@code UserType.class}, {@code RoleType.class}...). */
+    public Audit targetType(Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type) {
+        String name = type.getSimpleName();
+        return select(r -> name.equals(r.targetType()), " of a " + name);
     }
 
     /** The records with this outcome ({@code SUCCESS}, {@code FATAL_ERROR}, {@code PARTIAL_ERROR}...). */

@@ -39,7 +39,7 @@ class FocusWriteScenarioTest {
                 .assign(Roles.DEPT_SALES).validTo(Instant.parse("2030-04-01T00:00:00Z")));
 
         added.connectorCalls().to("LDAP").adds().of("uid=jdoe,ou=people,dc=example,dc=com").single();
-        t.user("jdoe").hasFullName("John Doe").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP)
+        t.user("jdoe").hasFullName("John Doe").hasAssignment(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP)
                 .hasItem("activation/validTo", "2030-04-01T09:00:00+09:00");
     }
 
@@ -82,8 +82,7 @@ class FocusWriteScenarioTest {
     @Test
     void anObjectOfANameThatIsTakenIsRefused(MidPointConfigTester t) {
         t.user("jdoe").add();
-        Failure failure = t.expectFailure(() -> t.user("jdoe").add());
-        assertThat(failure.isAlreadyExists()).isTrue();
+        t.expectFailure(() -> t.user("jdoe").add()).isAlreadyExists();
     }
 
     @Test
@@ -102,6 +101,34 @@ class FocusWriteScenarioTest {
         t.org("apollo").hasParent("rnd");
         t.service("Directory").add(s -> s.set("description", "the LDAP"));
         t.service("Directory").exists().hasItem("description", "the LDAP");
+    }
+
+    @Test
+    void aFocusMidPointNamesIsAddedWithoutANameAndTakenByItsOid(MidPointConfigTester t) {
+        t.org("rnd").add();
+        Org project = t.addOrg(o -> o.set("identifier", "099").parent("rnd"));    // the org template names it
+
+        assertThat(project.name()).isEqualTo("P-099");
+        project.hasItem("identifier", "099").hasParent("rnd");
+        t.org("P-099").hasParent("rnd");
+        t.org("child").add(c -> c.parent(project.oid()));
+        t.org("child").hasParent("P-099");
+        t.user("jdoe").add(u -> u.assign(project.oid()));
+        t.user("jdoe").hasAssignment(project.oid()).hasAssignment("P-099");
+        project.hasMember("jdoe");
+
+        Org renamed = t.addOrg(o -> o.set("name", "t99").set("identifier", "100"));   // a name the template replaces
+        assertThat(renamed.name()).isEqualTo("P-100");
+        t.org("t99").doesNotExist();
+        assertThatThrownBy(() -> t.org("t99").hasParent("rnd"))
+                .isInstanceOf(AssertionError.class).hasMessageContaining("t.addOrg(...)");
+
+        Effects added = t.effectsOf(() -> t.addOrg(o -> o.set("identifier", "101")));
+        added.changes().of("P-101").added().single();
+        String oid = "aaaaaaaa-0000-0000-0000-000000000003";
+        assertThat(t.addOrg(o -> o.oid(oid).set("identifier", "102")).oid()).isEqualTo(oid);
+        assertThatThrownBy(() -> t.org(oid).add())
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("is an OID, not a name");
     }
 
     @Test

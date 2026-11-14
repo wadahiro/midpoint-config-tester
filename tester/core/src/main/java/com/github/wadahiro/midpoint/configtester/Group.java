@@ -37,7 +37,7 @@ public final class Group extends TargetObject {
     }
 
     /** The accounts in the group (by name, sorted ignoring case). */
-    public Set<String> members() {
+    public List<String> members() {
         existing();
         Set<String> out = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         for (String account : resource.accounts()) {
@@ -45,7 +45,7 @@ public final class Group extends TargetObject {
                 out.add(account);
             }
         }
-        return out;
+        return new java.util.ArrayList<>(out);
     }
 
     public Group hasMember(String account) {

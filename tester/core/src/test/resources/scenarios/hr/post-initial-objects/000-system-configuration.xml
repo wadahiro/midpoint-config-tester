@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     The system configuration, 4.4 format (the one mail transport of notificationConfiguration; 4.8: overlays/4.8):
-    users get the user template; a new user gets a welcome mail. The tester redirects the mail server to its own.
+    users get the user template, orgs the org template; a new user gets a welcome mail. The tester redirects the mail server to its own.
 -->
 <systemConfiguration oid="00000000-0000-0000-0000-000000000001"
         xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
@@ -10,6 +10,10 @@
     <defaultObjectPolicyConfiguration>
         <type>UserType</type>
         <objectTemplateRef oid="20000000-0000-0000-0000-00000000b001"/>
+    </defaultObjectPolicyConfiguration>
+    <defaultObjectPolicyConfiguration>
+        <type>OrgType</type>
+        <objectTemplateRef oid="20000000-0000-0000-0000-00000000b002"/>
     </defaultObjectPolicyConfiguration>
     <notificationConfiguration>
         <handler>

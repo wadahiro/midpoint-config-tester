@@ -35,21 +35,22 @@ public final class Changes {
         return select(c -> nameOrOid.equals(c.name()) || nameOrOid.equals(c.oid()), " " + nameOrOid);
     }
 
-    /** The changes of objects of the type, by its simple name: {@code UserType}, {@code ShadowType}... */
-    public Changes ofType(String type) {
-        return select(c -> type.equals(c.type()), " of " + type);
+    /** The changes of objects of the type: {@code ofType(UserType.class)}, {@code ofType(ShadowType.class)}... */
+    public Changes ofType(Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type) {
+        String name = type.getSimpleName();
+        return select(c -> name.equals(c.type()), " of " + name);
     }
 
     public Changes added() {
-        return select(c -> c.kind() == ObjectChange.Kind.ADDED, " added");
+        return select(c -> c.change() == ObjectChange.Kind.ADDED, " added");
     }
 
     public Changes modified() {
-        return select(c -> c.kind() == ObjectChange.Kind.MODIFIED, " modified");
+        return select(c -> c.change() == ObjectChange.Kind.MODIFIED, " modified");
     }
 
     public Changes deleted() {
-        return select(c -> c.kind() == ObjectChange.Kind.DELETED, " deleted");
+        return select(c -> c.change() == ObjectChange.Kind.DELETED, " deleted");
     }
 
     public List<ObjectChange> list() {

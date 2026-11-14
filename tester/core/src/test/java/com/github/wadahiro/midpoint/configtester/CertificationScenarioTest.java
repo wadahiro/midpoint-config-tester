@@ -19,7 +19,7 @@ class CertificationScenarioTest {
         t.user(Users.ROLE_OWNER).assign(Roles.AUDITOR);
 
         Campaign campaign = t.certification(CertificationDefinitions.ROLE_ASSIGNMENTS).start();
-        campaign.isInStage(1).reviews().forReviewer(Users.SEC_OFFICER).exactly(2);
+        campaign.atStage(1).reviews().forReviewer(Users.SEC_OFFICER).exactly(2);
         campaign.reviews().forUser(Users.JACK).forRole(Roles.AUDITOR).single().revoke(t.actor(Users.SEC_OFFICER), "left the audit");
         campaign.reviews().forUser(Users.ROLE_OWNER).single().accept(t.actor(Users.SEC_OFFICER));
         campaign.reviews().undecided().none();
@@ -28,7 +28,7 @@ class CertificationScenarioTest {
         campaign.remediate();
 
         campaign.hasOutcome(Users.JACK, Roles.AUDITOR, "revoke").hasOutcome(Users.ROLE_OWNER, Roles.AUDITOR, "accept");
-        t.user(Users.JACK).hasNoRole(Roles.AUDITOR);
-        t.user(Users.ROLE_OWNER).hasRole(Roles.AUDITOR);
+        t.user(Users.JACK).hasNoAssignment(Roles.AUDITOR);
+        t.user(Users.ROLE_OWNER).hasAssignment(Roles.AUDITOR);
     }
 }

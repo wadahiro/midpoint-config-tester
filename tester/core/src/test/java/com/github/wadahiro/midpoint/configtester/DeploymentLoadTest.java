@@ -34,8 +34,8 @@ class DeploymentLoadTest {
 
         // sorted by the numbers of the file names across the subdirectories, as midPoint's DataImport.sortFiles
         assertThat(deployment.importOrder()).containsExactly("000-system-configuration.xml",
-                "010-object-template-user.xml", "resources/020-resource-hr.xml", "resources/021-resource-ldap.xml",
-                "roles/030-roles.xml", "roles/040-role-project.xml", "tasks/090-task-reconcile-hr.xml");
+                "010-object-template-user.xml", "011-object-template-org.xml", "resources/020-resource-hr.xml",
+                "resources/021-resource-ldap.xml", "roles/030-roles.xml", "roles/040-role-project.xml", "tasks/090-task-reconcile-hr.xml");
         assertThat(contents(dir)).isEqualTo(before);
         // the copy has the properties, the line's overlay and the resources on the tester's target systems
         String template = read(deployment.prepared().resolve("010-object-template-user.xml"));

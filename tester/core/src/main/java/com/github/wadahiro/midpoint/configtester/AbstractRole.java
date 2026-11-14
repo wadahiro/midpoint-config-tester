@@ -27,6 +27,15 @@ public abstract class AbstractRole<SELF extends AbstractRole<SELF>> extends Focu
         return out;
     }
 
+    /** {@link #hasMember(String)} by the generated name ({@code Users.JACK}, a role, an org...). */
+    public SELF hasMember(com.github.wadahiro.midpoint.configtester.names.ObjectRef focus) {
+        return hasMember(focus.on(tester.line()));
+    }
+
+    public SELF hasNoMember(com.github.wadahiro.midpoint.configtester.names.ObjectRef focus) {
+        return hasNoMember(focus.on(tester.line()));
+    }
+
     public SELF hasMember(String focus) {
         List<String> members = members();
         if (!members.contains(focus)) {

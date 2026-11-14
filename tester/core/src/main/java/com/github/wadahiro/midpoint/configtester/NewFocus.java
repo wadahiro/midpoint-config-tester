@@ -23,7 +23,9 @@ import com.github.wadahiro.midpoint.tester.internal.ItemValues;
 
 /**
  * A focus to add through the model ({@link User#add(Consumer)}, {@link Role#add(Consumer)}...): its name, and what the
- * test gives it besides; the deployment's object templates and policies do the rest when it is added. Items by path as
+ * test gives it besides; the deployment's object templates and policies do the rest when it is added. A focus that
+ * midPoint names ({@link MidPointConfigTester#addOrg}...) has no name here, as one an administrator saves in the GUI
+ * with the name left empty: {@code set("name", ...)} gives a name the object template replaces. Items by path as
  * {@link Focus#hasItem} names them (extension items too) or by the generated name, their values read as the item's
  * type ({@code "5"} for an int, an {@link Instant} or {@code "2030-04-01T09:00:00+09:00"} for a date).
  *
@@ -34,6 +36,7 @@ public abstract class NewFocus<B extends NewFocus<B, O>, O extends FocusType> {
 
     final MidPointConfigTester tester;
     final Class<O> type;
+    /** The focus's name; null for a focus midPoint names. */
     final String name;
     private final PrismObject<O> object;
     private final List<Consumer<? super O>> edits = new ArrayList<>();
@@ -50,7 +53,22 @@ public abstract class NewFocus<B extends NewFocus<B, O>, O extends FocusType> {
         } catch (SchemaException e) {
             throw new IllegalStateException("Cannot make a " + type.getSimpleName(), e);
         }
-        object.asObjectable().setName(new PolyStringType(name));
+        if (name != null) {
+            if (OID.matcher(name).matches()) {
+                throw new IllegalArgumentException(name + " is an OID, not a name: a focus midPoint names is added by "
+                        + "t.add" + type.getSimpleName().replace("Type", "") + "(...), with oid(...) for a fixed OID");
+            }
+            object.asObjectable().setName(new PolyStringType(name));
+        }
+    }
+
+    private static final java.util.regex.Pattern OID = java.util.regex.Pattern.compile(
+            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    /** The focus as the messages name it. */
+    String what() {
+        return name != null ? name : "the new " + type.getSimpleName().replace("Type", "").toLowerCase(
+                java.util.Locale.ROOT);
     }
 
     abstract B self();
@@ -87,7 +105,7 @@ public abstract class NewFocus<B extends NewFocus<B, O>, O extends FocusType> {
         AbstractRoleType role = tester.deployment().api().find(AbstractRoleType.class, target);
         if (role == null) {
             throw new IllegalArgumentException("No role, org, service or archetype " + target + " to assign to "
-                    + name);
+                    + what());
         }
         AssignmentType assignment = new AssignmentType()
                 .targetRef(new ObjectReferenceType().oid(role.getOid())
@@ -173,7 +191,7 @@ public abstract class NewFocus<B extends NewFocus<B, O>, O extends FocusType> {
                 delta.applyTo(object);
             }
         } catch (SchemaException e) {
-            throw new IllegalArgumentException(path + " of " + name + ": " + e.getMessage(), e);
+            throw new IllegalArgumentException(path + " of " + what() + ": " + e.getMessage(), e);
         }
     }
 }

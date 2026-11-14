@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.github.wadahiro.midpoint.configtester.names.Lines;
 import com.github.wadahiro.midpoint.configtester.names.UserRef;
 import com.github.wadahiro.midpoint.tester.Approvals;
 
@@ -31,13 +30,11 @@ public final class WorkItem {
     }
 
     /**
-     * The users it is assigned to, as refs equal to the generated names:
-     * {@code assertThat(item.assignees()).containsExactly(Users.SEC_OFFICER)}.
+     * The users it is assigned to, by name:
+     * {@code assertThat(item.assignees()).containsExactly(Users.SEC_OFFICER.name())}.
      */
-    public List<UserRef> assignees() {
-        List<UserRef> out = new ArrayList<>();
-        item.assignees().forEach(user -> out.add(new UserRef(user, null, Lines.ALL)));
-        return out;
+    public List<String> assignees() {
+        return new ArrayList<>(item.assignees());
     }
 
     /**

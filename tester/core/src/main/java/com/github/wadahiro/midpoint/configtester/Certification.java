@@ -8,7 +8,7 @@ package com.github.wadahiro.midpoint.configtester;
  * c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "not needed");
  * c.closeStage();
  * c.remediate();
- * t.user("jack").hasNoRole("Auditor");
+ * t.user("jack").hasNoAssignment("Auditor");
  * }</pre>
  */
 public final class Certification {

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  *     void joiner(MidPointConfigTester s) {
  *         t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
  *         t.task("Reconcile HR").run();
- *         t.user("e1001").exists().hasFullName("John Doe").hasRole("Dept Sales");
+ *         t.user("e1001").exists().hasFullName("John Doe").hasAssignment("Dept Sales");
  *     }
  * }
  * }</pre>

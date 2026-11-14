@@ -36,7 +36,7 @@ class AuditScenarioTest {
         t.user("audited").delete();
 
         t.audit().ofType("ADD_OBJECT").target("audited").request().exactly(1);
-        AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType("UserType").single();
+        AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType(UserType.class).single();
         assertThat(deletion.targetOid()).isEqualTo(oid);
         assertThat(deletion.targetName()).isEqualTo("audited");
         assertThat(deletion.outcome()).isEqualTo("SUCCESS");

@@ -87,7 +87,8 @@ public final class Campaign {
 
     // ---- assertions -------------------------------------------------------------------------------------------
 
-    public Campaign isInStage(int expected) {
+    /** The campaign is in this stage (from 1). */
+    public Campaign atStage(int expected) {
         if (stage() != expected) {
             throw new AssertionError("Campaign " + this + ": expected stage " + expected + " but is in " + stage());
         }

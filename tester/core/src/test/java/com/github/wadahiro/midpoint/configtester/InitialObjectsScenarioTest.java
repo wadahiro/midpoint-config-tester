@@ -22,8 +22,8 @@ class InitialObjectsScenarioTest {
 
     @Test
     void theTemplateAssignsTheInitialEndUserRole(MidPointConfigTester t) {
-        t.user(Users.JACK).hasFullName("Jack Sparrow").hasRole(InitialRoles.END_USER);
-        t.user(Users.ANN).hasRole(InitialRoles.END_USER).hasRole(Roles.ACCOUNTANT);
+        t.user(Users.JACK).hasFullName("Jack Sparrow").hasAssignment(InitialRoles.END_USER);
+        t.user(Users.ANN).hasAssignment(InitialRoles.END_USER).hasAssignment(Roles.ACCOUNTANT);
     }
 
     /** The post-initial system configuration overwrites the initial one (midPoint: overwrite on every line). */
@@ -45,9 +45,9 @@ class InitialObjectsScenarioTest {
     /** midPoint's default password policy (an initial object, by the default security policy) checks passwords. */
     @Test
     void theDefaultPasswordPolicyRejectsAShortPassword(MidPointConfigTester t) {
-        Failure failure = t.expectFailure(() -> t.user(Users.JACK).setPassword("ab"));
-        assertThat(failure.isPolicyViolation()).as(failure.message()).isTrue();
+        Failure failure = t.expectFailure(() -> t.user(Users.JACK).modify(m -> m.password("ab")));
+        failure.isPolicyViolation();
 
-        t.user(Users.JACK).setPassword("Correct-Horse7");
+        t.user(Users.JACK).modify(m -> m.password("Correct-Horse7"));
     }
 }

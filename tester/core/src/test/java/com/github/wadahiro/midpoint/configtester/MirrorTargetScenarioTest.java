@@ -37,7 +37,7 @@ class MirrorTargetScenarioTest {
                 .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales")
                 .set(HrAttrs.START_DATE, LocalDate.of(2020, 4, 1).toString()));
         t.task(Tasks.RECONCILE_HR).run();
-        t.user("e1001").hasFullName("John Doe").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP);
+        t.user("e1001").hasFullName("John Doe").hasAssignment(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP);
         t.target(Resources.LDAP).account(JOHN).exists()
                 .hasAttribute(LdapAttrs.CN, "John Doe")
                 .hasAttribute(LdapAttrs.OU, "Sales")
@@ -48,7 +48,7 @@ class MirrorTargetScenarioTest {
 
         t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
         t.task(Tasks.RECONCILE_HR).run();
-        t.user("e1001").hasRole(Roles.DEPT_IT).hasNoRole(Roles.DEPT_SALES);
+        t.user("e1001").hasAssignment(Roles.DEPT_IT).hasNoAssignment(Roles.DEPT_SALES);
         t.target(Resources.LDAP).account(JOHN).hasAttribute(LdapAttrs.OU, "IT").memberOf(IT).notMemberOf(SALES);
 
         t.source(Resources.HR).delete("1001");

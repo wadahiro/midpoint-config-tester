@@ -1,7 +1,5 @@
 package com.github.wadahiro.midpoint.configtester;
 
-import static com.github.wadahiro.midpoint.configtester.Status.DISABLED;
-import static com.github.wadahiro.midpoint.configtester.Status.ENABLED;
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.refTo;
 import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditions.targeting;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -88,7 +86,7 @@ class HrLifecycleScenarioTest {
         assertThat(ldap.groups()).containsExactly(SALES);
         t.target(Resources.LDAP).group(SALES).exists().hasMember(JOHN).hasAttribute("cn", "sales");
         assertThat(t.target(Resources.LDAP).group(IT).members()).doesNotContain(JOHN);
-        assertThat(ldap.status()).isEqualTo(ENABLED);
+        ldap.isEnabled();
         assertThat(t.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
 
         hr.update("1001", HrAttrs.DEPARTMENT, "IT");
@@ -123,15 +121,15 @@ class HrLifecycleScenarioTest {
         assertThat(u.getAssignment()).haveExactly(1, targeting(Roles.DEPT_IT));
         assertThat(u.getRoleMembershipRef()).haveAtLeastOne(refTo(Roles.DEPT_IT));
         assertThat(ldap.groups()).containsExactly(IT);
-        assertThat(ldap.status()).isEqualTo(ENABLED);
+        ldap.isEnabled();
 
         // HR records the end of the employment; once it has passed, the user and the account are disabled
         LocalDate end = start.plusDays(30);
         hr.update("1002", HrAttrs.END_DATE, end.toString());
-        assertThat(ldap.status()).isEqualTo(ENABLED);
+        ldap.isEnabled();
         t.clock().advanceTo(end).advance("PT1H").runDue();
         assertThat(kate.asObject().getActivation().getEffectiveStatus()).isEqualTo(ActivationStatusType.DISABLED);
-        assertThat(ldap.status()).isEqualTo(DISABLED);
+        ldap.isDisabled();
     }
 
     /** The API's own assertions check the same, chained, each failing with what is there and the mappings behind it. */
@@ -141,7 +139,7 @@ class HrLifecycleScenarioTest {
         t.user("e1001").exists()
                 .hasFullName("John Doe")
                 .hasItem(UserItems.COST_CENTER, "Sales")
-                .hasRole(Roles.DEPT_SALES)
+                .hasAssignment(Roles.DEPT_SALES)
                 .isEnabled()
                 .hasAccountOn(Resources.HR)
                 .hasAccountOn(Resources.LDAP);
@@ -283,7 +281,7 @@ class HrLifecycleScenarioTest {
         t.user("e1003").doesNotExist();
 
         t.clock().runDue();
-        t.user("e1003").exists().hasRole(Roles.DEPT_SALES);
+        t.user("e1003").exists().hasAssignment(Roles.DEPT_SALES);
     }
 
     /** The HR site column goes to the users' extension item {@code site} (the extension schema of the manifest). */
@@ -318,7 +316,7 @@ class HrLifecycleScenarioTest {
         t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
                 "startDate", "2020-04-01"));
         t.task("Reconcile HR").run();
-        t.user("e1001").hasRole("Dept Sales").hasAccountOn("LDAP");
+        t.user("e1001").hasAssignment("Dept Sales").hasAccountOn("LDAP");
         t.target("LDAP").account(JOHN).hasAttribute("ou", "Sales").memberOf(SALES);
     }
 

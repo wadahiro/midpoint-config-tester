@@ -847,6 +847,36 @@ times per user and operation on 4.0 and 2 times on 4.4 and 4.8 in the HR sample.
 
 ---
 
+## API rules before 1.0 as built
+
+A review of the public API for consistency, for people who know midPoint and for agents writing tests from the README:
+names are midPoint's, and a thing has one way to say it.
+
+- **Effects.** A verb that makes midPoint work returns its `Effects` (`add`, `modify`, `assign`, `run`, `resume`,
+  `suspend`, `approve`...). A verb whose result the test cannot name beforehand returns what midPoint made:
+  `certification().start()` its `Campaign`, `report().run()` its `ReportOutput`, `t.addUser/addRole/addOrg/
+  addService(spec)` the focus by its OID; their effects come from `effectsOf { }`. A verb is a statement: nothing
+  chains onto an `Effects` but its claims (in Kotlin, `.run()` there is the standard library's `run {}`). `resume()`
+  stays a verb with effects: a single-run or tightly bound task runs within it.
+- **Addressing.** A focus is taken by name or OID wherever a name goes (`t.org(oid)`, `assign(oid)`, `parent(oid)`),
+  as `MidPoint.find` takes it. `t.org(name).add(...)` is for a name the test gives and midPoint keeps; a focus whose
+  name an object template computes or changes is added without one (`t.addOrg(...)`, as an administrator saves it in
+  the GUI with the name empty) and kept by the handle it returns. Rejected: a sentinel or empty name (a token midPoint
+  does not have, compiling wherever a name goes), an unbound `t.org().add()` (a handle invalid until it is added),
+  and an OID-shaped entry meaning "nameless" (meaning by the shape of a string). A by-name add refuses an OID.
+- **Claims.** `has*`/`is*` claim and return their subject, `Failure`'s too. `hasAssignment(target[, relation])` is
+  the default relation unless one is given, as `assign` makes it (`hasRole`, which ignored the relation, is gone).
+- **Reads** give names as `List<String>`; a selection takes an object type as its class (`ofType(UserType.class)`),
+  an enumeration as its XML value, a change's kind as the selection's word (`added`, `modified`, `deleted`); the
+  `Status` enum is gone (`Account.isEnabled()`). `named` is an exact name everywhere (`Cases.nameContaining` for the
+  rest); a stage is claimed `atStage(n)` and selected `inStage(n)`. One way to set a password: `modify(m ->
+  m.password(...))` (`NewUser.password` when adding).
+- **Exceptions.** A mistake of the test (an item, a kind, a name it should not have given) is an
+  `IllegalArgumentException`; midPoint not being as the test claims is an `AssertionError`.
+- **Preconditions.** A container's body holds the given its tests share; its precondition claims what midPoint
+  derived from it, never what the body passed in. A precondition that would say what the first test says means the
+  body's act is the subject: a test (or `steps`).
+
 ## 1. Retrospective of the PoC
 
 ### 1.1 What is valuable and must survive

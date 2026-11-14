@@ -124,7 +124,7 @@ class InitialNamesTest {
     /** A typed name works in the verbs as the string does. */
     @Test
     void theInitialNamesWorkInTheVerbs(MidPointConfigTester t) {
-        t.user("jack").hasRole(InitialRoles.END_USER).hasNoRole(InitialRoles.SUPERUSER)
+        t.user("jack").hasAssignment(InitialRoles.END_USER).hasNoAssignment(InitialRoles.SUPERUSER)
                 .hasItem(UserItems.FULL_NAME, "Jack Sparrow");
         assertThat(t.user("jack").values(UserItems.NAME)).containsExactly("jack");
         assertThat(t.task(InitialTasks.VALIDITY_SCANNER).name()).isEqualTo("Validity Scanner");

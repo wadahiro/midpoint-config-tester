@@ -131,7 +131,7 @@ class DeploymentCacheTest {
                 .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales")
                 .set(HrAttrs.START_DATE, LocalDate.of(2020, 4, 1).toString()));
         t.task(Tasks.RECONCILE_HR).run();
-        t.user("e1001").hasRole(Roles.DEPT_SALES);
+        t.user("e1001").hasAssignment(Roles.DEPT_SALES);
         List<String> out = new ArrayList<>();
         out.add("fullName " + t.user("e1001").values(UserItems.FULL_NAME));
         out.add("roles " + t.user("e1001").asObject().getAssignment().stream()

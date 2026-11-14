@@ -35,8 +35,7 @@ class CallerScenarioTest {
     /** A user without the authorization cannot add a role; privileged, the same user can, and is the initiator. */
     @Test
     void privilegedAddsAllAuthorizations(MidPointConfigTester t) {
-        t.callAs(Caller.user("jack"), () -> assertThat(t.expectFailure(() -> t.role("From the API").add())
-                .isNotAuthorized()).isTrue());
+        t.callAs(Caller.user("jack"), () -> t.expectFailure(() -> t.role("From the API").add()).isNotAuthorized());
         t.audit().ofType("ADD_OBJECT").execution().target("From the API").outcome("SUCCESS").none();
 
         t.callAs(Caller.user("jack").privileged(), () -> t.role("From the API").add());

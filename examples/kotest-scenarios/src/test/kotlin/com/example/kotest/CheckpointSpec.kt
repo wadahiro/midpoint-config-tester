@@ -1,5 +1,6 @@
 package com.example.kotest
 
+import com.evolveum.midpoint.xml.ns._public.common.common_3.CaseType
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester
@@ -52,7 +53,7 @@ class CheckpointSpec : MidPointConfigSpec({
         "the owner approves, 30 days later" {
             t.clock().advance("P30D")
             val approved = t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "fine by me")
-            approved.changes().ofType("CaseType").single().paths() shouldContain "stageNumber"  // on to stage 2
+            approved.changes().ofType(CaseType::class.java).single().paths() shouldContain "stageNumber"  // on to stage 2
             approved.mails().list().isNotEmpty() shouldBe true
             t.addUser("approval")
             (t.mails().count() > mailsAfterPrefix) shouldBe true

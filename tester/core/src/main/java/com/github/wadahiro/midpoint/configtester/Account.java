@@ -69,7 +69,7 @@ public final class Account extends TargetObject {
      * resource's associations store membership (see {@link #memberOf}):
      * {@code assertThat(account.groups()).containsExactly(IT)}.
      */
-    public Set<String> groups() {
+    public List<String> groups() {
         Set<String> out = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         for (String group : resource.system().groupNames()) {
             if (isMemberOf(group)) {
@@ -81,17 +81,7 @@ public final class Account extends TargetObject {
             // memberships follow the owner's roles
             tester.readWhy(owner + "/assignment", () -> Why.of(tester, "assignment", owner, "assignments of " + owner));
         }
-        return out;
-    }
-
-    /** Whether the account is enabled on the system (its native status, or the attribute of a simulated status). */
-    public Status status() {
-        existing();
-        Status status = resource.system().enabled(name) ? Status.ENABLED : Status.DISABLED;
-        String owner = owner();
-        tester.readWhy(resource.name() + "/" + name + "/status", () -> Why.of(tester,
-                "activation/administrativeStatus", owner, "the status of " + name + " on " + resource.name()));
-        return status;
+        return new java.util.ArrayList<>(out);
     }
 
     /**

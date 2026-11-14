@@ -128,12 +128,15 @@ public final class MidPointConfigTester {
         return effectsOf(() -> deployment.api().importAccounts(resource));
     }
 
-    /** A user by name (it need not exist: {@link User#doesNotExist()}). */
+    /**
+     * A user by name or OID (it need not exist: {@link User#doesNotExist()}); {@code t.user(name).add(...)} adds one
+     * of the name the test gives.
+     */
     public User user(String name) {
         return new User(this, name);
     }
 
-    /** A role by name (it need not exist: {@link Role#doesNotExist()}). */
+    /** A role by name or OID (it need not exist: {@link Role#doesNotExist()}). */
     public Role role(String name) {
         return new Role(this, name);
     }
@@ -142,7 +145,7 @@ public final class MidPointConfigTester {
         return role(role.on(line()));
     }
 
-    /** An org by name (it need not exist: {@link Org#doesNotExist()}). */
+    /** An org by name or OID (it need not exist: {@link Org#doesNotExist()}). */
     public Org org(String name) {
         return new Org(this, name);
     }
@@ -151,13 +154,50 @@ public final class MidPointConfigTester {
         return org(org.on(line()));
     }
 
-    /** A service by name (it need not exist: {@link Service#doesNotExist()}). */
+    /** A service by name or OID (it need not exist: {@link Service#doesNotExist()}). */
     public Service service(String name) {
         return new Service(this, name);
     }
 
     public Service service(com.github.wadahiro.midpoint.configtester.names.ServiceRef service) {
         return service(service.on(line()));
+    }
+
+    /**
+     * Adds a user midPoint names, through the model, as an administrator saves a new one in the GUI with the name left
+     * empty: the object template computes the name (a name the template replaces: {@code set("name", ...)}), midPoint
+     * the OID (a fixed one: {@code oid(...)}). Returns the user by its OID, as it is then addressed:
+     * {@code User u = t.addUser(n -> n.set("employeeNumber", "1001")); u.hasItem("name", "e1001")}; what midPoint
+     * did: {@code t.effectsOf(() -> t.addUser(...))}. A user of the name the test gives: {@code t.user(name).add(...)}.
+     */
+    public User addUser(java.util.function.Consumer<NewUser> spec) {
+        NewUser focus = new NewUser(this, null);
+        spec.accept(focus);
+        return user(Focus.addNameless(this, focus));
+    }
+
+    /** A role midPoint names ({@link #addUser}). */
+    public Role addRole(java.util.function.Consumer<NewRole> spec) {
+        NewRole focus = new NewRole(this, null);
+        spec.accept(focus);
+        return role(Focus.addNameless(this, focus));
+    }
+
+    /**
+     * An org midPoint names ({@link #addUser}): {@code Org project = t.addOrg(o -> o.set("extension/code", "099")
+     * .parent("Projects")); t.user("jdoe").assign(project.oid())}.
+     */
+    public Org addOrg(java.util.function.Consumer<NewOrg> spec) {
+        NewOrg focus = new NewOrg(this, null);
+        spec.accept(focus);
+        return org(Focus.addNameless(this, focus));
+    }
+
+    /** A service midPoint names ({@link #addUser}). */
+    public Service addService(java.util.function.Consumer<NewService> spec) {
+        NewService focus = new NewService(this, null);
+        spec.accept(focus);
+        return service(Focus.addNameless(this, focus));
     }
 
     /** midPoint's clock and the work that becomes due with time. */
@@ -325,8 +365,7 @@ public final class MidPointConfigTester {
      * policy rejects) and returns the refusal; fails when midPoint does it.
      *
      * <pre>{@code
-     * Failure f = t.expectFailure(() -> t.user("ann").assign("Auditor"));
-     * assertThat(f.isPolicyViolation()).isTrue();
+     * t.expectFailure(() -> t.user("ann").assign("Auditor")).isPolicyViolation().hasMessageContaining("exclusion");
      * }</pre>
      */
     public Failure expectFailure(Runnable operation) {

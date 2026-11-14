@@ -9,8 +9,8 @@ import java.util.function.Predicate;
 
 /**
  * The calls midPoint made to its repository in a block ({@link Effects#repositoryCalls()}), for looking into what a
- * configuration costs, e.g. {@code effects.repositoryCalls().reads().ofType("UserType").count()}. They are the calls
- * below midPoint's repository cache: every write, and the reads the cache did not answer. The tester's own reads
+ * configuration costs, e.g. {@code effects.repositoryCalls().reads().ofType(UserType.class).count()}. They are the
+ * calls below midPoint's repository cache: every write, and the reads the cache did not answer. The tester's own reads
  * (assertions, waits) are not among them. Not part of a verification: {@link Effects#changes()} says what was
  * written.
  */
@@ -26,9 +26,10 @@ public final class RepositoryCalls {
         return new RepositoryCalls(Collections.unmodifiableList(new ArrayList<>(calls)));
     }
 
-    /** The calls about objects of the type, by its simple name: {@code UserType}, {@code ShadowType}... */
-    public RepositoryCalls ofType(String type) {
-        return select(c -> type.equals(c.type()));
+    /** The calls about objects of the type: {@code ofType(UserType.class)}, {@code ofType(ShadowType.class)}... */
+    public RepositoryCalls ofType(Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type) {
+        String name = type.getSimpleName();
+        return select(c -> name.equals(c.type()));
     }
 
     /** The calls of the repository method: {@code getObject}, {@code searchObjects}, {@code modifyObject}... */

@@ -129,14 +129,14 @@ class HrLifecycleTest {
         t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
                 "startDate", "2020-04-01"));
         t.task("Reconcile HR").run();
-        t.user("e1001").hasFullName("John Doe").hasRole("Dept Sales").isEnabled().hasAccountOn("LDAP");
+        t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").isEnabled().hasAccountOn("LDAP");
         t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com")
                 .hasAttribute("ou", "Sales").memberOf("cn=sales,ou=groups,dc=example,dc=com").isEnabled();
         t.mails().to("e1001@example.com").withSubject("Welcome").exactly(1);
 
         t.source("HR").modify("1001", "department", "IT");
         t.task("Reconcile HR").run();
-        t.user("e1001").hasRole("Dept IT").hasNoRole("Dept Sales");
+        t.user("e1001").hasAssignment("Dept IT").hasNoAssignment("Dept Sales");
 
         t.source("HR").delete("1001");
         t.task("Reconcile HR").run();
@@ -152,7 +152,7 @@ class HrLifecycleTest {
         t.user("e1002").isDisabled().hasNoAccountOn("LDAP");
 
         t.clock().advanceTo(start).advance("PT1H").runDue();     // validity and trigger scanners, due tasks
-        t.user("e1002").isEnabled().hasRole("Dept IT").hasAccountOn("LDAP");
+        t.user("e1002").isEnabled().hasAssignment("Dept IT").hasAccountOn("LDAP");
     }
 }
 ```
@@ -169,16 +169,15 @@ WorkItem analyst = t.workItems().assignedTo("sec-analyst").single();
 officer.approve(t.actor("sec-officer"));                           // also reject, delegate, forward, claim, release
 analyst.isCancelled();                                             // firstDecides: closed without a decision
 request.isApproved();
-t.user("jack").hasRole("Privileged Access");
+t.user("jack").hasAssignment("Privileged Access");
 
-Failure f = t.expectFailure(() -> t.user("ann").assign("Auditor"));  // excluded by Accountant
-assertThat(f.isPolicyViolation()).isTrue();
+t.expectFailure(() -> t.user("ann").assign("Auditor")).isPolicyViolation();   // excluded by Accountant
 
 Campaign c = t.certification("Role assignments").start();
 c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "left the audit");
 c.closeStage();
 c.remediate();
-t.user("jack").hasNoRole("Auditor");
+t.user("jack").hasNoAssignment("Auditor");
 
 ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
 out.hasRows(2).hasRowWith("User", "jack");
@@ -189,7 +188,7 @@ out.hasRows(2).hasRowWith("User", "jack");
 1. **A verb returns what midPoint did.** `assign`, `recompute`, `run`, `runDue`, `approve`, `closeStage`... return
    the `Effects` of their call ([What a block did](#what-a-block-did)). Claim what midPoint derived (accounts,
    attributes, mails, other objects), not what the test passed in: `assign("Auditor")` followed by
-   `hasRole("Auditor")` proves nothing about the configuration.
+   `hasAssignment("Auditor")` proves nothing about the configuration.
 2. **A state midPoint would not make now is written with `t.raw()`** ([Starting states midPoint would not
    make](#starting-states-midpoint-would-not-make-traw)): a value an earlier version left, an account linked but gone.
 3. **In a Kotest spec, a container whose body changed midPoint checks it in its first test, a `precondition`**
@@ -204,8 +203,13 @@ out.hasRows(2).hasRowWith("User", "jack");
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` (and `ignored` for effects) |
 | `effects.claims()` | claims nothing until `verifyAll()` | `Claims` |
 
-Two verbs return what they make, not `Effects`: `t.certification(name).start()` its `Campaign`, and
-`t.report(name).run()` its `ReportOutput` (an export task runs: it is no read). Their effects: `effectsOf { }`.
+A verb whose result the test cannot name beforehand returns what midPoint made, not `Effects`:
+`t.certification(name).start()` its `Campaign`, `t.report(name).run()` its `ReportOutput` (an export task runs: it
+is no read), and `t.addUser/addRole/addOrg/addService(...)` the focus midPoint named, by its OID. Their effects:
+`effectsOf { }`.
+
+A verb is a statement of its own: `t.task("x").resume()` and `t.task("x").run()` are two lines. Nothing chains onto
+an `Effects` but its claims; in Kotlin, `.run()` or `.apply()` on an `Effects` is the standard library's.
 
 The exceptions say whose mistake it is: `AssertionError`, midPoint is not as the test claims;
 `IllegalArgumentException`, the test names what the deployment does not have (a resource, an item, an attribute);
@@ -214,10 +218,12 @@ did not keep), or a spec breaks a rule of its structure (a missing precondition)
 
 ### Users, roles, orgs and services
 
-`t.user(name)`, `t.role(name)`, `t.org(name)` and `t.service(name)` (or the generated `Users.X`, `Roles.X`, `Orgs.X`,
-`Services.X`) are focuses alike: `exists`, `hasItem`, `values`, `hasRole` (any assignment: a role, an org, a service,
-an archetype), `isEnabled`, `asObject`, `why`, and the verbs `assign` (with a relation too:
-`assign("IT", SchemaConstants.ORG_MANAGER)`), `unassign`, `recompute`. A role, org or service has its `members()`
+`t.user(nameOrOid)`, `t.role(...)`, `t.org(...)` and `t.service(...)` (or the generated `Users.X`, `Roles.X`, `Orgs.X`,
+`Services.X`) are focuses alike: `exists`, `hasItem`, `values`, `hasAssignment` (an assignment of a role, an org, a
+service or an archetype with the default relation, as `assign` makes it; another relation:
+`hasAssignment("IT", SchemaConstants.ORG_MANAGER)`), `isEnabled`, `asObject`, `why`, and the verbs `assign` (with a
+relation too: `assign("IT", SchemaConstants.ORG_MANAGER)`), `unassign`, `recompute`. A focus is taken by name or by
+OID, wherever a name goes (`assign(oid)`, `parent(oid)`); `name()` is midPoint's name of it now. A role, org or service has its `members()`
 (`roleMembershipRef` with the default relation: not its managers or owners), an org its `parents()`
 (`FocusScenarioTest`).
 
@@ -235,7 +241,17 @@ t.user("jdoe").modify(m -> m.set("telephoneNumber", "+1 555").addValues("extensi
 t.user("jdoe").modify(m -> m.set("costCenter", "IT").reconcile());   // reconcile(): alone, the focus's reconciliation
 t.user("jdoe").delete();
 String oid = t.user("jdoe").oid();
+
+Org project = t.addOrg(o -> o.set("identifier", "099").parent("Projects"));   // the org template names it
+project.hasItem("name", "P-099").hasEntitlementOn("LDAP");
+t.user("jack").assign(project.oid());
 ```
+
+`t.org(name).add(...)` is for the name the test gives and midPoint keeps. A focus whose name an object template
+computes, or changes, is added as an administrator saves it in the GUI with the name left empty:
+`t.addOrg(...)` (`addUser`, `addRole`, `addService`), with a name the template replaces as `set("name", ...)` and a
+fixed OID as `oid(...)` if the test wants one. It returns the focus by the OID midPoint gave it, which is how the test
+then takes it; a name the template replaced finds nothing.
 
 `add` sets items by path (`extension/hrId`, as `hasItem` names them) or by the generated name, assignments with a
 relation, `lifecycleState`, `disabled()`, `validFrom`/`validTo`, an `oid`, a user's names and `password`, an org's
@@ -569,11 +585,11 @@ real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repo
 below midPoint's cache, for looking into what a configuration costs. Selections narrow and check like `t.mails()`.
 
 Every verb that makes midPoint work returns the `Effects` of its call: a focus's `add`/`modify`/`delete`/`assign`/
-`unassign`/`recompute`, a user's `setPassword`, `Task.run`/`resume`, `t.reconcile`, `t.importAccounts`, the clock's `runDue` and scanners, a request's
+`unassign`/`recompute`, `modify(m -> m.password(...))`, `Task.run`/`resume`, `t.reconcile`, `t.importAccounts`, the clock's `runDue` and scanners, a request's
 `assign`/`unassign`, the decisions on work items and reviews, and a campaign's stages. Claim what midPoint derived
 (the accounts and their attributes, the mails, the changes of other objects), not what the test passed in: after
-`assign("Auditor")` succeeded, `hasRole("Auditor")` holds by construction and says nothing about the configuration, so
-an assertion does not chain onto a verb. `hasRole` and `hasItem` are for a precondition and for what midPoint derived
+`assign("Auditor")` succeeded, `hasAssignment("Auditor")` holds by construction and says nothing about the configuration, so
+an assertion does not chain onto a verb. `hasAssignment` and `hasItem` are for a precondition and for what midPoint derived
 elsewhere (a role an org membership brings). `effectsOf` is for a block of several calls. Calls that are no work of
 midPoint keep returning their subject: the clock's `advance`/`advanceTo`/`stopAt`, the writes to a source or target
 system (`t.source(...).add`) and `t.raw()`. Two verbs return what they make instead: `t.certification(name).start()`
@@ -586,11 +602,11 @@ t.user("helpdesk").assign("Accountant").verifyAll {
     changes().of("helpdesk").single().only("assignment", "roleMembershipRef")
 }
 t.actor("jack").request().assign("Privileged Access").verifyAll {    // a role with approvers
-    changes().ofType("CaseType").added().exactly(2)                   // the request and its approval
+    changes().ofType(CaseType::class.java).added().exactly(2)          // the request and its approval
     mails().to("role-owner@example.com").single()                     // the work item
     mails().to("jack@example.com").withSubject("Request submitted").single()
 }
-t.user("jack").hasNoRole("Privileged Access")                         // not before the approvers decide
+t.user("jack").hasNoAssignment("Privileged Access")                         // not before the approvers decide
 ```
 
 (`VerbEffectsSpec`, `scenarios/access`.)
@@ -621,7 +637,7 @@ effects.repositoryCalls().reads().perMethod()          // {"getObject UserType"=
 ```java
 Claims claims = t.task("Reconcile HR").run().claims();
 claims.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
-claims.changes().ofType("ShadowType").added().ignored();               // the group shadows midPoint discovered
+claims.changes().ofType(ShadowType.class).added().ignored();             // the group shadows midPoint discovered
 claims.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");
 claims.connectorCalls().to("LDAP").modifies().exactly(3);
 claims.verifyAll();
@@ -649,14 +665,14 @@ escape hatch, for names the configuration does not have):
 // before
 t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales"));
 t.task("Reconcile HR").run();
-t.user("e1001").hasRole("Dept Sales").hasAccountOn("LDAP");
+t.user("e1001").hasAssignment("Dept Sales").hasAccountOn("LDAP");
 t.target("LDAP").account(dn).hasAttribute("ou", "Sales");
 
 // after: a typo, or a role the configuration no longer has, does not compile
 t.source(Resources.HR).add(row -> row.set(HrAttrs.EMPNO, "1001").set(HrAttrs.FIRST_NAME, "John")
         .set(HrAttrs.LAST_NAME, "Doe").set(HrAttrs.DEPARTMENT, "Sales"));
 t.task(Tasks.RECONCILE_HR).run();
-t.user("e1001").hasRole(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP).hasItem(UserExtension.SITE, "Prague");
+t.user("e1001").hasAssignment(Roles.DEPT_SALES).hasAccountOn(Resources.LDAP).hasItem(UserExtension.SITE, "Prague");
 t.target(Resources.LDAP).account(dn).hasAttribute(LdapAttrs.OU, "Sales");
 ```
 
@@ -731,7 +747,7 @@ that have them:
 | `UserItems` | items of midPoint's user schema for `hasItem`, `values` and `why`: `NAME`, `FULL_NAME`, `GIVEN_NAME`, `FAMILY_NAME`, `EMAIL_ADDRESS`, `TELEPHONE_NUMBER`, `EMPLOYEE_NUMBER`, `COST_CENTER`, `LOCALITY`, `TITLE`, `ORGANIZATION`, `ORGANIZATIONAL_UNIT`, `LIFECYCLE_STATE`, `ADMINISTRATIVE_STATUS` (`activation/administrativeStatus`), `VALID_FROM`, `VALID_TO`, `EFFECTIVE_STATUS`...; `EMPLOYEE_TYPE` (4.0 only), `PERSONAL_NUMBER` (4.8+) |
 
 ```java
-t.user(Users.JACK).hasRole(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
+t.user(Users.JACK).hasAssignment(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
 t.midpoint().find(ValuePolicyType.class, InitialPolicies.DEFAULT_PASSWORD_POLICY.oid());
 ```
 
@@ -761,18 +777,22 @@ assertThat(john.getActivation().getEffectiveStatus()).isEqualTo(ActivationStatus
 Account ldap = t.target(Resources.LDAP).account(dn);
 assertThat(ldap.value(LdapAttrs.OU)).isEqualTo("Sales");
 assertThat(ldap.groups()).containsExactly(SALES);
-assertThat(ldap.status()).isEqualTo(Status.ENABLED);
+ldap.isEnabled();
 
 assertThat(t.mails().to("e1001@example.com").subjects()).containsExactly("Welcome John Doe");
-assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).containsExactly(Users.ROLE_OWNER);
+assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).containsExactly(Users.ROLE_OWNER.name());
 ```
 
 | Type | Values |
 |---|---|
 | `User`, `Role`, `Org`, `Service` | `asObject()` (the `UserType`...), `values(item)` (an item by path or typed name, e.g. an extension item), `members()`, `parents()` (an org), `projections(resource).names()`/`list()`/`count()` |
-| `Account`, `Group`, `TargetObject` | `value(attribute)`, `values(attribute)`, `attributes()`; an account's `groups()`, `status()`; a group's `members()` |
+| `Account`, `Group`, `TargetObject` | `value(attribute)`, `values(attribute)`, `attributes()`; an account's `groups()`; a group's `members()` |
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |
+
+A read gives names, as text (`List<String>`), whatever it reads (users, groups, members); a selection takes an object
+type as midPoint's class (`changes().ofType(UserType.class)`), an enumeration's value as its XML value (`"enabled"`,
+`"linked"`), and a change's kind as the selection names it (`added`, `modified`, `deleted`).
 
 During a test AssertJ shows midPoint's values readably (`assignment of role Dept Sales`, `role Dept Sales`, a
 polystring as its text, a date as an instant). A test that fails gets explanations appended to the failure (the
@@ -794,7 +814,7 @@ The same evaluation repeated in a row is one line with its count: how often midP
 mapping for the user in the operation (a reconciliation of many users evaluates it that often for each, a hint where
 an expensive script runs repeatedly; the counts differ between lines, e.g. 3 on 4.0 and 2 on 4.8).
 
-The API's own assertions (`hasRole`, `hasAccountOn`, `hasAttribute`, `memberOf`, `isEnabled`...) check in a chain and
+The API's own assertions (`hasAssignment`, `hasAccountOn`, `hasAttribute`, `memberOf`, `isEnabled`...) check in a chain and
 fail with the mappings behind the item they check.
 
 ### Mapping evaluations and times
@@ -925,7 +945,7 @@ values, and tests are named by sentences.
 class CampaignSpec : MidPointConfigSpec({
     "the campaign has started" - {
         val campaign = t.certification("Role assignments").start()          // once
-        precondition("the campaign is in its first stage") { campaign.isInStage(1) }
+        precondition("the campaign is in its first stage") { campaign.atStage(1) }
         "a reminder 22 days before the deadline" { ... }
         "an undecided case stays after the deadline" { ... }
         "a revocation past the deadline" - {
@@ -954,6 +974,10 @@ class CampaignSpec : MidPointConfigSpec({
   that is no precondition after such a body fails, as a precondition that is not the first test or that changes
   midPoint (`PreconditionSpec`). A body that only reads needs none; `steps` follow the same rule. The test is named
   `precondition: <name>` in the reports and for a filter.
+- A body holds what its tests share, the given; the precondition claims what midPoint derived from it that the tests
+  depend on, never what the body passed in (`assign("Auditor")` then `hasAssignment("Auditor")` holds by
+  construction). If the precondition would say what the first test says, the body's act is what the container tests:
+  make it a test (or `steps`, when tests continue it), and the body only the given before it.
 - Work in a container between its tests would be undone after the next test: the next test fails and says so (put it
   before the first test, in a container of its own, or use `steps`).
 - Kotlin values the prefix computed (`campaign` above) are not checkpointed, as the fields of a nested class are not;
@@ -1981,7 +2005,7 @@ channel, task, outcome and deltas, narrowed like logs. The fields are those of a
 would see.
 
 ```java
-AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType("UserType").target("jdoe").single();
+AuditRecord deletion = t.audit().ofType("DELETE_OBJECT").execution().targetType(UserType.class).target("jdoe").single();
 assertThat(deletion.outcome()).isEqualTo("FATAL_ERROR");   // the account could not be deleted; the user is gone
 t.audit(() -> t.task("Delete users").run()).ofType("DELETE_OBJECT").execution().exactly(2);
 t.audit().ofType("MODIFY_OBJECT").initiator("jdoe").none();

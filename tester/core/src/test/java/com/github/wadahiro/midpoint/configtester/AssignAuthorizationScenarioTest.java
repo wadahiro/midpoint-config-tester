@@ -26,7 +26,7 @@ class AssignAuthorizationScenarioTest {
 
         t.actor(Users.JACK).request().assign(Roles.AUDITOR);
 
-        t.user(Users.JACK).hasRole(Roles.AUDITOR);
+        t.user(Users.JACK).hasAssignment(Roles.AUDITOR);
     }
 
     @Test
@@ -35,7 +35,7 @@ class AssignAuthorizationScenarioTest {
 
         Failure failure = t.expectFailure(() -> t.actor(Users.JACK).request().assign(Roles.ACCOUNTANT));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
     }
 
     @Test
@@ -44,7 +44,7 @@ class AssignAuthorizationScenarioTest {
 
         Failure failure = t.expectFailure(() -> t.actor(Users.HELPDESK).request(Users.JACK).assign(Roles.AUDITOR));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
     }
 
     @Test
@@ -53,9 +53,9 @@ class AssignAuthorizationScenarioTest {
         assertThat(t.actor(Users.IT_MANAGER).canUnassign(Users.JACK, Roles.AUDITOR, null)).isTrue();
 
         t.actor(Users.IT_MANAGER).request(Users.JACK).assign(Roles.AUDITOR);
-        t.user(Users.JACK).hasRole(Roles.AUDITOR);
+        t.user(Users.JACK).hasAssignment(Roles.AUDITOR);
         t.actor(Users.IT_MANAGER).request(Users.JACK).unassign(Roles.AUDITOR);
-        t.user(Users.JACK).hasNoRole(Roles.AUDITOR);
+        t.user(Users.JACK).hasNoAssignment(Roles.AUDITOR);
     }
 
     /**
@@ -68,10 +68,10 @@ class AssignAuthorizationScenarioTest {
         assertThat(t.actor(Users.IT_MANAGER).canAssign(Users.HELPDESK, Roles.AUDITOR, null)).isFalse();
 
         Failure other = t.expectFailure(() -> t.actor(Users.IT_MANAGER).request(Users.JACK).assign(Roles.ACCOUNTANT));
-        assertThat(other.isNotAuthorized()).as(other.message()).isTrue();
+        other.isNotAuthorized();
         Failure outside = t.expectFailure(() ->
                 t.actor(Users.IT_MANAGER).request(Users.HELPDESK).assign(Roles.AUDITOR));
-        assertThat(outside.isNotAuthorized()).as(outside.message()).isTrue();
+        outside.isNotAuthorized();
     }
 
     /** The authorization's relation: the default only, so not as the role's owner. */
@@ -82,7 +82,7 @@ class AssignAuthorizationScenarioTest {
         Failure failure = t.expectFailure(() -> t.actor(Users.IT_MANAGER).request(Users.JACK)
                 .assign(Roles.AUDITOR, SchemaConstants.ORG_OWNER));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
+        failure.isNotAuthorized();
     }
 
     /** The End user role has no {@code #unassign}: a role once assigned stays, whoever assigned it. */
@@ -93,7 +93,7 @@ class AssignAuthorizationScenarioTest {
 
         Failure failure = t.expectFailure(() -> t.actor(Users.JACK).request().unassign(Roles.AUDITOR));
 
-        assertThat(failure.isNotAuthorized()).as(failure.message()).isTrue();
-        t.user(Users.JACK).hasRole(Roles.AUDITOR);
+        failure.isNotAuthorized();
+        t.user(Users.JACK).hasAssignment(Roles.AUDITOR);
     }
 }
