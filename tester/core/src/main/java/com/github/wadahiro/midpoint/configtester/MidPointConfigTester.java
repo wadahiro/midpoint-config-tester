@@ -307,7 +307,7 @@ public final class MidPointConfigTester {
      */
     public Effects effectsOf(Runnable block) {
         return Effects.of(com.github.wadahiro.midpoint.tester.internal.EffectsCapture.capture(deployment().api(),
-                block));
+                block), this);
     }
 
     /**

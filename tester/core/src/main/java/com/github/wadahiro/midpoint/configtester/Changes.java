@@ -17,17 +17,20 @@ public final class Changes {
     private final List<ObjectChange> selected;
     private final String description;
     private final Ledger ledger;
+    private final MidPointConfigTester tester;
 
-    private Changes(List<ObjectChange> all, List<ObjectChange> selected, String description, Ledger ledger) {
+    private Changes(List<ObjectChange> all, List<ObjectChange> selected, String description, Ledger ledger,
+            MidPointConfigTester tester) {
         this.all = all;
         this.selected = selected;
         this.description = description;
         this.ledger = ledger;
+        this.tester = tester;
     }
 
-    static Changes of(List<ObjectChange> changes, Ledger ledger) {
+    static Changes of(List<ObjectChange> changes, Ledger ledger, MidPointConfigTester tester) {
         List<ObjectChange> copy = Collections.unmodifiableList(new ArrayList<>(changes));
-        return new Changes(copy, copy, "changed objects", ledger);
+        return new Changes(copy, copy, "changed objects", ledger, tester);
     }
 
     /** The changes of the object with this name or OID. */
@@ -55,6 +58,38 @@ public final class Changes {
 
     public List<ObjectChange> list() {
         return selected;
+    }
+
+    /**
+     * The users, roles, orgs and services selected that the block added or modified, as handles by OID, e.g. to claim
+     * that the configuration is at rest after a verb: {@code hired.changes().focuses().forEach(f ->
+     * f.recompute().none())}. A deleted focus is left out, as are shadows, cases, tasks and the other objects
+     * (archetypes too). A read, not a claim.
+     */
+    public List<Focus<?>> focuses() {
+        List<Focus<?>> out = new ArrayList<>();
+        for (ObjectChange c : selected) {
+            if (c.change() == ObjectChange.Kind.DELETED || c.oid() == null) {
+                continue;
+            }
+            switch (c.type()) {
+                case "UserType":
+                    out.add(tester.user(c.oid()));
+                    break;
+                case "RoleType":
+                    out.add(tester.role(c.oid()));
+                    break;
+                case "OrgType":
+                    out.add(tester.org(c.oid()));
+                    break;
+                case "ServiceType":
+                    out.add(tester.service(c.oid()));
+                    break;
+                default:
+                    break;
+            }
+        }
+        return out;
     }
 
     public int count() {
@@ -93,7 +128,7 @@ public final class Changes {
                 out.add(c);
             }
         }
-        return new Changes(all, out, description + what, ledger);
+        return new Changes(all, out, description + what, ledger, tester);
     }
 
     private String summary() {

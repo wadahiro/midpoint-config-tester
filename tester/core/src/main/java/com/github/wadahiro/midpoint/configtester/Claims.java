@@ -33,7 +33,7 @@ public final class Claims {
     }
 
     public Changes changes() {
-        return Changes.of(effects.changeList(), ledger);
+        return Changes.of(effects.changeList(), ledger, effects.tester());
     }
 
     public ConnectorCalls connectorCalls() {

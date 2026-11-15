@@ -876,6 +876,15 @@ names are midPoint's, and a thing has one way to say it.
 - **Preconditions.** A container's body holds the given its tests share; its precondition claims what midPoint
   derived from it, never what the body passed in. A precondition that would say what the first test says means the
   body's act is the subject: a test (or `steps`).
+- **Functional-testing ideas.** Taken where they cost no new concept: the law that a recompute of what a verb changed
+  changes nothing (`changes().focuses()`), rows of a feed as `withData` tests, properties of library functions over
+  `mp.script`. Deferred, the design kept: a restart point inside a test (`fromHere`, `checkAll` per sample over the
+  existing checkpoint), a sealed outcome of a verb that may be refused, steps as values (`inAnyOrder`, `twice`) with a
+  test-named state value, deployment-derived generators. Not done: chaining verbs as a monad (the lambda already
+  sequences, and a nameless add binds on the next line), `Effects` as a monoid, an `Either` instead of
+  `expectFailure`, a vocabulary without `t.`. The reason for deferring: each adds a concept to tests that read as the
+  specification of a configuration, and the defects it would catch (input shapes, order, idempotence) are covered by
+  adversarial rows and the recompute law until one escapes them.
 
 ## 1. Retrospective of the PoC
 

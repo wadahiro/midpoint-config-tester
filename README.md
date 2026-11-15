@@ -655,6 +655,37 @@ user, a wait that reads a task, `t.source(...)` writing a source system) are not
 the block. A time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
 (`t.clock().runDue()`). The block's exception propagates; check a failure inside it with `t.expectFailure`.
 
+### The configuration at rest
+
+A configuration whose mappings fight (two mappings writing one item, a template against a role, a script that is no
+fixed point: a value normalized again comes out different) gives the expected values on the first pass and changes
+them on the next one, which a test of the values does not see. A recompute of what a verb changed claims that the
+configuration is at rest; `changes().focuses()` are the users, roles, orgs and services the block added or modified,
+as handles by OID (a deleted focus, shadows, cases, tasks and archetypes are left out):
+
+```java
+Effects hired = t.task("Reconcile HR").run();
+hired.changes().focuses().forEach(f -> f.recompute().none());   // recomputing what the run changed changes nothing
+t.task("Reconcile HR").run().none();                            // the inbounds too: a second run changes nothing
+```
+
+- The law is for focuses a verb changed. A focus loaded raw with the deployment can change on its first recompute (4.0
+  imports roles raw: no activation yet, `FocusScenarioTest`).
+- A mapping waiting for its time (`timeFrom`) is at rest too: its trigger is not added again (`EffectsScenarioTest`).
+- A recompute does not read the accounts; a reconcile does (`modify(Modification::reconcile)`), and what midPoint
+  cannot read on the account it sends again. A **strong** password outbound sends the password on every reconcile of
+  the user, a nightly reconciliation included (it changes the account's password time on every run); a normal one only
+  when the password changes (`PasswordOutboundTest`, every line alike). Claim it where the configuration means it:
+
+```java
+Claims claims = t.user("jdoe").modify(Modification::reconcile).claims();
+claims.connectorCalls().to("LDAP").modifies().of(dn).single().only("credentials/password/value");
+claims.verifyAll();
+```
+
+- An item the configuration changes on every recompute on purpose (a timestamp of its own) is claimed the same way,
+  with `verifyAll` instead of `none()`.
+
 ### Typed names
 
 Names in strings fail only when the test runs. With `names: { package: com.example.idm.names }` in the manifest, a
@@ -988,6 +1019,37 @@ class CampaignSpec : MidPointConfigSpec({
   to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name. `precondition`, `steps` and
   `verifyAll { }` are functions of the Kotest layer, imported from `com.github.wadahiro.midpoint.configtester.kotest`
   as `MidPointConfigSpec` is.
+
+Rows of a source feed are tests: Kotest's `withData` in a container makes one test per row, each from the container's
+prefix (`FeedRowsSpec`). Examples with `John Doe, Sales, 2020-04-01` never meet what production feeds hold; give a
+feed's scenario rows such as these:
+
+- an empty optional cell (a script's `null`), blanks and the case the export has;
+- names with an apostrophe, a hyphen, a particle (`O'Brien`, `Smith-Jones`, `van der Berg`) and letters outside ASCII:
+  a `capitalize()` gives `O'brien`, a DN needs its escaping;
+- the longest value the source allows, and a duplicate full name (an iterated name, a second `uid`);
+- a date on the day boundary in the source's zone (a start date read at 23:59 local time is another day in UTC);
+- a code the configuration does not know (a department without a role or a lookup table row).
+
+```kotlin
+"Ann is in the HR feed" - {
+    t.hire("1000", "Ann", "Early", "Sales")
+    precondition("Ann has her LDAP account") { t.user("e1000").hasAccountOn("LDAP") }
+    withData(
+        nameFn = { "last name '${it.lastName}', department '${it.department}'" },
+        Row(" DOE ", "Sales", "Doe", true),
+        Row("MÜLLER", "IT", "Müller", true),
+        Row("Doe", "", "Doe", false),                   // no department: no role, no account
+    ) { row ->
+        t.source("HR").add("1001", mapOf("firstName" to "John", "lastName" to row.lastName,
+                "department" to row.department, "startDate" to "2020-04-01"))
+        val hired = t.task("Reconcile HR").run()
+        t.user("e1001").hasItem("familyName", row.familyName)
+        if (row.account) t.user("e1001").hasAccountOn("LDAP") else t.user("e1001").hasNoAccountOn("LDAP")
+        hired.changes().focuses().forEach { it.recompute().none() }
+    }
+}
+```
 
 ## The low-level API (`t.midpoint()`)
 
@@ -1731,6 +1793,19 @@ check.isValid(); check.failed(); check.limitations();
 Answer<String> generated = mp.generateValue("Password policy");     // random value; evaluations recorded
 
 Answer<BulkActionOutput> bulk = mp.bulkAction(executeScriptXml);    // console(), data(); execute-script scripts recorded
+```
+
+A library function is a function of its variables, so a property over many values is cheap to state (no state
+changes, nothing to restore): with `io.kotest:kotest-property-jvm` added as a test dependency, `checkAll` gives it
+values the examples do not have (empty, blanks, letters outside ASCII), and shrinks a failing one to the smallest.
+
+```kotlin
+"initials are upper case for any two-word name" {
+    checkAll(Arb.string(1..10, Codepoint.az()), Arb.string(1..10, Codepoint.az())) { first, last ->
+        t.midpoint().script("custom.execute('initials', [name: who])").variable("who", "$first $last").evaluate()
+            .value() shouldBe listOf("${first[0]}${last[0]}".uppercase())
+    }
+}
 ```
 
 Scripts midPoint runs without an `ExpressionFactory` (model hooks, `execute-script` actions, report columns and

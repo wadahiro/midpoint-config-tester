@@ -3,7 +3,9 @@ package com.github.wadahiro.midpoint.configtester;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +62,26 @@ class EffectsScenarioTest {
     @Test
     void recomputingChangesNothing(MidPointConfigTester t) {
         t.user("e1001").recompute().none();
+    }
+
+    @Test
+    void recomputingTheFocusesARunChangedChangesNothing(MidPointConfigTester t) {
+        List<Focus<?>> focuses = hired.changes().focuses();
+
+        assertThat(focuses).extracting(Focus::name).contains("e1001");
+        focuses.forEach(f -> f.recompute().none());
+        assertThat(hired.changes().ofType(ShadowType.class).focuses()).isEmpty();
+        t.user("jdoe").add();
+        assertThat(t.user("jdoe").delete().changes().focuses()).isEmpty();       // a deleted focus is left out
+    }
+
+    @Test
+    void aMappingWaitingForItsTimeIsAtRestToo(MidPointConfigTester t) {
+        Effects added = t.user("jdoe").add(u -> u.set("costCenter", "Sales")
+                .validFrom(t.clock().now().plus(Duration.ofDays(30))));
+        assertThat(t.midpoint().user("jdoe").getTrigger()).isNotEmpty();         // the role mapping's timeFrom
+
+        added.changes().focuses().forEach(f -> f.recompute().none());
     }
 
     @Test

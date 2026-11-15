@@ -59,9 +59,12 @@ public final class Effects {
     private final List<Mail> mails;
     private final List<LogEntry> logs;
     private final List<AuditRecord> audit;
+    private final MidPointConfigTester tester;
 
     private Effects(List<ObjectChange> changes, List<ConnectorCall> connectorCalls,
-            List<RepositoryCalls.Call> repositoryCalls, List<Mail> mails, List<LogEntry> logs, List<AuditRecord> audit) {
+            List<RepositoryCalls.Call> repositoryCalls, List<Mail> mails, List<LogEntry> logs, List<AuditRecord> audit,
+            MidPointConfigTester tester) {
+        this.tester = tester;
         this.changes = changes;
         this.connectorCalls = connectorCalls;
         this.repositoryCalls = repositoryCalls;
@@ -70,7 +73,7 @@ public final class Effects {
         this.audit = audit;
     }
 
-    static Effects of(EffectsCapture capture) {
+    static Effects of(EffectsCapture capture, MidPointConfigTester tester) {
         List<RepositoryCalls.Call> repositoryCalls = new ArrayList<>();
         for (EffectsCapture.RepositoryCall call : capture.repositoryCalls()) {
             repositoryCalls.add(new RepositoryCalls.Call(call.method, call.type, call.oid, call.change != null));
@@ -81,7 +84,7 @@ public final class Effects {
                     call.attributes, call.failed));
         }
         return new Effects(changes(capture.repositoryCalls()), Collections.unmodifiableList(connectorCalls),
-                Collections.unmodifiableList(repositoryCalls), capture.mails(), capture.logs(), capture.audit());
+                Collections.unmodifiableList(repositoryCalls), capture.mails(), capture.logs(), capture.audit(), tester);
     }
 
     /** The writes of the block, one change per object, without the housekeeping. */
@@ -181,7 +184,7 @@ public final class Effects {
 
     /** The objects the block added, modified or deleted in the repository, one change per object. */
     public Changes changes() {
-        return Changes.of(changes, null);
+        return Changes.of(changes, null, tester);
     }
 
     /** The calls midPoint made to the connectors: writes and reads. */
@@ -219,6 +222,10 @@ public final class Effects {
     public Effects none() {
         claims().verifyAll();
         return this;
+    }
+
+    MidPointConfigTester tester() {
+        return tester;
     }
 
     List<ObjectChange> changeList() {
