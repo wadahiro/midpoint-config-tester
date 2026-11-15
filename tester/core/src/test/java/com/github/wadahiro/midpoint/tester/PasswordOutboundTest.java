@@ -14,9 +14,10 @@ import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 import com.github.wadahiro.midpoint.configtester.Modification;
 
 /**
- * A password outbound and the law that a recompute changes nothing ({@code Changes.focuses()}): midPoint cannot read
- * the account's password, so a strong mapping sends it on every reconcile of the user, a normal one only when the
- * password changes. A recompute (without reconcile) sends neither. The same on every line.
+ * A password outbound and the law that a recompute changes nothing ({@code Changes.focuses()}): midPoint evaluates a
+ * password outbound only when the projection is added, reconciled or the password changes, so a recompute sends
+ * nothing whatever the strength. A reconcile cannot compare the password with the account's, so a strong mapping
+ * sends it on every reconcile of the user, a normal one only when the password changes. The same on every line.
  */
 @MidPointConfigTest(Fixtures.BARE)
 class PasswordOutboundTest {

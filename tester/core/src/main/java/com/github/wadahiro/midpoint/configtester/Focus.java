@@ -560,7 +560,10 @@ public abstract class Focus<SELF extends Focus<SELF>> {
     }
 
     /**
-     * Recomputes the focus, as the GUI's "Recompute"; {@code t.user("jdoe").recompute().none()}: it changed nothing.
+     * Recomputes the focus without reconciling its projections ({@code ModelService.recompute} without options), as the
+     * role/org member panel's Recompute of one member from its row (4.4+); a recomputation task and the bulk action
+     * {@code recompute} reconcile, as {@code modify(Modification::reconcile)}. {@code t.user("jdoe").recompute().none()}:
+     * it changed nothing.
      */
     public Effects recompute() {
         return tester.effectsOf(() -> tester.deployment().api().recompute(type, name));

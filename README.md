@@ -672,10 +672,16 @@ t.task("Reconcile HR").run().none();                            // the inbounds 
 - The law is for focuses a verb changed. A focus loaded raw with the deployment can change on its first recompute (4.0
   imports roles raw: no activation yet, `FocusScenarioTest`).
 - A mapping waiting for its time (`timeFrom`) is at rest too: its trigger is not added again (`EffectsScenarioTest`).
-- A recompute does not read the accounts; a reconcile does (`modify(Modification::reconcile)`), and what midPoint
-  cannot read on the account it sends again. A **strong** password outbound sends the password on every reconcile of
-  the user, a nightly reconciliation included (it changes the account's password time on every run); a normal one only
-  when the password changes (`PasswordOutboundTest`, every line alike). Claim it where the configuration means it:
+- A strong outbound to an attribute midPoint cannot read back (the schema gives no read access) is sent on every
+  recompute and every reconcile: midPoint cannot see that the account has the value. The law fails on it, as it should
+  when the configuration does not mean it.
+- A password outbound is evaluated only when the projection is added, reconciled or the password changes: a recompute
+  skips it whatever its strength. When the resource does not return passwords (an LDAP server), a reconcile cannot
+  compare the password with the account's, so a **strong** one sends it on every reconcile (it changes the account's
+  password time on every run); a normal one only when the password changes (`PasswordOutboundTest`). A resource that
+  returns them (the CSV connector's password column) is compared and not sent again (seen on 4.8.12). The law does not see this one: `recompute()` does not reconcile.
+- Claim a value sent again where the configuration means it, with `verifyAll` instead of `none()` (an item the
+  configuration changes on every recompute on purpose, a timestamp of its own, the same way):
 
 ```java
 Claims claims = t.user("jdoe").modify(Modification::reconcile).claims();
@@ -683,8 +689,34 @@ claims.connectorCalls().to("LDAP").modifies().of(dn).single().only("credentials/
 claims.verifyAll();
 ```
 
-- An item the configuration changes on every recompute on purpose (a timestamp of its own) is claimed the same way,
-  with `verifyAll` instead of `none()`.
+How midPoint recomputes a user decides what it sends (`AttributeOutboundTest`, every line alike). A recompute reads
+the account only when something asks for it: a strong or weak outbound (of an attribute, or of the activation status:
+`ActivationOutboundTest`), an outbound with `target/set`, a strong inbound (4.8 source); with normal mappings only it uses the repository shadow and sends nothing for a value changed
+on the account. A reconcile always reads it. What differs between the ways is whether the projections are reconciled:
+
+| Way | Projections reconciled | Strong value removed on the account | Normal value changed on the account | Strong outbound it cannot read | Strong password |
+|---|---|---|---|---|---|
+| `recompute()`: `ModelService.recompute` without options, the role/org member panel's Recompute of one member from its row (4.4+), the details page's save | no | added back | left | sent every time | not sent |
+| `reconcileFocus` | no (the focus only) | added back | left | sent every time | not sent |
+| `modify(Modification::reconcile)`: `reconcile`, the user list's Reconcile, the details page's save with Reconcile | yes | added back | left | sent every time | sent every time |
+| A recomputation task without `executionOptions` (4.0: without `c:modelExecuteOptions` in its extension), the member panel's Recompute of several or all members (4.4+) | yes: it defaults to `reconcile` | added back | left | sent every time | sent every time |
+| A recomputation task with `<reconcile>false</reconcile>` | no | added back | left | sent every time | not sent |
+
+The activation status follows the same rules (`ActivationOutboundTest`, native and simulated): an account disabled
+on the target is enabled again by a strong status outbound on every way above, a recompute included, and left
+disabled by a normal one, a reconcile included; midPoint reconciles the activation in a code path of its own on
+reconcile, which changes nothing here.
+
+In the GUI, the member panel's Recompute of one member from its row is the only Recompute that does not reconcile:
+the user, role and org lists offer Reconcile only. The bulk action `recompute` reconciles on every line, even with
+`<reconcile>false</reconcile>` in its options (it adds `reconcile` to them), and so does 4.0's member panel, which
+recomputes through it, one member or all; the validity scanner reconciles the users it processes too. The GUI's
+actions and the bulk action were seen on 4.8.12 (the GUI driven by a browser, a mapping logging whether its
+projection is reconciled); on 4.0 and 4.4 they are read from midPoint's classes. A strong value is added back, not
+replaced: a multi-valued attribute keeps the other values unless the attribute is not `tolerant`.
+`reconcileAffected` (the users of a changed role, possibly in a task of its own) is not covered here;
+`reconcileAll` is not an execution option but a synchronization reaction's (import, reconciliation and live sync
+reconcile every projection of the user, not only the synchronized one).
 
 ### Typed names
 

@@ -142,8 +142,9 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
     `org.oid()` where a name goes, never the name it was added with
   - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims
   - the configuration at rest, after a verb that provisions: `effects.changes().focuses().forEach { it.recompute().none() }`
-    and a second task run `.none()`; a strong password outbound is sent on every reconcile: claim it
-    (`only("credentials/password/value")`) or make it normal
+    and a second task run `.none()`; a strong outbound to an attribute midPoint cannot read is sent on every
+    recompute, a strong password on every reconcile (and recomputation task, which reconciles by default): claim it
+    (`only(...)`) or make it normal
   - a source feed: rows as `withData` in a container (blanks, case, apostrophes, non-ASCII, empty optional cells, a
     date at the day boundary, an unknown code), each row from the container's prefix
   - time: `t.clock().advance("P31D")`; a script's time window at its bounds (`LocalTime.now()` against 22:00):

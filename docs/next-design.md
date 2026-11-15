@@ -885,6 +885,12 @@ names are midPoint's, and a thing has one way to say it.
   `expectFailure`, a vocabulary without `t.`. The reason for deferring: each adds a concept to tests that read as the
   specification of a configuration, and the defects it would catch (input shapes, order, idempotence) are covered by
   adversarial rows and the recompute law until one escapes them.
+- **Recompute is without reconcile; no verb per execution option.** `recompute()` is `ModelService.recompute`
+  without options, so the law does not reconcile: a strong password is sent again only on reconcile, while a strong
+  outbound to an attribute midPoint cannot read is sent on every recompute too (`AttributeOutboundTest`). Recomputing
+  with `reconcileFocus` sends what a recompute sends; a recomputation task reconciles unless its options say not, as
+  `modify(Modification::reconcile)`. No `reconcileFocus` verb nor options on `recompute()`: neither sends anything
+  the existing verbs do not, and the tester's own tests reach other options through `mp.change(...).options(...)`.
 
 ## 1. Retrospective of the PoC
 
