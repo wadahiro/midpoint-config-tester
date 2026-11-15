@@ -134,6 +134,7 @@ public class MirrorConnector
                 AttributeInfoBuilder attr = new AttributeInfoBuilder(a.name, a.type);
                 attr.setMultiValued(a.multiValued);
                 attr.setReadable(a.readable);
+                attr.setReturnedByDefault(a.readable); // ConnId: an attribute it cannot read is not returned by default
                 attr.setCreateable(a.creatable);
                 attr.setUpdateable(a.updatable);
                 oc.addAttributeInfo(attr.build());
