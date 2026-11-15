@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -250,9 +249,9 @@ public final class ItemValues {
         } else if (value instanceof OffsetDateTime) {
             time = ((OffsetDateTime) value).toZonedDateTime();
         } else if (value instanceof LocalDateTime) {
-            time = ((LocalDateTime) value).atZone(ZoneId.systemDefault());
+            time = ((LocalDateTime) value).atZone(TesterRuntime.zone());
         } else if (value instanceof LocalDate) {
-            time = ((LocalDate) value).atStartOfDay(ZoneId.systemDefault());
+            time = ((LocalDate) value).atStartOfDay(TesterRuntime.zone());
         } else if (value instanceof java.util.Date) {
             time = ((java.util.Date) value).toInstant().atZone(java.time.ZoneOffset.UTC);
         } else if (value instanceof String) {
@@ -274,12 +273,12 @@ public final class ItemValues {
             // not with an offset
         }
         try {
-            return LocalDateTime.parse(text).atZone(ZoneId.systemDefault());
+            return LocalDateTime.parse(text).atZone(TesterRuntime.zone());
         } catch (DateTimeParseException e) {
             // not a local date and time
         }
         try {
-            return LocalDate.parse(text).atStartOfDay(ZoneId.systemDefault());
+            return LocalDate.parse(text).atStartOfDay(TesterRuntime.zone());
         } catch (DateTimeParseException e) {
             throw notAValue(path, definition, text);
         }

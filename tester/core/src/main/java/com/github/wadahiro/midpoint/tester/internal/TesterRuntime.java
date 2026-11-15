@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import com.github.wadahiro.midpoint.tester.MidPoint;
 import com.github.wadahiro.midpoint.tester.Run;
@@ -85,8 +87,60 @@ public final class TesterRuntime {
         }
     }
 
+    /** The time zone of the midPoint server ({@code tester.timeZone}): this JVM's, from the start of midPoint on. */
+    private static ZoneId zone;
+    /** The JVM's time zone before the tester set {@link #zone}, when they differed (an argLine without the parent's). */
+    private static String startZone;
+
+    /**
+     * The time zone the deployment's midPoint server runs in ({@code tester.timeZone}): the JVM's default, set before
+     * midPoint started, so scripts' local dates ({@code basic.parseDateTime}, {@code LocalDate.now()}) are read as on
+     * the server.
+     */
+    public static synchronized ZoneId zone() {
+        if (zone == null) {
+            useTimeZone();
+        }
+        return zone;
+    }
+
+    /** {@code tester.timeZone}, checked, as this JVM's default time zone (also {@code user.timezone}). */
+    private static void useTimeZone() {
+        ZoneId configured = timeZone(System.getProperty("tester.timeZone"));
+        String jvm = TimeZone.getDefault().getID();
+        if (!ZoneId.of(jvm).equals(configured)) {
+            startZone = jvm;
+            TimeZone.setDefault(TimeZone.getTimeZone(configured));
+        }
+        System.setProperty("user.timezone", configured.getId());
+        zone = configured;
+    }
+
+    /** The time zone of a {@code tester.timeZone} value; fails, saying what to set, on none or one that is not. */
+    static ZoneId timeZone(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("tester.timeZone is not set: the time zone the midPoint server runs in;"
+                    + " set <tester.timeZone>Asia/Tokyo</tester.timeZone> in the POM (the parent passes it to the"
+                    + " test JVM)");
+        }
+        try {
+            return ZoneId.of(value.trim());
+        } catch (java.time.DateTimeException e) {
+            throw new IllegalStateException("tester.timeZone \"" + value + "\" is not a time zone (an IANA ID, e.g."
+                    + " Asia/Tokyo)", e);
+        }
+    }
+
+    /** What the start log and the load report say of the time zone. */
+    static synchronized String timeZoneNote() {
+        return "time zone " + zone() + " (tester.timeZone" + (startZone == null ? ")"
+                : "; the JVM started in " + startZone + ")");
+    }
+
     private TesterRuntime() throws Exception {
         long start = System.currentTimeMillis();
+        // before midPoint: its database connections, Quartz and the logging take the zone when they start
+        zone();
         workDir = workDirOfThisJvm();
         Path home = workDir.resolve("midpoint-home");
         Files.createDirectories(home);
@@ -155,7 +209,7 @@ public final class TesterRuntime {
         baseline = snapshot();
         Timing.add("startup.total", (System.currentTimeMillis() - start) * 1_000_000L);
         System.out.println("Tester: midPoint " + LineSupport.LINE + " ready in "
-                + (System.currentTimeMillis() - start) + " ms");
+                + (System.currentTimeMillis() - start) + " ms, " + timeZoneNote());
     }
 
 

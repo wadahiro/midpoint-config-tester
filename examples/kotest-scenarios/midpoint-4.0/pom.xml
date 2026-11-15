@@ -15,6 +15,8 @@
     <name>Example: Kotest specs on midPoint 4.0</name>
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- the time zone the midPoint server runs in (required) -->
+        <tester.timeZone>Asia/Tokyo</tester.timeZone>
         <!-- the specs name the samples' objects by their names: no typed names, no manifest of its own -->
         <tester.names.skip>true</tester.names.skip>
         <tester.kotlin.testSourceDir>${project.basedir}/../src/test/kotlin</tester.kotlin.testSourceDir>

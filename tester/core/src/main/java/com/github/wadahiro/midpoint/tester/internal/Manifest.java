@@ -40,6 +40,7 @@ import com.github.wadahiro.midpoint.tester.ResourceOptions;
  * http: { redirect: ["https://hooks.example.com"] }   # URL prefixes the tester stands in for (HttpStandIn)
  * files: { map: [/opt/midpoint/var], initial: { /opt/midpoint/var: files/var } }   # initial: the directory's tree
  * names: { package: com.example.idm.names }   # typed names generated from the configuration (NamesGenerator)
+ * timeZone: Asia/Tokyo                    # the midPoint server's; checked against tester.timeZone, the JVM's
  * </pre>
  */
 public final class Manifest {
@@ -103,6 +104,11 @@ public final class Manifest {
     public final Map<String, Path> initialFiles;
     /** {@code names.package}: the package of the generated names ({@code NamesGenerator}); null: none generated. */
     public final String namesPackage;
+    /**
+     * {@code timeZone}: the time zone the deployment's midPoint server runs in, or null; the JVM's comes from
+     * {@code tester.timeZone}, and a load fails on another one.
+     */
+    public final java.time.ZoneId timeZone;
 
     private Manifest(Path file, Map<String, Object> yaml) {
         this.file = file;
@@ -112,7 +118,7 @@ public final class Manifest {
                     + " runs them)");
         }
         check(yaml, "", Set.of("config", "targets", "constants", "databases", "environment", "mail", "http", "network", "logs", "files",
-                "names"));
+                "names", "timeZone"));
         Map<String, Object> config = map(yaml.get("config"), "config");
         check(config, "config.", Set.of("dirs", "exclude", "properties", "replace", "overlays", "schema"));
         configDirs = paths(config.get("dirs"), "config.dirs");
@@ -233,6 +239,17 @@ public final class Manifest {
             throw invalid("names.package: a Java package name, not " + pkg);
         }
         namesPackage = pkg == null ? null : pkg.toString();
+
+        Object zone = yaml.get("timeZone");
+        if (zone == null) {
+            timeZone = null;
+        } else {
+            try {
+                timeZone = java.time.ZoneId.of(zone.toString().trim());
+            } catch (java.time.DateTimeException e) {
+                throw invalid("timeZone: a time zone (an IANA ID, e.g. Asia/Tokyo), not " + zone);
+            }
+        }
     }
 
     /** Reads and checks the manifest. */

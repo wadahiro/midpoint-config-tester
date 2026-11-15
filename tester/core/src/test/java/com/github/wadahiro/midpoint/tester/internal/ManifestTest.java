@@ -90,6 +90,15 @@ class ManifestTest {
                 .hasMessageContaining("tasks: removed, delete it");
     }
 
+    @Test
+    void theTimeZoneOfTheServer() throws IOException {
+        assertThat(read("config:\n  dirs: [objects]\ntimeZone: Asia/Tokyo\n").timeZone)
+                .isEqualTo(java.time.ZoneId.of("Asia/Tokyo"));
+        assertThat(read("config:\n  dirs: [objects]\n").timeZone).isNull();
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntimeZone: JST+9\n"))
+                .hasMessageContaining("timeZone: a time zone (an IANA ID, e.g. Asia/Tokyo), not JST+9");
+    }
+
     private Manifest read(String yaml) throws IOException {
         Files.createDirectories(dir.resolve("objects"));
         Path file = dir.resolve("midpoint-config-tester.yaml");

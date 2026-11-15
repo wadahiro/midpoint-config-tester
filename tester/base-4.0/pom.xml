@@ -51,7 +51,7 @@
                 <configuration>
                     <!-- one JVM for all test classes; on the JDK that runs Maven (4.0: JDK 11, its module) -->
                     <!-- no -javaagent: the tester attaches the file redirection's agent itself (tested here) -->
-                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</argLine>
+                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off -Dtester.timeZone=Asia/Tokyo -Duser.timezone=Asia/Tokyo</argLine>
                 </configuration>
             </plugin>
         </plugins>

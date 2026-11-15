@@ -44,6 +44,10 @@ src/test/java/...               the tests
 <groupId>com.example.idm</groupId>
 <artifactId>hr-ldap-config</artifactId>
 <version>1.0-SNAPSHOT</version>
+
+<properties>
+    <tester.timeZone>Asia/Tokyo</tester.timeZone>   <!-- the time zone the midPoint server runs in (required) -->
+</properties>
 ```
 
 The releases are in the Maven repository on this repository's branch `mvn-repo` (see [Publishing](#publishing));
@@ -75,6 +79,15 @@ line). The parent `midpoint-config-tester-parent-<line>` brings:
   classifier `linux-x86_64` (default), `darwin-arm64`, `linux-arm64` or `windows-x86_64` by OS; on another platform
   give a binary with `-Dpgmem.binary=<path>` (or `PGMEM_BINARY`).
 
+The time zone of the midPoint server is required, `tester.timeZone` (an IANA ID): the parent passes it to the test JVM
+(`-Dtester.timeZone`, `-Duser.timezone`), and the tester fails before midPoint starts without it (`tester.timeZone is
+not set: ...`) or on one that is no time zone. midPoint and the scripts then run in it on every machine: a local date a
+script reads (`basic.parseDateTime('yyyy-MM-dd', ...)`, `LocalDate.now()`) is the server's, so a start date begins at
+midnight on the server whether the test runs on a laptop in Tokyo or a CI machine in UTC (`TimeZoneScenarioTest`). The
+start log and the load report say it (`time zone Asia/Tokyo (tester.timeZone)`, with the zone the JVM started in when an
+argLine without the parent's left it to the tester). It is one per JVM: midPoint's database connections, Quartz and
+the logging take it when they start; a manifest may state it (`timeZone: Asia/Tokyo`), and a load fails on another one.
+
 Properties a repository may set: `tester.manifest.file` (default `midpoint-config-tester.yaml` next to the POM),
 `tester.names.skip`, `tester.forks`, and `midpoint.version` (or `midpoint40.version`... of the parent's line) for
 another build of the line's midPoint, a support build or a fork in the local repository: the parent manages midPoint's
@@ -105,6 +118,7 @@ targets:                                # by resource name; any other resource i
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
 mail: { redirect: true }                # midPoint's mail servers -> the tester's SMTP server
+timeZone: Asia/Tokyo                    # optional: the server's, checked against tester.timeZone
 ```
 
 A file that midPoint exports, `<object xsi:type="c:RoleType">`, is read as the `<role>` it is (resources moved to
@@ -1659,7 +1673,8 @@ widget.number(); widget.color(); widget.run().select().path("variation").element
 **Time.** `t.clock()` moves midPoint's clock and the JVM's wall clock (`new Date()`, `Instant.now()`, Groovy's
 `System.currentTimeMillis()`...), not Quartz, `System.nanoTime()` or the database. See
 [Activation and validity](#activation-and-validity). The moved clock runs on; `t.clock().stopAt(instant)` (or a
-`LocalDateTime` in the JVM's time zone) stops it there, to the millisecond, until the test ends, for a time window
+`LocalDateTime` in the deployment's time zone, `tester.timeZone`: `t.clock().zone()`, as `today()` and
+`advanceTo(LocalDate)`) stops it there, to the millisecond, until the test ends, for a time window
 checked at its bounds (a script that compares `LocalTime.now()` with 22:00): `t.clock().stopAt(day.atTime(21, 59, 59,
 999_000_000))`, then `advance(Duration.ofMillis(1))` to 22:00:00.000 (`StoppedClockScenarioTest`).
 

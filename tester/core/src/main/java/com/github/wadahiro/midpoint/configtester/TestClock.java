@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 import com.github.wadahiro.midpoint.tester.internal.Internals;
+import com.github.wadahiro.midpoint.tester.internal.TesterRuntime;
 
 /**
  * midPoint's clock in a scenario ({@link MidPointConfigTester#clock()}). Moving it moves midPoint's {@code Clock} and, by the same
@@ -54,9 +55,18 @@ public final class TestClock {
         return tester.deployment().now();
     }
 
-    /** midPoint's current date in the JVM's time zone. */
+    /**
+     * The time zone of the deployment's midPoint server ({@code tester.timeZone}), the JVM's: the dates and times
+     * without an offset of this clock, and scripts' local dates ({@code basic.parseDateTime}, {@code LocalDate.now()}),
+     * are in it.
+     */
+    public ZoneId zone() {
+        return TesterRuntime.zone();
+    }
+
+    /** midPoint's current date in the deployment's time zone ({@link #zone()}). */
     public LocalDate today() {
-        return now().atZone(ZoneId.systemDefault()).toLocalDate();
+        return now().atZone(zone()).toLocalDate();
     }
 
     /** Moves the clock forward by an XML (ISO 8601) duration, e.g. {@code "P30D"} or {@code "PT2H"}. */
@@ -75,9 +85,12 @@ public final class TestClock {
         return this;
     }
 
-    /** Moves the clock forward to the start of the day (in the JVM's time zone); fails if it is not in the future. */
+    /**
+     * Moves the clock forward to the start of the day (in the deployment's time zone, {@link #zone()}); fails if it is
+     * not in the future.
+     */
     public TestClock advanceTo(LocalDate date) {
-        return advanceTo(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        return advanceTo(date.atStartOfDay(zone()).toInstant());
     }
 
     /**
@@ -91,9 +104,9 @@ public final class TestClock {
         return this;
     }
 
-    /** {@link #startAt(Instant)} at the date and time in the JVM's time zone. */
+    /** {@link #startAt(Instant)} at the date and time in the deployment's time zone ({@link #zone()}). */
     public TestClock startAt(LocalDateTime dateTime) {
-        return startAt(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+        return startAt(dateTime.atZone(zone()).toInstant());
     }
 
     /**
@@ -105,9 +118,12 @@ public final class TestClock {
         return this;
     }
 
-    /** Stops the clock at the date and time in the JVM's time zone (what {@code LocalTime.now()} then says). */
+    /**
+     * Stops the clock at the date and time in the deployment's time zone ({@link #zone()}: what {@code LocalTime.now()}
+     * then says).
+     */
     public TestClock stopAt(LocalDateTime dateTime) {
-        return stopAt(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+        return stopAt(dateTime.atZone(zone()).toInstant());
     }
 
     /**

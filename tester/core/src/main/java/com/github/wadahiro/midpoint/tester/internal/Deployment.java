@@ -244,6 +244,10 @@ public final class Deployment {
         } catch (IllegalArgumentException e) {
             throw new DeploymentLoadException("Invalid manifest: " + e.getMessage(), e);
         }
+        if (manifest.timeZone != null && !manifest.timeZone.equals(TesterRuntime.zone())) {
+            throw new DeploymentLoadException(manifest.file + ": timeZone " + manifest.timeZone + ", but this JVM runs in "
+                    + TesterRuntime.zone() + " (tester.timeZone): one time zone per JVM");
+        }
         useSchema(manifest);
         TesterRuntime runtime = TesterRuntime.get();
         // the load's own time, without midPoint's start
@@ -795,7 +799,8 @@ public final class Deployment {
 
     private void writeReport() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Deployment ").append(manifest.file).append(" on midPoint ").append(LineSupport.LINE).append("\n\n");
+        sb.append("Deployment ").append(manifest.file).append(" on midPoint ").append(LineSupport.LINE).append(", ")
+                .append(TesterRuntime.timeZoneNote()).append("\n\n");
         if (restoredFrom != null) {
             sb.append("Restored from the deployment cache: ").append(restoredFrom).append(" (the load below is the"
                     + " cached one's)\n\n");

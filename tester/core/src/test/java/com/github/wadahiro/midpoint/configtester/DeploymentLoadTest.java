@@ -146,6 +146,19 @@ class DeploymentLoadTest {
                 .hasMessageContaining("targets.Nowhere: no resource of that name");
     }
 
+    /** A manifest's {@code timeZone} is checked against the JVM's ({@code tester.timeZone}): one zone per JVM. */
+    @Test
+    void aManifestOfAnotherTimeZoneFailsTheLoad(@org.junit.jupiter.api.io.TempDir Path dir) throws IOException {
+        Files.createDirectories(dir.resolve("objects"));
+        Path manifest = Files.writeString(dir.resolve("midpoint-config-tester.yaml"),
+                "config:\n  dirs: [objects]\ntimeZone: Europe/Berlin\n");
+
+        assertThatThrownBy(() -> Deployment.load(manifest))
+                .isInstanceOf(DeploymentLoadException.class)
+                .hasMessageContaining("timeZone Europe/Berlin, but this JVM runs in Asia/Tokyo (tester.timeZone): one"
+                        + " time zone per JVM");
+    }
+
     static Path resource(String name) {
         try {
             return Path.of(DeploymentLoadTest.class.getClassLoader().getResource(name).toURI());

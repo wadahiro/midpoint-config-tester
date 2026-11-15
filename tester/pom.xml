@@ -202,7 +202,7 @@
                          others restore it (DeploymentCache). -->
                     <forkCount>${tester.forks}</forkCount>
                     <reuseForks>true</reuseForks>
-                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en --add-exports java.management/sun.management=ALL-UNNAMED -javaagent:${net.bytebuddy:byte-buddy-agent:jar}</argLine>
+                    <argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en --add-exports java.management/sun.management=ALL-UNNAMED -javaagent:${net.bytebuddy:byte-buddy-agent:jar} -Dtester.timeZone=Asia/Tokyo -Duser.timezone=Asia/Tokyo</argLine>
                     <systemPropertyVariables>
                         <!-- the fixtures of the shared tests (Fixtures.dir) -->
                         <tester.fixtures>${tester.dir}/core/src/test/resources/fixtures</tester.fixtures>

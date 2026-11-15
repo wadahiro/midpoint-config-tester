@@ -27,7 +27,7 @@
         <!-- midPoint 4.0 runs on JDK 11: the tests compile for it -->
         <maven.compiler.release>11</maven.compiler.release>
         <!-- no -javaagent: the tester attaches the file redirection's agent itself -->
-        <tester.argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off</tester.argLine>
+        <tester.argLine>-Xmx3g -Dtester.fork=${surefire.forkNumber} -Duser.language=en -Xshare:off -Dtester.timeZone=${tester.timeZone} -Duser.timezone=${tester.timeZone}</tester.argLine>
     </properties>
 
     <dependencyManagement>

@@ -24,7 +24,15 @@ One Maven module next to the configuration (e.g. `<subsystem>/config-test/`), no
     <version>0.1.0-SNAPSHOT</version>
     <relativePath/>
 </parent>
+<properties>
+    <tester.timeZone>Asia/Tokyo</tester.timeZone>   <!-- required: the zone the midPoint server runs in -->
+</properties>
 ```
+
+- **Time zone.** `tester.timeZone` is required: the zone of the production midPoint server (its `TZ` or
+  `-Duser.timezone`), not the developer's. Scripts' local dates (`basic.parseDateTime('yyyy-MM-dd', ...)`,
+  `LocalDate.now()`) and `t.clock()`'s `LocalDateTime`/`LocalDate` are read in it, so CI in UTC gives the server's
+  results.
 
 - **midPoint build.** The line's release by default. A support build or a fork (the image runs another build): set
   `<midpoint40.version>` (the line's property) to it, installed in the local repository. The parent manages midPoint's

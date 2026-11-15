@@ -26,5 +26,7 @@ environment:
 # midPoint's constants (<constants> of config.xml), for <const> and midpoint.getConst (ConstantsScenarioTest)
 constants: { hrTenant: t-1001 }
 mail: { redirect: true }
+# the zone of the midPoint server, checked against tester.timeZone (TimeZoneScenarioTest)
+timeZone: Asia/Tokyo
 # typed names for the tests (NamesGenerator): Resources.HR, Roles.DEPT_SALES, LdapAttrs.OU...
 names: { package: com.github.wadahiro.midpoint.configtester.sample.hr }

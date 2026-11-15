@@ -27,6 +27,9 @@
                 <version>0.1.0-SNAPSHOT</version>
             </parent>
 
+        Required: tester.timeZone, the time zone the midPoint server runs in (an IANA ID, e.g. Asia/Tokyo); the
+        per-line parents pass it to the test JVM.
+
         Properties a repository may set: tester.manifest.file (default midpoint-config-tester.yaml next to the POM),
         tester.names.skip, tester.forks.
 

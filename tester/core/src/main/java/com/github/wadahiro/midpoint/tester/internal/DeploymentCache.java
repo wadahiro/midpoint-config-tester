@@ -33,7 +33,7 @@ import java.util.stream.Stream;
  * load reported are written under {@code <cache dir>/<deployment>/<key>/}; the next JVM with the same key restores
  * them into its midPoint instead of importing (see {@link Deployment}).
  *
- * <p>The key is a SHA-256 of: the line, the jars of the class path (midPoint, connectors), the tester's own classes, the manifest, every file of the
+ * <p>The key is a SHA-256 of: the line, the time zone ({@code tester.timeZone}), the jars of the class path (midPoint, connectors), the tester's own classes, the manifest, every file of the
  * deployment on this line (config dirs, overlay; the properties are in the manifest), the initial data, the extension schema.
  * An entry is written to a temporary directory and renamed, so it is complete or absent; every file's digest is
  * checked before a restore. Builders in several JVMs (test forks) take a file lock: the first builds, the others wait
@@ -184,6 +184,8 @@ final class DeploymentCache {
         MessageDigest sha = sha256();
         update(sha, "format " + FORMAT);
         update(sha, "line " + LineSupport.LINE);
+        // the import's mappings read local dates in it (basic.parseDateTime): instants in the cached database
+        update(sha, "time zone " + TesterRuntime.zone());
         // midPoint, the connector bundles and every other library: the jars of the classpath
         update(sha, "jars " + classpathJars());
         update(sha, "tester " + codeDigest());

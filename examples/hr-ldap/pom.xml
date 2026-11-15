@@ -21,5 +21,7 @@
     <properties>
         <!-- built and tested with this repository, not published -->
         <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- the time zone the midPoint server runs in (required) -->
+        <tester.timeZone>Asia/Tokyo</tester.timeZone>
     </properties>
 </project>
