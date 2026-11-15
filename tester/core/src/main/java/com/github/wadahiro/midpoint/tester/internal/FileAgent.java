@@ -90,6 +90,9 @@ final class FileAgent {
             if (taskStop != null) {
                 System.err.println("Tester: " + taskStop);
             }
+            // loaded now, so that it is retransformed (as Socket, NetworkAgent): one loaded after the installation was
+            // not transformed on JDK 21
+            Class.forName("java.lang.ProcessBuilder", false, null);
             List<Throwable> errors = new ArrayList<>();
             new AgentBuilder.Default()
                     .disableClassFormatChanges()

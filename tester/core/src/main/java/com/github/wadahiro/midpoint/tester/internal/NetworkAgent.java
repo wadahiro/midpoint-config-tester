@@ -28,7 +28,10 @@ final class NetworkAgent {
     /** Null on success, else why not. */
     static String install(Instrumentation instrumentation) {
         List<Throwable> errors = new ArrayList<>();
+        // loaded now, so that they are retransformed: Socket loaded after the installation (a fork's JVM that had
+        // opened none yet) was not transformed on JDK 21, and its connections went out unguarded
         try {
+            Class.forName("java.net.Socket", false, null);
             Class.forName("sun.nio.ch.SocketChannelImpl", false, null);
         } catch (ClassNotFoundException e) {
             // not on this JDK
