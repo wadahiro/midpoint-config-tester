@@ -44,18 +44,19 @@
         and the shared tests, base-<line>/ the parts shared by the lines from <line> on, and midpoint-<line>/ one module
         per line. Each line module compiles the shared sources against its own midPoint BOM and runs the shared tests in
         its own JVM (midPoint keeps static singletons, so two versions can never share a classpath). tester/static holds
-        the static checks, without a runtime. parent/ holds the parents of config repositories (one per line) and
-        examples/ a config repository built on one of them.
+        the static checks, without a runtime, tester/kotest the Kotest layer and its tests (scenarios/). parent/ holds
+        the parents of config repositories (one per line) and examples/ config repositories built on one of them.
     -->
     <modules>
         <module>tester</module>
         <module>tester/kotest</module>
+        <!-- the Kotest layer's tests: specs on 4.0 and 4.8, built as a config repository builds them -->
+        <module>tester/kotest/scenarios</module>
         <!-- the parents of config repositories, one per line (midpoint-config-tester-parent-<line>) -->
         <module>parent</module>
         <!-- example config repositories on the 4.8 parent, built and tested with the tester -->
         <module>examples/hr-ldap</module>
         <module>examples/getting-started</module>
-        <module>examples/kotest-scenarios</module>
     </modules>
 
     <properties>

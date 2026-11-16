@@ -23,7 +23,7 @@ jobs:
         include:
           - line: '4.0'
             java: 11
-            modules: tester/midpoint-4.0,tester/static/midpoint-4.0,examples/kotest-scenarios/midpoint-4.0
+            modules: tester/midpoint-4.0,tester/static/midpoint-4.0,tester/kotest/scenarios/midpoint-4.0
             # the Kotest layer compiles against the 4.8 tester (JDK 17+): the modules are installed on JDK 21 first,
             # then tested on JDK 11 from the local repository, as a config repository uses the tester
             installed: true
@@ -32,7 +32,7 @@ jobs:
             modules: tester/midpoint-4.4,tester/static/midpoint-4.4
           - line: '4.8'
             java: 21
-            modules: tester/midpoint-4.8,tester/static/midpoint-4.8,tester/kotest,examples/hr-ldap,examples/getting-started,examples/kotest-scenarios/midpoint-4.8
+            modules: tester/midpoint-4.8,tester/static/midpoint-4.8,tester/kotest,examples/hr-ldap,examples/getting-started,tester/kotest/scenarios/midpoint-4.8
           - line: '4.9'
             java: 21
             modules: tester/midpoint-4.9,tester/static/midpoint-4.9
