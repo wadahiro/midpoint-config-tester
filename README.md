@@ -75,8 +75,8 @@ that zone on every machine, so a start date begins at midnight on the server whe
 CI machine in UTC. On 4.11 `tester.safeScriptingLanguagesOnly` is required too ([Scripting on
 4.11](docs/guide/lines.md#scripting-on-411)).
 
-For tests in Kotlin, as Kotest specs, also add the tester's Kotest layer, Kotest and Kotlin (the parent manages their
-versions and runs `*Spec` classes):
+For tests in Kotlin, as Kotest specs, also add the tester's Kotest layer, Kotest (which brings Kotlin's standard
+library) and the Kotlin compiler plugin (the parent manages their versions and runs `*Spec` classes):
 
 ```xml
 <dependencies>
@@ -88,11 +88,6 @@ versions and runs `*Spec` classes):
     <dependency>
         <groupId>io.kotest</groupId>
         <artifactId>kotest-runner-junit5-jvm</artifactId>
-        <scope>test</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-stdlib</artifactId>
         <scope>test</scope>
     </dependency>
 </dependencies>

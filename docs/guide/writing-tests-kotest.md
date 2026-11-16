@@ -50,7 +50,7 @@ class CampaignSpec : MidPointConfigSpec({
 - Kotlin values the prefix computed (`campaign` above) are not checkpointed, as the fields of a nested class are not;
   the checkpoint covers what it covers for nested classes, and saves as much.
 - Set up: the parents manage Kotlin and Kotest and run `*Spec` classes; a repository adds, as test dependencies,
-  `midpoint-config-tester-kotest`, `io.kotest:kotest-runner-junit5-jvm`, `org.jetbrains.kotlin:kotlin-stdlib` and the
+  `midpoint-config-tester-kotest` and `io.kotest:kotest-runner-junit5-jvm` (which brings the Kotlin stdlib), and the
   `kotlin-maven-plugin` ([`examples/getting-started`](../../examples/getting-started)). IntelliJ needs the Kotest plugin
   to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name. `precondition`, `steps` and
   `verifyAll { }` are functions of the Kotest layer, imported from `com.github.wadahiro.midpoint.configtester.kotest`

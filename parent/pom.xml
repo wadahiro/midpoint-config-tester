@@ -40,7 +40,6 @@
             <dependencies>
                 <dependency><groupId>io.github.wadahiro.midpoint</groupId><artifactId>midpoint-config-tester-kotest</artifactId><scope>test</scope></dependency>
                 <dependency><groupId>io.kotest</groupId><artifactId>kotest-runner-junit5-jvm</artifactId><scope>test</scope></dependency>
-                <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-stdlib</artifactId><scope>test</scope></dependency>
             </dependencies>
             <build><plugins>
                 <plugin><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-maven-plugin</artifactId></plugin>

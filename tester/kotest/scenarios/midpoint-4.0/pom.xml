@@ -39,11 +39,6 @@
             <artifactId>kotest-assertions-core-jvm</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
     <build>
         <testResources>
