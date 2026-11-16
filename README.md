@@ -31,9 +31,10 @@ server.
 A config repository holds its midPoint configuration (`post-initial-objects`, as deployed to midPoint's home), a
 manifest `midpoint-config-tester.yaml` and the tests, with a POM whose parent is the tester's parent of its midPoint
 line. [`examples/getting-started`](examples/getting-started) is such a repository, with the files shown here: HR (a
-CSV export) feeds users, the user template gives them the role of their department from their start date on, the
-roles provision LDAP accounts, and a user may request VPN Access, which alice approves (undecided for 3 days, it
-is rejected); mails tell her of the request and the requester of the decision.
+CSV export) feeds users, enabled from their start date to their end date (activation `validFrom` and `validTo`), the
+user template gives them the role of their department from their start date on, the roles provision LDAP accounts,
+and a user may request VPN Access, which alice approves (undecided for 3 days, it is rejected); mails tell her of the
+request and the requester of the decision.
 
 ```
 pom.xml                         the parent of the line and the repository's coordinates
@@ -132,7 +133,9 @@ code of a Kotest container before its first test), the tester saves midPoint's s
 systems' content, the clock and the mails sent. Before each test it restores that state, in a few tens of
 milliseconds, so every test starts from the same point whatever the test before it did. John requests VPN Access
 once; one test has alice approve the request, the next has her reject it, a third moves the clock past the
-deadline, where midPoint rejects it: each from the same open request.
+deadline, where midPoint rejects it: each from the same open request. The clock is the tests' too: `t.clock().advanceTo(start)`
+moves midPoint's clock and the JVM's to a start date, an end date or a deadline, and `runDue()` runs what is due by
+then (the validity and trigger scanners, the recurring tasks), in a test that takes a second.
 
 A test with JUnit (`src/test/java`). Every verb that makes midPoint work returns what midPoint did;
 `verifyAll(c -> ...)` checks that nothing changed beyond what the test claims.
@@ -159,6 +162,31 @@ class HrLifecycleTest {
             c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
             c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
         });
+    }
+
+    @Test
+    void aFutureJoinerStartsOnHerStartDate(MidPointConfigTester t) {
+        LocalDate start = t.clock().today().plusDays(10);
+        t.source("HR").add("1003", Map.of("firstName", "Kate", "lastName", "Smith", "department", "IT",
+                "startDate", start.toString()));
+        t.task("Reconcile HR").run();
+        t.user("e1003").isDisabled().hasNoAssignment("Dept IT").hasNoAccountOn("LDAP");
+
+        t.clock().advanceTo(start).advance("PT1H").runDue();   // the scanners and the due tasks at the new time
+        t.user("e1003").isEnabled().hasAssignment("Dept IT").hasAccountOn("LDAP");
+    }
+
+    @Test
+    void aLeaverIsDisabledOnHisEndDate(MidPointConfigTester t) {
+        hireJohn(t);
+        LocalDate end = t.clock().today().plusDays(5);
+        t.source("HR").modify("1001", "endDate", end.toString());
+        t.task("Reconcile HR").run();
+        t.user("e1001").isEnabled();
+
+        t.clock().advanceTo(end).advance("PT1H").runDue();
+        t.user("e1001").isDisabled();
+        t.target("LDAP").account(JOHN).isDisabled();
     }
 
     /** Both tests start from John's request: midPoint as the @BeforeAll left it, restored for each. */
@@ -250,6 +278,20 @@ class HrLifecycleSpec : MidPointConfigSpec({
             else t.user("e1001").hasNoAssignment("Dept Sales").hasNoAccountOn("LDAP")   // no role for Finance
         }
 
+        "John leaves in 5 days" - {
+            val end = t.clock().today().plusDays(5)
+            t.source("HR").modify("1001", "endDate", end.toString())
+            t.task("Reconcile HR").run()
+
+            precondition("until then he is enabled") { t.user("e1001").isEnabled() }
+
+            "on his end date, his user and his LDAP account are disabled" {
+                t.clock().advanceTo(end).advance("PT1H").runDue()   // the scanners and the due tasks at the new time
+                t.user("e1001").isDisabled()
+                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").isDisabled()
+            }
+        }
+
         "John requests VPN Access" - {
             t.actor("e1001").request().assign("VPN Access")
 
@@ -296,6 +338,22 @@ class HrLifecycleSpec : MidPointConfigSpec({
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
             }
+        }
+    }
+
+    "Kate joins in 10 days" - {
+        val start = t.clock().today().plusDays(10)
+        t.source("HR").add("1003", mapOf("firstName" to "Kate", "lastName" to "Smith", "department" to "IT",
+                "startDate" to start.toString()))
+        t.task("Reconcile HR").run()
+
+        precondition("before her start date she has no role and no account") {
+            t.user("e1003").isDisabled().hasNoAssignment("Dept IT").hasNoAccountOn("LDAP")
+        }
+
+        "on her start date she gets her role and her LDAP account" {
+            t.clock().advanceTo(start).advance("PT1H").runDue()
+            t.user("e1003").isEnabled().hasAssignment("Dept IT").hasAccountOn("LDAP")
         }
     }
 })
