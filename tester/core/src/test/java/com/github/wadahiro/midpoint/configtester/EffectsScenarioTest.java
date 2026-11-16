@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +117,37 @@ class EffectsScenarioTest {
         assertThatThrownBy(moved::none).isInstanceOf(AssertionError.class).hasMessageContaining("UserType e1001");
         assertThatThrownBy(() -> moved.changes().of("e1001").single().only("costCenter"))
                 .isInstanceOf(AssertionError.class).hasMessageContaining("but also: assignment");
+    }
+
+    @Test
+    void verifyAllTakesTheChecksInOneCall(MidPointConfigTester t) {
+        t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
+        // a check reused across tests, beside one written here: one verification
+        Consumer<Claims> ldapGroups = c -> {
+            c.connectorCalls().to("LDAP").modifies().of(SALES).single().only("member");
+            c.connectorCalls().to("LDAP").modifies().of(IT).single().only("member");
+        };
+
+        t.task(Tasks.RECONCILE_HR).run().verifyAll(c -> {
+            c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
+            c.changes().of(IT).added().single();
+            c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
+            c.mails().none();
+        }, ldapGroups);
+    }
+
+    @Test
+    void verifyAllFailsOnWhatNoCheckClaimed(MidPointConfigTester t) {
+        t.source(Resources.HR).modify("1001", HrAttrs.DEPARTMENT, "IT");
+
+        Effects moved = t.task(Tasks.RECONCILE_HR).run();
+
+        assertThatThrownBy(() -> moved.verifyAll(c -> c.changes().of("e1001").single()))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("Effects of the block not verified")
+                .hasMessageContaining("connector: LDAP modify inetOrgPerson " + JOHN + " [ou]");
+        assertThatThrownBy(() -> moved.verifyAll()).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("none()");
     }
 
     @Test

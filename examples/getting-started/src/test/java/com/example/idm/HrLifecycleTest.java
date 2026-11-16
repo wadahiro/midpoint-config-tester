@@ -10,7 +10,6 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.CaseType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType;
-import com.github.wadahiro.midpoint.configtester.Claims;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 
@@ -31,10 +30,10 @@ class HrLifecycleTest {
         t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").hasAccountOn("LDAP");
 
         t.source("HR").modify("1001", "department", "IT");
-        Claims moved = t.task("Reconcile HR").run().claims();
-        moved.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
-        moved.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
-        moved.verifyAll();   // and nothing else changed
+        t.task("Reconcile HR").run().verifyAll(c -> {   // these, and nothing else
+            c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
+            c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
+        });
     }
 
     /** Both tests start from John's request: midPoint as the @BeforeAll left it, restored for each. */
@@ -50,19 +49,19 @@ class HrLifecycleTest {
 
         @Test
         void aliceApproves(MidPointConfigTester t) {
-            Claims approved = t.workItems().assignedTo("alice").single().approve(t.actor("alice")).claims();
-            approved.changes().of("e1001").single().only("assignment", "roleMembershipRef");
-            approved.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("businessCategory");
-            approved.changes().ofType(CaseType.class).ignored();
-            approved.changes().ofType(TaskType.class).added().single();   // the task that executes the approved change
-            approved.verifyAll();
+            t.workItems().assignedTo("alice").single().approve(t.actor("alice")).verifyAll(c -> {
+                c.changes().of("e1001").single().only("assignment", "roleMembershipRef");
+                c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("businessCategory");
+                c.changes().ofType(CaseType.class).ignored();
+                c.changes().ofType(TaskType.class).added().single();   // the task that executes the approved change
+            });
         }
 
         @Test
         void aliceRejects(MidPointConfigTester t) {
-            Claims rejected = t.workItems().assignedTo("alice").single().reject(t.actor("alice")).claims();
-            rejected.changes().ofType(CaseType.class).ignored();
-            rejected.verifyAll();   // John and his LDAP account stay as they were
+            // John and his LDAP account stay as they were
+            t.workItems().assignedTo("alice").single().reject(t.actor("alice"))
+                    .verifyAll(c -> c.changes().ofType(CaseType.class).ignored());
         }
     }
 }

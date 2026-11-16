@@ -87,7 +87,8 @@ out.hasRows(2).hasRowWith("User", "jack");
 | `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` (and `ignored` for effects) |
-| `effects.claims()` | claims nothing until `verifyAll()` | `Claims` |
+| `effects.verifyAll(c -> ...)` | a verification: the checks claim, then nothing else may have happened | `Effects`; `AssertionError` |
+| `effects.claims()` | the same in steps: claims nothing until `verifyAll()` | `Claims` |
 
 A verb whose result the test cannot name beforehand returns what midPoint made, not `Effects`:
 `t.certification(name).start()` its `Campaign`, `t.report(name).run()` its `ReportOutput` (an export task runs: it

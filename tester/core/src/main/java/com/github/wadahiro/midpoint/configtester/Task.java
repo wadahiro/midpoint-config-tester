@@ -48,7 +48,7 @@ public final class Task {
      * Runs the task now, as the GUI's "Run now", and waits for it and the work it starts; fails if the task fails,
      * on all or (unless {@link #allowPartialErrors()}) some of its objects. A recurring task, which the tester
      * holds, runs this way, once. Returns what midPoint did ({@link Effects}):
-     * {@code t.task("Nightly renewal").run().verifyAll { ... }}.
+     * {@code t.task("Nightly renewal").run().verifyAll(c -> ...)} (Kotlin: {@code verifyAll { ... }}).
      */
     public Effects run() {
         MidPoint mp = tester.deployment().api();

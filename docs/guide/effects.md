@@ -35,9 +35,12 @@ t.user("jack").hasNoAssignment("Privileged Access")                         // n
 ```
 
 A check that something did not happen, and a check of what happened that also proves nothing else did, are
-verifications: in `claims()` (Kotest: `effects.verifyAll { ... }`, from `midpoint-config-tester-kotest`) each check claims what it selects (`exactly`,
-`none`, `single`, and `ignored()` for what the test does not care about), and `verifyAll()` fails listing every
-changed object, connector write, mail and error logged that no check claimed. `none()` is a verification without
+verifications: in `effects.verifyAll(c -> ...)` (Kotest: `effects.verifyAll { ... }`, from
+`midpoint-config-tester-kotest`) each check claims what it selects (`exactly`, `none`, `single`, and `ignored()` for
+what the test does not care about), and the verification fails listing every changed object, connector write, mail
+and error logged that no check claimed. Several checks are one verification (`verifyAll(c -> ..., ldapGroups)`: a
+`Consumer<Claims>` reused across tests beside one written here); `effects.claims()` then `verifyAll()` is the same in
+steps. In Kotlin the lambda goes after the parentheses, `verifyAll { ... }`. `none()` is a verification without
 checks. Connector reads, logs below ERROR and audit records need no claim.
 
 ```kotlin
@@ -58,12 +61,12 @@ effects.repositoryCalls().reads().perMethod()          // {"getObject UserType"=
 ```
 
 ```java
-Claims claims = t.task("Reconcile HR").run().claims();
-claims.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
-claims.changes().ofType(ShadowType.class).added().ignored();             // the group shadows midPoint discovered
-claims.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");
-claims.connectorCalls().to("LDAP").modifies().exactly(3);
-claims.verifyAll();
+t.task("Reconcile HR").run().verifyAll(c -> {
+    c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
+    c.changes().ofType(ShadowType.class).added().ignored();             // the group shadows midPoint discovered
+    c.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");
+    c.connectorCalls().to("LDAP").modifies().exactly(3);
+});
 ```
 
 What counts (every line alike): a change is what midPoint wrote to its repository
@@ -107,9 +110,8 @@ t.task("Reconcile HR").run().none();                            // the inbounds 
   configuration changes on every recompute on purpose, a timestamp of its own, the same way):
 
 ```java
-Claims claims = t.user("jdoe").modify(Modification::reconcile).claims();
-claims.connectorCalls().to("LDAP").modifies().of(dn).single().only("credentials/password/value");
-claims.verifyAll();
+t.user("jdoe").modify(Modification::reconcile).verifyAll(c ->
+        c.connectorCalls().to("LDAP").modifies().of(dn).single().only("credentials/password/value"));
 ```
 
 How midPoint recomputes a user decides what it sends (every line alike). A recompute reads

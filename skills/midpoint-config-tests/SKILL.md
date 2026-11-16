@@ -156,6 +156,8 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
     template names (or renames): `val org = t.addOrg { ... }` (`addUser`, `addRole`, `addService`), then `org` and
     `org.oid()` where a name goes, never the name it was added with
   - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims
+  - what a verb did, and nothing else: `effects.verifyAll(c -> { c.changes().of(n).single().only(...); ... })`
+    (Kotest: `effects.verifyAll { changes()... }`, the lambda after the parentheses); nothing at all: `none()`
   - the configuration at rest, after a verb that provisions: `effects.changes().focuses().forEach { it.recompute().none() }`
     and a second task run `.none()`; a strong outbound to an attribute midPoint cannot read is sent on every
     recompute, a strong password on every reconcile (and recomputation task, which reconciles by default): claim it

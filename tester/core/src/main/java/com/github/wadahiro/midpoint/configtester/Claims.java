@@ -7,16 +7,17 @@ import com.github.wadahiro.midpoint.tester.LogEntry;
 import com.github.wadahiro.midpoint.tester.Mail;
 
 /**
- * An exhaustive verification of a block's {@link Effects} ({@link Effects#claims()}): the same selections, whose
- * {@code exactly}, {@code none}, {@code single} and {@code ignored} claim what they select; {@link #verifyAll()} then
- * fails listing every changed object, connector write, mail and error logged that no check claimed, e.g.
+ * An exhaustive verification of a block's {@link Effects} ({@link Effects#verifyAll(java.util.function.Consumer...)},
+ * {@link Effects#claims()}): the same selections, whose {@code exactly}, {@code none}, {@code single} and
+ * {@code ignored} claim what they select; {@link #verifyAll()} then fails listing every changed object, connector
+ * write, mail and error logged that no check claimed, e.g.
  *
  * <pre>{@code
- * Claims claims = effects.claims();
- * claims.changes().of("jdoe").single().only("activation/validTo");
- * claims.connectorCalls().to("LDAP").modifies().of("jdoe").single();
- * claims.mails().to("jdoe@example.com").withSubject("renewed").single();
- * claims.verifyAll();
+ * effects.verifyAll(c -> {
+ *     c.changes().of("jdoe").single().only("activation/validTo");
+ *     c.connectorCalls().to("LDAP").modifies().of("jdoe").single();
+ *     c.mails().to("jdoe@example.com").withSubject("renewed").single();
+ * });
  * }</pre>
  *
  * In a Kotest spec: {@code effects.verifyAll { changes().of("jdoe").single(); ... }}. Connector reads, logs below ERROR and

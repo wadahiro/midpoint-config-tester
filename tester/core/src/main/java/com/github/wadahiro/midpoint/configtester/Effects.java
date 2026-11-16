@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import com.evolveum.midpoint.prism.Item;
 import com.evolveum.midpoint.prism.PrismContainerValue;
@@ -28,9 +29,9 @@ import com.github.wadahiro.midpoint.tester.internal.EffectsCapture;
  * it, not what the test passed in.
  *
  * <p>Read it ({@code effects.mails().to("jdoe@example.com").single()}), or verify it exhaustively: in
- * {@link #claims()} (Kotest: {@code effects.verifyAll { ... }}) each check claims what it selects, and
- * {@link Claims#verifyAll()} fails if a changed object, a connector write, a mail or an error logged was not
- * claimed, so a check of what should happen also proves nothing else did. {@link #none()} is a verification
+ * {@link #verifyAll(Consumer...)} ({@code effects.verifyAll(c -> ...)}; Kotest: {@code effects.verifyAll { ... }})
+ * each check claims what it selects on the {@link Claims}, and the verification fails if a changed object, a connector
+ * write, a mail or an error logged was not claimed, so a check of what should happen also proves nothing else did. {@link #none()} is a verification
  * without checks: the block changed nothing.</p>
  *
  * <p>Not among the changes: midPoint's housekeeping ({@code metadata} and {@code operationExecution} at any depth,
@@ -211,11 +212,32 @@ public final class Effects {
     }
 
     /**
-     * Starts an exhaustive verification: check through the returned {@link Claims}, then call
-     * {@link Claims#verifyAll()}. In Kotlin, {@code effects.verifyAll { ... }} does both.
+     * Starts an exhaustive verification in steps: check through the returned {@link Claims}, then call
+     * {@link Claims#verifyAll()}. {@link #verifyAll(Consumer...)} does both in one call.
      */
     public Claims claims() {
         return new Claims(this, new Ledger());
+    }
+
+    /**
+     * Verifies the block exhaustively in one call: the {@code checks} claim what they select on the {@link Claims}
+     * (several checks are one verification: a check reused across tests beside one written here), then
+     * {@link Claims#verifyAll()} fails listing every changed object, connector write, mail and error logged that no
+     * check claimed. {@link #claims()} followed by {@code verifyAll()} is the same in steps. In Kotlin the trailing
+     * lambda goes to {@code effects.verifyAll { ... }} of midpoint-config-tester-kotest, with the claims as receiver.
+     *
+     * @throws IllegalArgumentException without a check: a block that changed nothing is {@link #none()}
+     */
+    @SafeVarargs
+    public final Effects verifyAll(Consumer<Claims>... checks) {
+        if (checks.length == 0) {
+            throw new IllegalArgumentException("verifyAll needs a check; a block that changed nothing is none()");
+        }
+        Claims claims = claims();
+        for (Consumer<Claims> check : checks) {
+            check.accept(claims);
+        }
+        return claims.verifyAll();
     }
 
     /** Checks that the block changed nothing: no object, no connector write, no mail and no error logged. */

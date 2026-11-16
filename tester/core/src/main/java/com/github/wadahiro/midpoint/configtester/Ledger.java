@@ -32,7 +32,7 @@ final class Ledger {
     static void requireLedger(Ledger ledger) {
         if (ledger == null) {
             throw new IllegalStateException(
-                    "ignored() claims an effect in Effects.claims() (Kotlin: effects.verifyAll { }); here it has no meaning");
+                    "ignored() claims an effect in effects.verifyAll(c -> ...) or Effects.claims() (Kotlin: effects.verifyAll { }); here it has no meaning");
         }
     }
 }
