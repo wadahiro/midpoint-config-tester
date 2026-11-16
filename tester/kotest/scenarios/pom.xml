@@ -9,13 +9,25 @@
     <packaging>pom</packaging>
     <name>Tests of the Kotest layer over the tester's sample deployments</name>
     <description>
-        The Kotest layer (tester/kotest) as a config repository uses it, on 4.0 (JDK 11) and 4.8: the specs in
-        src/test/kotlin, shared by the line modules, over the tester's sample deployments (classpath:scenarios/...).
+        The Kotest layer (tester/kotest) as a config repository uses it, on every line: the specs in src/test/kotlin,
+        shared by the line modules, over the tester's sample deployments (classpath:scenarios/...).
     </description>
     <modules>
         <module>midpoint-4.0</module>
+        <module>midpoint-4.4</module>
         <module>midpoint-4.8</module>
     </modules>
+    <profiles>
+        <profile>
+            <!-- the lines after 4.8 (not LTS): built and tested only with -Pnon-lts -->
+            <id>non-lts</id>
+            <modules>
+                <module>midpoint-4.9</module>
+                <module>midpoint-4.10</module>
+                <module>midpoint-4.11</module>
+            </modules>
+        </profile>
+    </profiles>
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>

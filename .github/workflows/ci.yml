@@ -24,24 +24,30 @@ jobs:
           - line: '4.0'
             java: 11
             modules: tester/midpoint-4.0,tester/static/midpoint-4.0,tester/kotest/scenarios/midpoint-4.0
-            # the Kotest layer compiles against the 4.8 tester (JDK 17+): the modules are installed on JDK 21 first,
-            # then tested on JDK 11 from the local repository, as a config repository uses the tester
+            # the Kotest layer depends on the 4.8 tester (JDK 17+): the modules are installed on JDK 21 first, then
+            # tested on the line's JDK from the local repository, as a config repository uses the tester; so only
+            # the line's modules run their tests (with -am the 4.8 tester's would run too, on a JDK 4.8 may not
+            # support: midPoint 4.8's Groovy fails on JDK 25)
             installed: true
           - line: '4.4'
             java: 17
-            modules: tester/midpoint-4.4,tester/static/midpoint-4.4
+            modules: tester/midpoint-4.4,tester/static/midpoint-4.4,tester/kotest/scenarios/midpoint-4.4
+            installed: true
           - line: '4.8'
             java: 21
             modules: tester/midpoint-4.8,tester/static/midpoint-4.8,tester/kotest,examples/hr-ldap,examples/getting-started,tester/kotest/scenarios/midpoint-4.8
           - line: '4.9'
             java: 21
-            modules: tester/midpoint-4.9,tester/static/midpoint-4.9
+            modules: tester/midpoint-4.9,tester/static/midpoint-4.9,tester/kotest/scenarios/midpoint-4.9
+            installed: true
           - line: '4.10'
             java: 21
-            modules: tester/midpoint-4.10,tester/static/midpoint-4.10
+            modules: tester/midpoint-4.10,tester/static/midpoint-4.10,tester/kotest/scenarios/midpoint-4.10
+            installed: true
           - line: '4.11'
             java: 25
-            modules: tester/midpoint-4.11,tester/static/midpoint-4.11
+            modules: tester/midpoint-4.11,tester/static/midpoint-4.11,tester/kotest/scenarios/midpoint-4.11
+            installed: true
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5

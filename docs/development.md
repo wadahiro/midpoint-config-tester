@@ -18,7 +18,7 @@ tester/
   midpoint-4.10/      LineSupport, SQL and baseline objects of 4.10
   midpoint-4.11/      LineSupport, SQL and baseline objects of 4.11
   static/             static checks (own parent): core/ sources and tests, midpoint-<line>/ per line
-  kotest/             the Kotest layer; scenarios/: its tests, specs built as a config repository on 4.0 and 4.8
+  kotest/             the Kotest layer; scenarios/: its tests, specs built as a config repository on every line
 parent/               parents of config repositories: common pom.xml, midpoint-<line>/ per line
 examples/             example config repositories on the 4.8 parent, tested in the build: getting-started/ (the
                       README's, on mirror connectors, JUnit and Kotest), hr-ldap/ (real CSV and LDAP connectors)

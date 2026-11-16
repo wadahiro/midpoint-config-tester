@@ -21,7 +21,7 @@ prefix, through a checkpoint, so the prefix runs once and the tests stay indepen
   Work in a container between its tests fails the next test (midPoint's activity counter compared after the restore).
 - **Build support** in the parent POMs (opt-in): kotlin-maven-plugin, the stdlib, Kotest and its Kotlin libraries
   managed over midPoint's BOM, `*Spec` in Surefire's includes. `tester/kotest/scenarios` uses it like a config
-  repository, on 4.0 (JDK 11) and 4.8: `CheckpointSpec` checks the semantics (prefix once; users, clock, mails and an
+  repository, on every line (4.0 on JDK 11): `CheckpointSpec` checks the semantics (prefix once; users, clock, mails and an
   open work item back for each test; nested containers; steps; the next root from the deployment) and
   `ExplanationSpec` the failure explanation (a failed matcher in a container's test gets the mappings behind the
   value; a failing spec run showed the same in Surefire's report). A plain `mvn verify` runs the specs.

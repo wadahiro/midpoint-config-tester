@@ -50,7 +50,7 @@
     <modules>
         <module>tester</module>
         <module>tester/kotest</module>
-        <!-- the Kotest layer's tests: specs on 4.0 and 4.8, built as a config repository builds them -->
+        <!-- the Kotest layer's tests: specs on every line, built as a config repository builds them -->
         <module>tester/kotest/scenarios</module>
         <!-- the parents of config repositories, one per line (midpoint-config-tester-parent-<line>) -->
         <module>parent</module>
