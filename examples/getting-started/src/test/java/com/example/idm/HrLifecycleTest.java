@@ -71,5 +71,19 @@ class HrLifecycleTest {
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
             t.workItems().assignedTo("alice").none();
         }
+
+        @Test
+        void undecidedFor3DaysTheRequestIsRejected(MidPointConfigTester t) {
+            t.clock().advance("P2D").runTriggerScanner().none();   // still waiting
+            t.workItems().assignedTo("alice").single();
+
+            t.clock().advance("P1D").runTriggerScanner().verifyAll(c -> {
+                c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
+                c.changes().of("e1001").none();
+                c.connectorCalls().to("LDAP").writes().none();
+                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
+            });
+            t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
+        }
     }
 }

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Department roles: an LDAP account. VPN Access: requested by a user, approved by alice -->
+<!--
+    Department roles: an LDAP account. VPN Access: requested by a user, approved by alice; a request she has not
+    decided in 3 days is rejected.
+-->
 <objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
          xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
     <role oid="20000000-0000-0000-0000-00000000c001">
@@ -39,6 +42,16 @@
                             <stage>
                                 <number>1</number>
                                 <approverRef oid="20000000-0000-0000-0000-00000000d001" type="UserType"/>
+                                <duration>P3D</duration>
+                                <timedActions>
+                                    <name>reject-when-undecided</name>
+                                    <!-- no time: at the deadline -->
+                                    <actions>
+                                        <complete>
+                                            <outcome>reject</outcome>
+                                        </complete>
+                                    </actions>
+                                </timedActions>
                             </stage>
                         </approvalSchema>
                     </approval>

@@ -65,6 +65,21 @@ class HrLifecycleSpec : MidPointConfigSpec({
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
                 t.workItems().assignedTo("alice").none()
             }
+
+            "2 days on, the request still waits" {
+                t.clock().advance("P2D").runTriggerScanner().none()
+                t.workItems().assignedTo("alice").single()
+            }
+
+            "undecided for 3 days, the request is rejected" {
+                t.clock().advance("P3D").runTriggerScanner().verifyAll {
+                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
+                    changes().of("e1001").none()
+                    connectorCalls().to("LDAP").writes().none()
+                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
+                }
+                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
+            }
         }
     }
 })

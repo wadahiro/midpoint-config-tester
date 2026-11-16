@@ -32,8 +32,8 @@ A config repository holds its midPoint configuration (`post-initial-objects`, as
 manifest `midpoint-config-tester.yaml` and the tests, with a POM whose parent is the tester's parent of its midPoint
 line. [`examples/getting-started`](examples/getting-started) is such a repository, with the files shown here: HR (a
 CSV export) feeds users, the user template gives them the role of their department from their start date on, the
-roles provision LDAP accounts, and a user may request VPN Access, which alice approves; mails tell her of the
-request and the requester of the decision.
+roles provision LDAP accounts, and a user may request VPN Access, which alice approves (undecided for 3 days, it
+is rejected); mails tell her of the request and the requester of the decision.
 
 ```
 pom.xml                         the parent of the line and the repository's coordinates
@@ -131,7 +131,8 @@ in the manifest ([Target systems and the environment](docs/guide/environment.md#
 code of a Kotest container before its first test), the tester saves midPoint's state: its database, the target
 systems' content, the clock and the mails sent. Before each test it restores that state, in a few tens of
 milliseconds, so every test starts from the same point whatever the test before it did. John requests VPN Access
-once; one test has alice approve the request, the next has her reject it, each from the same open request.
+once; one test has alice approve the request, the next has her reject it, a third moves the clock past the
+deadline, where midPoint rejects it: each from the same open request.
 
 A test with JUnit (`src/test/java`). Every verb that makes midPoint work returns what midPoint did;
 `verifyAll(c -> ...)` checks that nothing changed beyond what the test claims.
@@ -194,6 +195,20 @@ class HrLifecycleTest {
             });
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
             t.workItems().assignedTo("alice").none();
+        }
+
+        @Test
+        void undecidedFor3DaysTheRequestIsRejected(MidPointConfigTester t) {
+            t.clock().advance("P2D").runTriggerScanner().none();   // still waiting
+            t.workItems().assignedTo("alice").single();
+
+            t.clock().advance("P1D").runTriggerScanner().verifyAll(c -> {
+                c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
+                c.changes().of("e1001").none();
+                c.connectorCalls().to("LDAP").writes().none();
+                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
+            });
+            t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
         }
     }
 }
@@ -265,6 +280,21 @@ class HrLifecycleSpec : MidPointConfigSpec({
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
                 t.workItems().assignedTo("alice").none()
+            }
+
+            "2 days on, the request still waits" {
+                t.clock().advance("P2D").runTriggerScanner().none()
+                t.workItems().assignedTo("alice").single()
+            }
+
+            "undecided for 3 days, the request is rejected" {
+                t.clock().advance("P3D").runTriggerScanner().verifyAll {
+                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
+                    changes().of("e1001").none()
+                    connectorCalls().to("LDAP").writes().none()
+                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
+                }
+                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
             }
         }
     }
