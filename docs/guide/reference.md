@@ -11,7 +11,7 @@
   what midPoint computes, not what the connector does. The real connectors are limited to CSV and LDAP (no Active
   Directory, no other connectors), the LDAP server is UnboundID's in-memory server with its standard schema (not
   OpenLDAP, 389 DS or AD: their schema, overlays such as `memberOf`, password policies and controls differ; its
-  change log gives live synchronization no deletions and fails it on renames, see [Real connectors](environment.md#real-connectors)).
+  change log gives live synchronization no deletions and fails it on renames, see [Real connectors](real-connectors.md)).
 - **Additional connectors stand in for their scripts only.** On a mirror a resource's `additionalConnector`s go, on a
   real connector each goes to a mirror that accepts scripts and nothing else
   ([Provisioning scripts and additional connectors](environment.md#provisioning-scripts-and-additional-connectors)):

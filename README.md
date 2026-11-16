@@ -109,7 +109,7 @@ midPoint writes and answers what midPoint reads. Your resource definitions stay 
 source as the real system would hold it (`t.source("HR").add(...)`) and reads what midPoint wrote to a target
 (`t.target("LDAP").account(...)`). A resource exported from midPoint carries its schema; one written by hand has
 none, so the manifest names the attribute that names its accounts (`targets` above). A CSV or LDAP resource can run on
-its real connector instead ([Real connectors](docs/guide/environment.md#real-connectors)).
+its real connector instead ([Real connectors](docs/guide/real-connectors.md), experimental).
 
 A first test (`src/test/java`): a row added to HR, the HR reconciliation run as deployed, then what midPoint made of
 it.
@@ -207,7 +207,7 @@ each test in a few tens of milliseconds, so one test approves the request and th
 - [Typed names](docs/guide/typed-names.md): constants generated from the configuration and shipped for midPoint's own.
 - [The GUI and authorizations](docs/guide/gui-and-authorizations.md): what a user sees, may open and may change.
 - [Mails](docs/guide/mails.md): the mails midPoint sends, notifications.
-- [Target systems and the environment](docs/guide/environment.md): target systems, real connectors, custom beans,
+- [Target systems and the environment](docs/guide/environment.md): target systems, provisioning scripts, custom beans,
   constants, HTTP services, other databases.
 - [Files scripts read and write](docs/guide/files.md): mapped directories.
 - [Approvals, reports, activation, scripts and the audit log](docs/guide/midpoint-features.md).
@@ -215,6 +215,8 @@ each test in a few tens of milliseconds, so one test approves the request and th
 - [Static checks](docs/guide/static-checks.md): checking configuration XML against a line without starting midPoint.
 - [Supported lines](docs/guide/lines.md): the lines, their JDKs, what differs between them.
 - [Limitations, properties and output files](docs/guide/reference.md).
+- [Real connectors](docs/guide/real-connectors.md) (experimental): a resource on its real connector instead of the
+  mirror.
 - [An authorization matrix](docs/guide/authz-matrix.md) (experimental): kinds of users against what they may do, as a
   YAML file and an HTML report.
 
