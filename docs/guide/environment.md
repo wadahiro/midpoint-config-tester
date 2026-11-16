@@ -103,6 +103,50 @@ live synchronization run: the mirror connector synchronizes as the CSV connector
 mirror's content at that moment and a run reporting the objects added, changed (name, status, password or stored
 attributes) and deleted since (see [Live synchronization](low-level-api.md#live-synchronization)).
 
+**Extension schemas**: `-Dtester.extensionSchemaDir=<dir>` (the `*.xsd` files as deployed to midPoint's `schema`
+directory, read when midPoint starts: one schema per test JVM, i.e. per line module). With it, extension items work as
+in production: in fixtures (`<extension><ext:badge>...`), as mapping sources and targets (`extension/ext:badge`), in
+changes (`change(...).replace("extension/badge", ...)`: the item name without its namespace, which the schema gives;
+or an `ItemPath` with the QName), and in the `assignment` variable of constructions, whose extension midPoint merges
+along the assignment path. Set it in the surefire configuration of the module that runs your tests:
+
+```xml
+<systemPropertyVariables>
+    <tester.extensionSchemaDir>${project.basedir}/../config/schema</tester.extensionSchemaDir>
+</systemPropertyVariables>
+```
+
+A deployment whose lines need different schemas points each line module at its own directory.
+
+### Provisioning scripts and additional connectors
+
+A resource's provisioning scripts (its `<scripts>`: a home directory made after an account is added, archived before
+one is deleted) usually run through an additional connector, an SSH connector to a file server. The tester runs no
+script and reaches no such server: the resource's `additionalConnector`s go, and the mirror accepts the scripts
+itself (a resource on its real connector: [Real connectors](#real-connectors)). midPoint routes the scripts to the
+mirror, and the effects of a verb have each script as a connector call of the resource (`executeScript`, a write):
+its language, its code as the resource has it, where it runs (`resource` or `connector`), and its arguments as
+midPoint evaluated them; its attributes are the argument names, so `only(...)` and an exhaustive `verifyAll` check
+them like an account's.
+
+```java
+Effects hired = t.task("Reconcile HR").run();
+hired.verifyAll(c -> {
+    c.connectorCalls().to("LDAP").adds().of(dn).single();
+    c.connectorCalls().to("LDAP").scripts().single()                    // after the add, as the resource says
+            .hasLanguage("bash").hasArgument("user", "e1001").codeContains("mkdir").only("user", "department");
+    // ...
+});
+hired.connectorCalls().to("LDAP").scripts().withArgument("user", "e1001").count();
+```
+
+A script's return value is not kept: midPoint only logs it. A script fails as its connector makes it fail: the SSH
+connector fails on a broken connection only (a command's exit status is logged, not checked), and midPoint then
+fails the operation or warns, as the script's `criticality` says (`fatal` by default). `t.target("LDAP").scriptsFail()`
+makes the resource's scripts fail so, until the test ends (a reset or checkpoint undoes it); the call is then
+`failed()`. What else an additional connector gives midPoint (a capability such as `references`, 4.9+) is not
+tested.
+
 ### Real connectors
 
 `ResourceOptions.defaults().realConnector()` keeps a resource on its real connector instead of the mirror, for the
@@ -166,54 +210,11 @@ What the tester changes in the definition (the resource as imported is in `<work
 - Resets restore the file and the server content like a mirror's, with the CSV connector's copies for live
   synchronization and the LDAP server's change log, so the token in the restored database finds its copy or its change
   number; a class that no longer uses the resource stops its server.
+- Additional connectors (an SSH connector that runs the provisioning scripts) each go to a mirror of their own that
+  accepts scripts and nothing else, as such a connector has, so midPoint keeps the real connector's schema and
+  accounts; the scripts are recorded and fail as on a mirror
+  ([Provisioning scripts and additional connectors](#provisioning-scripts-and-additional-connectors)).
 
-**Extension schemas**: `-Dtester.extensionSchemaDir=<dir>` (the `*.xsd` files as deployed to midPoint's `schema`
-directory, read when midPoint starts: one schema per test JVM, i.e. per line module). With it, extension items work as
-in production: in fixtures (`<extension><ext:badge>...`), as mapping sources and targets (`extension/ext:badge`), in
-changes (`change(...).replace("extension/badge", ...)`: the item name without its namespace, which the schema gives;
-or an `ItemPath` with the QName), and in the `assignment` variable of constructions, whose extension midPoint merges
-along the assignment path. Set it in the surefire configuration of the module that runs your tests:
-
-```xml
-<systemPropertyVariables>
-    <tester.extensionSchemaDir>${project.basedir}/../config/schema</tester.extensionSchemaDir>
-</systemPropertyVariables>
-```
-
-A deployment whose lines need different schemas points each line module at its own directory.
-
-### Provisioning scripts and additional connectors
-
-A resource's provisioning scripts (its `<scripts>`: a home directory made after an account is added, archived before
-one is deleted) usually run through an additional connector, an SSH connector to a file server. The tester runs no
-script and reaches no such server; it stands in for the connectors that would run them:
-
-- On a mirror, the resource's `additionalConnector`s go, and the mirror accepts the scripts itself.
-- On a real CSV or LDAP connector, each `additionalConnector` goes to a mirror of its own that accepts scripts and
-  nothing else, so midPoint still takes the schema and the accounts from the real connector.
-
-midPoint routes the scripts to that stand-in, and the effects of a verb have each script as a connector call of the
-resource (`executeScript`, a write): its language, its code as the resource has it, where it runs (`resource` or
-`connector`), and its arguments as midPoint evaluated them; its attributes are the argument names, so `only(...)`
-and an exhaustive `verifyAll` check them like an account's.
-
-```java
-Effects hired = t.task("Reconcile HR").run();
-hired.verifyAll(c -> {
-    c.connectorCalls().to("LDAP").adds().of(dn).single();
-    c.connectorCalls().to("LDAP").scripts().single()                    // after the add, as the resource says
-            .hasLanguage("bash").hasArgument("user", "e1001").codeContains("mkdir").only("user", "department");
-    // ...
-});
-hired.connectorCalls().to("LDAP").scripts().withArgument("user", "e1001").count();
-```
-
-A script's return value is not kept: midPoint only logs it. A script fails as its connector makes it fail: the SSH
-connector fails on a broken connection only (a command's exit status is logged, not checked), and midPoint then
-fails the operation or warns, as the script's `criticality` says (`fatal` by default). `t.target("LDAP").scriptsFail()`
-makes the resource's scripts fail so, until the test ends (a reset or checkpoint undoes it); the call is then
-`failed()`. What else an additional connector gives midPoint (a capability such as `references`, 4.9+) is not
-tested.
 
 ## Hooks, notifications and authorizations
 
