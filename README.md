@@ -6,10 +6,11 @@ and tests are operation scenarios over it: an HR record arrives, a user requests
 assignment, the clock moves to a start date; then what midPoint made of it (users, accounts, groups, cases, mails,
 reports) is checked by name.
 
-- One artifact per midPoint release line (4.0, 4.4, 4.8, 4.9, 4.10, 4.11). Each starts the line's own midPoint in the test JVM:
+- One artifact per midPoint release line: the LTS lines 4.8 and 4.4, and the feature releases 4.9, 4.10 and 4.11 (see
+  [Supported lines](#supported-lines)). Each starts the line's own midPoint in the test JVM:
   Spring context, Clockwork, provisioning, cases, approvals, certification, reports, task manager, on an in-memory
   PostgreSQL. No midPoint server or database has to be installed.
-- The deployment is loaded with the line's own initial and post-initial import (raw on 4.0, full processing on 4.4+);
+- The deployment is loaded with the line's own initial and post-initial import (full processing);
   every resource is moved to a stand-in (an in-memory LDAP server, a CSV file, the tester's mirror connector) and mail
   goes to an in-memory SMTP server, so no real system is reached.
 - Every test starts from the loaded deployment (a reset takes milliseconds); a loaded deployment is cached across runs.
@@ -72,8 +73,9 @@ line). The parent `midpoint-config-tester-parent-<line>` brings:
 - the generator of typed names, run at `generate-sources` on the manifest (its `names.package`), its output a test
   source root;
 - Surefire: one JVM for all test classes (one midPoint), `-Dtester.forks=N` for more, the manifest as the default of
-  `@MidPointConfigTest`, the agent of the file redirection (4.8+), and the tests on the JDK that runs Maven, one the
-  line's midPoint supports: the parent checks it (see [JDKs](#jdks)); 4.0 and 4.4 compile with `--release 11`;
+  `@MidPointConfigTest`, the agent of the file redirection (4.4: the tester attaches it itself), and the tests on the
+  JDK that runs Maven, one the line's midPoint supports: the parent checks it (see [JDKs](#jdks)); 4.4 compiles with
+  `--release 11`;
 - Evolveum's repository and the pgmem profiles: the in-memory PostgreSQL
   ([pgmem](https://github.com/shibukawa/pgmem)) is a native binary from `io.github.shibukawa.pgmem:pgmem-native`,
   classifier `linux-x86_64` (default), `darwin-arm64`, `linux-arm64` or `windows-x86_64` by OS; on another platform
@@ -95,7 +97,7 @@ the setting: false). The 4.11 parent passes it; the tester fails before midPoint
 [Scripting on 4.11](#scripting-on-411) for the system configuration, which decides the rest.
 
 Properties a repository may set: `tester.manifest.file` (default `midpoint-config-tester.yaml` next to the POM),
-`tester.names.skip`, `tester.forks`, and `midpoint.version` (or `midpoint40.version`... of the parent's line) for
+`tester.names.skip`, `tester.forks`, and `midpoint.version` (or `midpoint48.version`... of the parent's line) for
 another build of the line's midPoint, a support build or a fork in the local repository: the parent manages midPoint's
 own modules at it (midPoint's BOM does not), so the tests run on those jars with the tester built for the line's
 release. `mvn test` then loads the deployment once per JVM and runs the tests; the load
@@ -108,8 +110,8 @@ manifest hold what a line needs differently. midPoint keeps static state, so a J
 
 ## Writing tests
 
-The API (`com.github.wadahiro.midpoint.configtester`: `@MidPointConfigTest`, `MidPointConfigTester`) targets the LTS lines 4.0, 4.4 and 4.8 first (4.9,
-4.10 and 4.11 run it with 4.8's import semantics). The project points the tester at its `post-initial-objects` directory with a manifest,
+The API (`com.github.wadahiro.midpoint.configtester`: `@MidPointConfigTest`, `MidPointConfigTester`) is the same on
+every line; the examples are on 4.8, the latest LTS line. The project points the tester at its `post-initial-objects` directory with a manifest,
 `midpoint-config-tester.yaml`:
 
 ```yaml
@@ -119,7 +121,7 @@ config:
   properties: { ldapBase: dc=example,dc=com }       # {{ldapBase}} in the files
   replace: { "@MAIL_HOST@": smtp.example.com }      # texts replaced as they are (as a deployment script's sed)
   overlays:
-    "4.0": { dirs: [overlays/4.0], remove: [] }     # files that replace, add or remove files on one line
+    "4.4": { dirs: [overlays/4.4], remove: [] }     # files that replace, add or remove files on one line
 targets:                                # by resource name; any other resource is a mirror of its schema
   HR:   { connector: csv }
   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
@@ -136,7 +138,7 @@ policies, archetypes, collections, reports, the cleanup and scanner tasks; taken
 directories (overlays and properties applied, every resource moved to its stand-in, mail redirected; the user's files
 are never changed), runs **midPoint's post-initial import** on the copy (a file with the OID of an initial object,
 e.g. the system configuration, replaces it as a whole, as in production; so a deployment that replaces one of
-midPoint's initial objects in its build puts that file first, e.g. in an overlay) (its file order, raw on 4.0 and full processing on 4.4+, bulk action files executed, the first
+midPoint's initial objects in its build puts that file first, e.g. in an overlay) (its file order, full processing, bulk action files executed, the first
 failing file fails the load with midPoint's errors), waits for the background work and takes a snapshot. Every test
 starts from that snapshot.
 
@@ -199,7 +201,7 @@ c.closeStage();
 c.remediate();
 t.user("jack").hasNoAssignment("Auditor");
 
-ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));   // 4.4+
+ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));
 out.hasRows(2).hasRowWith("User", "jack");
 ```
 
@@ -346,8 +348,8 @@ time. A run of a task still suspended fails, saying so (`SuspendedTaskScenarioTe
 the task's state with the rest, so resume it where the state the tests start from is set up (a container of a spec), not
 in an earlier test.
 `t.task(name).stopAfter(n).run()` stops the run after n items, as an operator's Suspend stops a task in the middle:
-midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the task's progress, or the items
-an activity processed on 4.4+), so a handler or a script that checks it between items ends there and records what it
+midPoint's running task says it cannot go on (`canRun()` false) once n items are done (the items its activity
+processed), so a handler or a script that checks it between items ends there and records what it
 did; the task itself is left as it was (`TaskStopScenarioTest`). A multi-threaded activity may do a few more items.
 `t.task(name).run()` fails when the run fails, on all its objects (`FATAL_ERROR`) or on some (`PARTIAL_ERROR`), saying
 the last object that failed and why; `t.task(name).allowPartialErrors().run()` passes a run that failed on some objects,
@@ -389,7 +391,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
   (`midpoint.principalOid`), its base collection, then searched as the user (`CollectionScenarioTest`).
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings
-  (`PageUrlMapping` on 4.0 and 4.4, `EndPointsUrlMapping` on 4.8), the actions of all that match together, with
+  (`EndPointsUrlMapping` on 4.8, `PageUrlMapping` on 4.4), the actions of all that match together, with
   `#guiAll`; a page any user opens (login pages, `permitAll`) is allowed, a URL no page matches is denied. The patterns
   overlap as in the GUI: `/admin/user/**` (a user's details, `#userDetails`) also matches the new user page
   `/admin/user`. `canOpen(actions...)` (more than one argument, or one not starting with `/`) takes a page's actions
@@ -417,21 +419,19 @@ midPoint compiled it at login (`GuiProfileScenarioTest`):
 GuiProfile manager = t.actor(Users.IT_MANAGER).guiProfile();
 assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
         .containsExactlyInAnyOrder("people", "department-members");   // the system's, the induced role's
-assertThat(manager.view(UserType.COMPLEX_TYPE, "department-members").inMenu()).isTrue();   // 4.4+
+assertThat(manager.view(UserType.COMPLEX_TYPE, "department-members").inMenu()).isTrue();
 assertThat(manager.featureVisibility("orgTreeExpandAll")).isEqualTo(UserInterfaceElementVisibilityType.HIDDEN);
 assertThat(manager.defaultTimezone()).isEqualTo("Asia/Tokyo");
 ```
 
 - midPoint merges the system configuration's `adminGuiConfiguration`, then each one of the roles, orgs and archetypes
   the user has (assigned or induced, with their conditions), by its rules: a later time zone wins, a hidden feature
-  stays hidden. `guiProfile()` is that result (`CompiledGuiProfile`, 4.0
-  `CompiledUserProfile`), not a merge of the tester's own: the object collection views (`views()`, by type), the
+  stays hidden. `guiProfile()` is that result (`CompiledGuiProfile`), not a merge of the tester's own: the object collection views (`views()`, by type), the
   additional menu links, the dashboard links, the features, the details pages' configuration (`objectDetails()`),
   the time zone and the data language; `compiled()` is midPoint's object for the rest.
-- `inMenu()` is whether the line's side menu lists a view under its type, by the line's rule: 4.8+, not the
-  default view, not hidden or vacant, for no operation or modify; 4.4, the same with a collection (the default view
-  too); 4.0, a collection whose reference the user gets, an archetype or an object collection. So on 4.0 an end user's
-  menu has no views when the user may not read the collection (the sample's manager). The menu item's own page
+- `inMenu()` is whether the line's side menu lists a view under its type, by the line's rule: on 4.8, not the
+  default view, not hidden or vacant, for no operation or modify (4.4: the same with a collection, the default view
+  too). The menu item's own page
   (the users list) is `canOpen`. The rest of the menu (which sections and pages it shows) is not modeled.
 - A failed assertion after it shows the user's views, features and links.
 
@@ -488,7 +488,7 @@ critical: [it-user/items/modify/assignment, it-user/delete]
 - **The GUI's configuration** is the persona's GUI profile as midPoint compiled it at login (the system
   configuration's `adminGuiConfiguration`, then each of their roles', orgs' and archetypes'). A `view` row is Y when
   the side menu lists the object collection view: the profile has it, the line's menu lists it (`inMenu`: not hidden,
-  not the default view on 4.8+; on 4.0 a collection the persona gets), and the persona is allowed the actions the
+  not the default view), and the persona is allowed the actions the
   menu asks for a type's views (`#usersAll` or `#usersView` for users, not `#users`, which opens the users list; the
   same for orgs, roles, services, resources, cases, tasks; views of other types get no row, a warning). A `feature`
   row is midPoint's `isFeatureVisible`, a `menu-link` row whether the profile has the additional link (the page it
@@ -508,8 +508,8 @@ critical: [it-user/items/modify/assignment, it-user/delete]
   `gui/menu-links/Service-desk`). So a page, an item or a view nobody thought of is checked too: it is N unless a
   rule says otherwise.
 - **Rows in rules** are paths of the tree: `*` is one segment or part of it (`pages/admin/roleNew*`), `**` any, a
-  group selects all its rows. The lines have other pages (4.0's URLs from its `url()` end with `/**`, 4.4 has the
-  new GUI's `userNew` beside `user`): a pattern no row of the line matches is a warning when rows are automatic, an
+  group selects all its rows. The lines have other pages (4.4 has the new GUI's `userNew` beside `user`, 4.11 a
+  default home page): a pattern no row of the line matches is a warning when rows are automatic, an
   error otherwise.
 - **The file is checked** when read and when run, with its line: values only `Y` or `N` (not YAML's `yes`), unknown
   keys, personas, objects, checks, roles, orgs, items, URLs no page matches.
@@ -536,11 +536,10 @@ The sample (`scenarios/access/authz-matrix.yaml`, 1656-1972 cells per line, abou
 midPoint's own initial roles, each kept as a rule with a note: the End user role gets any user with all items, opens
 a role's details and the new role page (`#roleDetails`); `#userDetails` opens the new user page too
 (`/admin/user/**` matches `/admin/user`); `#users` opens the shadows list (`PageShadows`); a service's details need
-`#service` on 4.0 and `#serviceDetails` on 4.8; every End user assigns themself the requestable roles but unassigns
+`#serviceDetails`; every End user assigns themself the requestable roles but unassigns
 none. The Department manager role of the sample assigns the members of the orgs its user manages the requestable
 roles, with the default relation only; its `#usersView` shows the managers the users' views in the side menu (the help
-desk, with `#users`, opens the users list but sees no views), which 4.0 does not list for them (they do not get the
-views' collection), and its GUI configuration hides a feature the system configuration shows.
+desk, with `#users`, opens the users list but sees no views), and its GUI configuration hides a feature the system configuration shows.
 
 ### Mails
 
@@ -548,9 +547,9 @@ views' collection), and its GUI configuration hides a feature the system configu
 notifiers and transport, only the mail server redirected. Narrow by `to(address)`, `from(address)`,
 `withSubject(text)` and `withBodyContaining(text)`; check with `exactly(n)`, `none()`, `single()` (a `Mail`:
 `subject()`, `body()`, `hasBodyContaining(texts...)`, `from()`, `to()`, `attachments()`...), and with
-`perRecipient()`, the number of mails each address got, for "these and nobody else". 4.0 and 4.4 send one mail to all
-recipients of a notification, 4.8+ one per recipient: `to(...)` and `perRecipient()` count per recipient and read
-the same on every line; `count()` counts SMTP transactions. 4.8+ appends a subscription notice to the body: check
+`perRecipient()`, the number of mails each address got, for "these and nobody else". 4.8 sends one mail per
+recipient (4.4 one to all recipients of a notification): `to(...)` and `perRecipient()` count per recipient and read
+the same on every line; `count()` counts SMTP transactions. 4.8 and later append a subscription notice to the body: check
 with `hasBodyContaining`, not equality.
 
 Approval notifications of `scenarios/access` (`ApprovalMailScenarioTest`): `simpleWorkflowNotifier` handlers in the
@@ -585,15 +584,15 @@ Group approvers are expanded on work item creation, as real deployments do: the 
 to the Security officers role) has `groupExpansion` `onWorkItemCreation`, so each member gets a work item assigned to
 them (`t.workItems().assignedTo(member)`) and a mail, and `evaluationStrategy` `firstDecides`: the first decision
 counts and closes the other members' work items without a decision (`WorkItem.isCancelled()`; the decided one
-`isApprovedBy(user)` / `isRejectedBy(user)`). What midPoint mails and what it does not (4.0, 4.4 and 4.8 alike): a
+`isApprovedBy(user)` / `isRejectedBy(user)`). What midPoint mails and what it does not (4.4 and 4.8 alike): a
 work item is mailed to its assignees (and their deputies); a group approver left unexpanded (the default
 `groupExpansion`) gives one work item offered to the group to claim, with no assignee, so no one is mailed for it
 (`WorkItem.candidates()` shows such a group). Every new
 work item also raises a `workItemAllocationEvent` add, so a handler of that event for escalations needs an
 `expressionFilter` (`event.operationKind?.value() == 'escalate'`). 4.8's schema has a `simpleCaseManagementNotifier`
 element that no notifier of its notification module handles (its `EventHandlerRegistry` throws "Unknown handler"; read in the sources, not run): use `simpleWorkflowNotifier`, as on
-4.0 and 4.4. The transport differs: `notificationConfiguration/mail` on 4.0 and 4.4, a named
-`messageTransportConfiguration/mail` on 4.8 (an overlay of the system configuration).
+4.4. The transport differs: a named `messageTransportConfiguration/mail` on 4.8 (in the sample an overlay of the system
+configuration), `notificationConfiguration/mail` on 4.4.
 
 ### What a block did
 
@@ -689,8 +688,8 @@ hired.changes().focuses().forEach(f -> f.recompute().none());   // recomputing w
 t.task("Reconcile HR").run().none();                            // the inbounds too: a second run changes nothing
 ```
 
-- The law is for focuses a verb changed. A focus loaded raw with the deployment can change on its first recompute (4.0
-  imports roles raw: no activation yet, `FocusScenarioTest`).
+- The law is for focuses a verb changed. A focus loaded raw (`importObjectRaw`, `t.raw()`) can change on its first
+  recompute (no activation yet).
 - A mapping waiting for its time (`timeFrom`) is at rest too: its trigger is not added again (`EffectsScenarioTest`).
 - A strong outbound to an attribute midPoint cannot read back (the schema gives no read access) is sent on every
   recompute and every reconcile: midPoint cannot see that the account has the value. The law fails on it, as it should
@@ -716,10 +715,10 @@ on the account. A reconcile always reads it. What differs between the ways is wh
 
 | Way | Projections reconciled | Strong value removed on the account | Normal value changed on the account | Strong outbound it cannot read | Strong password |
 |---|---|---|---|---|---|
-| `recompute()`: `ModelService.recompute` without options, the role/org member panel's Recompute of one member from its row (4.4+), the details page's save | no | added back | left | sent every time | not sent |
+| `recompute()`: `ModelService.recompute` without options, the role/org member panel's Recompute of one member from its row, the details page's save | no | added back | left | sent every time | not sent |
 | `reconcileFocus` | no (the focus only) | added back | left | sent every time | not sent |
 | `modify(Modification::reconcile)`: `reconcile`, the user list's Reconcile, the details page's save with Reconcile | yes | added back | left | sent every time | sent every time |
-| A recomputation task without `executionOptions` (4.0: without `c:modelExecuteOptions` in its extension), the member panel's Recompute of several or all members (4.4+) | yes: it defaults to `reconcile` | added back | left | sent every time | sent every time |
+| A recomputation task without `executionOptions`, the member panel's Recompute of several or all members | yes: it defaults to `reconcile` | added back | left | sent every time | sent every time |
 | A recomputation task with `<reconcile>false</reconcile>` | no | added back | left | sent every time | not sent |
 
 The activation status follows the same rules (`ActivationOutboundTest`, native and simulated): an account disabled
@@ -729,10 +728,9 @@ reconcile, which changes nothing here.
 
 In the GUI, the member panel's Recompute of one member from its row is the only Recompute that does not reconcile:
 the user, role and org lists offer Reconcile only. The bulk action `recompute` reconciles on every line, even with
-`<reconcile>false</reconcile>` in its options (it adds `reconcile` to them), and so does 4.0's member panel, which
-recomputes through it, one member or all; the validity scanner reconciles the users it processes too. The GUI's
+`<reconcile>false</reconcile>` in its options (it adds `reconcile` to them); the validity scanner reconciles the users it processes too. The GUI's
 actions and the bulk action were seen on 4.8.12 (the GUI driven by a browser, a mapping logging whether its
-projection is reconciled); on 4.0 and 4.4 they are read from midPoint's classes. A strong value is added back, not
+projection is reconciled); on 4.4 they are read from midPoint's classes. A strong value is added back, not
 replaced: a multi-valued attribute keeps the other values unless the attribute is not `tolerant`.
 `reconcileAffected` (the users of a changed role, possibly in a task of its own) is not covered here;
 `reconcileAll` is not an execution option but a synchronization reaction's (import, reconciliation and live sync
@@ -824,10 +822,10 @@ that have them:
 
 | Class | Names |
 |---|---|
-| `InitialUsers`, `InitialRoles`, `InitialArchetypes`, `InitialOrgs`, `InitialServices` | `ADMINISTRATOR`; `END_USER`, `SUPERUSER`, `APPROVER`, `REVIEWER`, `DELEGATOR`; `SYSTEM_USER`, `BUSINESS_ROLE`, `APPROVAL_CASE`, `PERSON` (4.8+)...; the orgs of 4.10; `INTERNAL` (4.4+)... |
-| `InitialTasks`, `InitialReports` | `VALIDITY_SCANNER`, `TRIGGER_SCANNER`, `CLEANUP`; `RECONCILIATION_REPORT`, `USERS_IN_MIDPOINT`... (4.4+: the tester does not import 4.0's Jasper reports) |
-| `InitialCollections`, `InitialDashboards`, `InitialPolicies`, `InitialMarks`, `InitialTemplates` | `MidPointObjectRef`s (name, OID, type) of types no verb takes by name: `ALL_TASKS`; `ADMIN_DASHBOARD`; `DEFAULT_SECURITY_POLICY`, `DEFAULT_PASSWORD_POLICY`; the marks of 4.8+; `PERSON_OBJECT_TEMPLATE` |
-| `UserItems` | items of midPoint's user schema for `hasItem`, `values` and `why`: `NAME`, `FULL_NAME`, `GIVEN_NAME`, `FAMILY_NAME`, `EMAIL_ADDRESS`, `TELEPHONE_NUMBER`, `EMPLOYEE_NUMBER`, `COST_CENTER`, `LOCALITY`, `TITLE`, `ORGANIZATION`, `ORGANIZATIONAL_UNIT`, `LIFECYCLE_STATE`, `ADMINISTRATIVE_STATUS` (`activation/administrativeStatus`), `VALID_FROM`, `VALID_TO`, `EFFECTIVE_STATUS`...; `EMPLOYEE_TYPE` (4.0 only), `PERSONAL_NUMBER` (4.8+) |
+| `InitialUsers`, `InitialRoles`, `InitialArchetypes`, `InitialOrgs`, `InitialServices` | `ADMINISTRATOR`; `END_USER`, `SUPERUSER`, `APPROVER`, `REVIEWER`, `DELEGATOR`; `SYSTEM_USER`, `BUSINESS_ROLE`, `APPROVAL_CASE`, `PERSON`...; the orgs of 4.10; `INTERNAL`... |
+| `InitialTasks`, `InitialReports` | `VALIDITY_SCANNER`, `TRIGGER_SCANNER`, `CLEANUP`; `RECONCILIATION_REPORT`, `USERS_IN_MIDPOINT`... |
+| `InitialCollections`, `InitialDashboards`, `InitialPolicies`, `InitialMarks`, `InitialTemplates` | `MidPointObjectRef`s (name, OID, type) of types no verb takes by name: `ALL_TASKS`; `ADMIN_DASHBOARD`; `DEFAULT_SECURITY_POLICY`, `DEFAULT_PASSWORD_POLICY`; the marks (4.8 and later); `PERSON_OBJECT_TEMPLATE` |
+| `UserItems` | items of midPoint's user schema for `hasItem`, `values` and `why`: `NAME`, `FULL_NAME`, `GIVEN_NAME`, `FAMILY_NAME`, `EMAIL_ADDRESS`, `TELEPHONE_NUMBER`, `EMPLOYEE_NUMBER`, `COST_CENTER`, `LOCALITY`, `TITLE`, `ORGANIZATION`, `ORGANIZATIONAL_UNIT`, `LIFECYCLE_STATE`, `ADMINISTRATIVE_STATUS` (`activation/administrativeStatus`), `VALID_FROM`, `VALID_TO`, `EFFECTIVE_STATUS`...; `PERSONAL_NUMBER` (4.8 and later), `DISPLAY_NAME` (4.11 and later) |
 
 ```java
 t.user(Users.JACK).hasAssignment(InitialRoles.END_USER).hasItem(UserItems.COST_CENTER, "IT");
@@ -895,7 +893,7 @@ Mappings that set assignment of e1001 in this test:
 
 The same evaluation repeated in a row is one line with its count: how often midPoint's projector evaluated the
 mapping for the user in the operation (a reconciliation of many users evaluates it that often for each, a hint where
-an expensive script runs repeatedly; the counts differ between lines, e.g. 3 on 4.0 and 2 on 4.8).
+an expensive script runs repeatedly; the counts differ between lines).
 
 The API's own assertions (`hasAssignment`, `hasAccountOn`, `hasAttribute`, `memberOf`, `isEnabled`...) check in a chain and
 fail with the mappings behind the item they check.
@@ -915,8 +913,8 @@ Mapping evaluations in this test, by the total after the first, the longest firs
   ...
 ```
 
-A count is how often midPoint's projector evaluated the mapping (several times per user and operation, e.g. 3 on 4.0
-and 2 on 4.8), so a reconciliation of many users evaluates it that often for each. The times are of the test JVM, its
+A count is how often midPoint's projector evaluated the mapping (several times per user and operation, e.g. 2 on 4.8),
+so a reconciliation of many users evaluates it that often for each. The times are of the test JVM, its
 in-memory database and the tester's stand-in systems, and include the tester's recording of the expressions inside a
 mapping: compare the mappings with each other, not with production. Each evaluation's time is also
 `Evaluation.duration()` in the PoC API.
@@ -931,7 +929,13 @@ damaged or unusable entry is loaded afresh, with a line in the log. `-Dtester.ca
 
 `-Dtester.forks=N` runs N test JVMs per line module, each with its own midPoint, pgmem, ports and
 `<workDir>/fork-<n>/`; the first JVM to need a deployment loads and caches it, the others wait and restore it. Default
-1; see [Speed](#speed) for when it pays (on a 10-core laptop it does not, for this repository's tests).
+1. midPoint already uses about two cores per JVM and several midPoints start more slowly together, so more JVMs pay
+where tests wait on the real time or on a machine with many cores; measure first. The parent sets it up; a project
+without it sets `<forkCount>`, `<reuseForks>true` and `-Dtester.forks=N -Dtester.fork=${surefire.forkNumber}` in the
+`argLine`.
+
+`-Dtester.timing=true` writes `<workDir>/tester/timing.md` (and prints it) after the last class: count, total, mean and
+maximum of the tester's phases (startup, resets, snapshots, driver calls and their waits, `@BeforeAll`).
 
 A failed assertion says what was expected, what is there and the mappings that set the value in the test;
 `t.user("e1001").why("fullName").print()` and `t.target("LDAP").account(dn).why("cn")` show them on demand (mapping,
@@ -1067,7 +1071,7 @@ class CampaignSpec : MidPointConfigSpec({
   the checkpoint covers what it covers for nested classes, and saves as much.
 - Set up: the parent POMs manage Kotlin and Kotest and run `*Spec` classes; a repository adds, as test dependencies,
   `midpoint-config-tester-kotest`, `io.kotest:kotest-runner-junit5-jvm`, `org.jetbrains.kotlin:kotlin-stdlib` and the
-  `kotlin-maven-plugin` (`examples/kotest-scenarios`, on 4.0 with JDK 11 and on 4.8). IntelliJ needs the Kotest plugin
+  `kotlin-maven-plugin` (`examples/kotest-scenarios`). IntelliJ needs the Kotest plugin
   to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name. `precondition`, `steps` and
   `verifyAll { }` are functions of the Kotest layer, imported from `com.github.wadahiro.midpoint.configtester.kotest`
   as `MidPointConfigSpec` is.
@@ -1135,17 +1139,20 @@ of its own, or select the evaluations of a run. The tester's own engine tests (`
 
 ## Supported lines
 
-| Line | midPoint | Artifact | JDK running the tests | Groovy | Repository |
-|---|---|---|---|---|---|
-| 4.0 | 4.0.3 | `midpoint-config-tester-4.0` | **11** | 2.5.8 | old (Hibernate) repository on PostgreSQL |
-| 4.4 | 4.4.11 | `midpoint-config-tester-4.4` | 11 / **17** | 3.0.19 | native (`sqale`) |
-| 4.8 | 4.8.14 | `midpoint-config-tester-4.8` | 17 / **21** | 4.0.24 | native |
-| 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / **21** | 4.0.24 | native |
-| 4.10 | 4.10.5 | `midpoint-config-tester-4.10` | 17 / **21** | 4.0.24 | native |
-| 4.11 | 4.11.0 | `midpoint-config-tester-4.11` | 21 / **25** | 4.0.31 | native |
+The long-term support (LTS) lines of midPoint, and its feature releases since the last LTS line. 4.8 is the latest LTS
+line, the one this README's examples use.
 
-A build from the root covers the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9, 4.10 and 4.11 (tester, static checks,
-parents) are built and tested only with `-Pnon-lts`. CI tests every line on every push, one job per line.
+| Line | Kind | midPoint | Artifact | JDK running the tests | Groovy | Repository |
+|---|---|---|---|---|---|---|
+| 4.8 | LTS | 4.8.14 | `midpoint-config-tester-4.8` | 17 / **21** | 4.0.24 | native |
+| 4.4 | LTS | 4.4.11 | `midpoint-config-tester-4.4` | 11 / **17** | 3.0.19 | native (`sqale`) |
+| 4.11 | feature | 4.11.0 | `midpoint-config-tester-4.11` | 21 / **25** | 4.0.31 | native |
+| 4.10 | feature | 4.10.5 | `midpoint-config-tester-4.10` | 17 / **21** | 4.0.24 | native |
+| 4.9 | feature | 4.9.9 | `midpoint-config-tester-4.9` | 17 / **21** | 4.0.24 | native |
+
+The JDK in bold is the one midPoint recommends for the line. A build from the root covers the LTS lines; the modules
+of the feature releases (tester, static checks, parents) are built and tested only with `-Pnon-lts`. CI tests every
+line on every push, one job per line.
 
 All artifacts have the group `io.github.wadahiro.midpoint` and the same API (packages
 `com.github.wadahiro.midpoint.configtester` and, for the PoC API, `com.github.wadahiro.midpoint.tester`): a test
@@ -1383,7 +1390,7 @@ on and why (midPoint's result only counts the failures; the task's statistics ke
 | `importAccount(resource, accountName)` | imports one account as the GUI's import action: inbounds, correlation, synchronization reactions, then what the focus change evaluates |
 | `preview(delta[s])` | `ModelInteractionService.previewChanges`; the model context is in `run.modelContext()` |
 | `waitForTasks()`, `runTask(nameOrOid)` | wait for background work; run a task now (once) and wait for it |
-| `reconcile(resource[, kind, intent])`, `importAccounts(resource)` | a single-run reconciliation / import task of the resource's object type (default `account/default`) as the GUI starts one (an activity on 4.4+, the task handler on 4.0), run and waited for; a later call replaces and re-runs it |
+| `reconcile(resource[, kind, intent])`, `importAccounts(resource)` | a single-run reconciliation / import task of the resource's object type (default `account/default`) as the GUI starts one (an activity), run and waited for; a later call replaces and re-runs it |
 | `liveSync(resource[, kind, intent])` | a single-run live synchronization task of the resource's object type, created and run by the first call (which only fetches the token, as in production), run again from its token by later calls; fails when the task's run fails (see [Live synchronization](#live-synchronization)) |
 | `find(type, nameOrOid)`, `user(name)` | read the repository |
 | `shadow(focus, resource[, kind, intent])`, `situation(focus, resource)` | the shadow a focus (user by name or OID) links on a resource, as the repository has it: `situation()`, `kind()`, `intent()`, `linked()`, `dead()`, `synchronizationTimestamp()`, `asObject()`; null when it links none there |
@@ -1502,7 +1509,7 @@ assertThat(synced.forFocus("e1001").inbound("LDAP", "ri:telephoneNumber").newVal
 ```
 
 - Each run of the task is a run of its call, with `Evaluation.task()` set; a run without changes evaluates nothing.
-- The token is kept where midPoint keeps it (the task's activity state on 4.4+, its extension on 4.0) and restored
+- The token is kept where midPoint keeps it (the task's activity state) and restored
   with the database; the sources restore their side of it (the CSV connector's copies, the LDAP change log, the
   mirror's content at each token).
 - A source shows midPoint's own changes too: a directory live synchronization after midPoint created accounts sees
@@ -1581,14 +1588,14 @@ it (a search filter's expression belongs to the focus of its mapping):
    are in no `forFocus` view.
 
 `forFocus` fails when no evaluation is about that focus, listing the focus objects of the run. In a view of a focus, the hints of an ambiguity error select within it (`select with run.forFocus("e1001").in("HR").mapping("hr-familyName")`). The rule gives the same
-result on every line although the variables differ: 4.0 and 4.4 give a correlation or reaction condition no `focus`,
-4.8+ an empty pre-focus (see [Line notes](#line-notes)); both go by the shadow's owner (`FocusSelectionTest`).
+result on every line although the variables differ: 4.8 gives a correlation or reaction condition an empty pre-focus,
+4.4 no `focus` (see [Line notes](#line-notes)); both go by the shadow's owner (`FocusSelectionTest`).
 
 **Shadows.** `mp.shadow(focus, resource[, kind, intent])` reads the shadow the focus links on the resource from the
 repository (no target system read): a live one before dead ones (kept linked as `related`), failing when several live
 ones match without kind and intent. `mp.situation(focus, resource)` is its `situation()`. The five situations
 (`LINKED`, `UNLINKED`, `UNMATCHED`, `DISPUTED`, `DELETED`), kind, intent, `dead` and the synchronization timestamps are
-the same on 4.0 to 4.10; `shadow.asObject()` gives the rest (e.g. `getCorrelation()`, 4.8+).
+the same on every line; `shadow.asObject()` gives the rest (e.g. `getCorrelation()`, 4.8 and later).
 
 ### Identity, not line numbers
 
@@ -1688,7 +1695,7 @@ Reports.Output out = mp.reports().export("users-by-cost-center", Map.of("costCen
 out.lines(); out.run().select().within("column", "name", "fullName");
 mp.reports().export("users-of-cost-centers", Map.of("costCenter", List.of("HR-200", "IT-100")));  // several values
 
-// report import (4.4+): an import task as the GUI's "Import report", on CSV lines (or a file)
+// report import: an import task as the GUI's "Import report", on CSV lines (or a file)
 Reports.Import in = mp.reports().importFrom("import-users", List.of(
         "\"Name\";\"Full name\";\"Cost center\"",                     // skipped: columns go by view order
         "\"sato\";\"Jiro Sato\";\"it-300\""));
@@ -2093,8 +2100,8 @@ mail.contentType(); mail.headers(); mail.raw();   // multipart/mixed; headers as
 
 **What the tester changes on import.** Every import of a system configuration (`importObject`, `importObjects`,
 `importObjectXml`, `importObjectRaw`, and `addObjectXml`) rewrites its mail transports before midPoint reads them:
-`notificationConfiguration/mail` (4.0, 4.4; the legacy `mail` transport on 4.8+) and each
-`messageTransportConfiguration/mail` (4.8+). In each of their `server` elements:
+each `messageTransportConfiguration/mail` (4.8 and later) and `notificationConfiguration/mail` (4.4; the legacy
+`mail` transport on 4.8 and later). In each of their `server` elements:
 
 | Element | Becomes |
 |---|---|
@@ -2148,8 +2155,8 @@ when the manifest names them (`logs: { capture: [com.example.idm] }`). The captu
 
 ## Audit log
 
-midPoint audits to its repository database, as in production (4.0's SQL audit service, the native repository's from
-4.4; the database is in memory): the deployment's own searches of the audit log (audit reports, dashboards, scripts)
+midPoint audits to its repository database, as in production (the native repository's audit; the database is in
+memory): the deployment's own searches of the audit log (audit reports, dashboards, scripts)
 work. `t.audit()` is what midPoint wrote to it in the test, `t.audit(() -> ...)` what it wrote while the code ran
 (and the work the code waited for): the request and execution records of each change, with the target, initiator,
 channel, task, outcome and deltas, narrowed like logs. The fields are those of a row of the audit table
@@ -2166,8 +2173,7 @@ t.audit().ofType("MODIFY_OBJECT").initiator("jdoe").none();
 The audit table goes back with the rest of the database before every test (`AuditScenarioTest`).
 
 Another system that reads midPoint's database over JDBC (a script of another instance that queries the audit table)
-sees the line's own tables and codes: 4.0 stores the event type and stage as ordinals in `m_audit_event`, 4.4 on as
-names in `ma_audit_event`. `t.repositoryDatabase()` runs that system's query on midPoint's database, so the test fails
+sees the line's own tables and codes (the event type and stage as names in `ma_audit_event`). `t.repositoryDatabase()` runs that system's query on midPoint's database, so the test fails
 when a midPoint upgrade changes what it reads (read it only: a row written there bypasses midPoint):
 
 ```java
@@ -2274,7 +2280,7 @@ Such a repository declares it, without a version (the parents manage it at the l
 </dependency>
 ```
 
-On 4.0 and 4.4 the GUI module is a war, whose classes are its `classes` jar: add `<classifier>classes</classifier>`.
+On 4.4 the GUI module is a war, whose classes are its `classes` jar: add `<classifier>classes</classifier>`.
 
 The GUI is only a library then: classes load when code uses them, and the tester's Spring context (midPoint's own
 context files, named one by one; no Spring Boot auto-configuration) neither scans its packages nor reads its context
@@ -2293,7 +2299,7 @@ stored system configuration is its own (`NetworkGuardScenarioTest`, `ScriptedMai
 
 ## Static checks
 
-`midpoint-config-tester-static-<line>` (4.0, 4.4, 4.8, 4.9, 4.10, 4.11) checks a directory of configuration XML against that midPoint line
+`midpoint-config-tester-static-<line>` (every supported line) checks a directory of configuration XML against that midPoint line
 without starting midPoint
 (no Spring, no database; a few seconds, most of it initializing prism). Every finding carries the identity the tester
 gives evaluations of the same place.
@@ -2302,7 +2308,7 @@ gives evaluations of the same place.
 |---|---|---|
 | `COMPILE` | every Groovy place (a script without `<language>` in the deployment's default language: [Scripting on 4.11](#scripting-on-411)) compiled on the line's classpath (model-impl, notifications, report, workflow, certification; no GUI, connector or custom jars, which `classpath(...)` adds): missing or removed classes, syntax errors. Missing methods are found only at run time | error |
 | `SCHEMA` | prism parsing of each file, strict and in compatibility mode | error / warning |
-| `UPGRADE` | ninja verify's `ObjectUpgradeValidator` per object, each item path located in the file | error for `CRITICAL`, warning for `NECESSARY`; skipped on 4.0, which has no validator |
+| `UPGRADE` | ninja verify's `ObjectUpgradeValidator` per object, each item path located in the file | error for `CRITICAL`, warning for `NECESSARY` |
 | `LINT` | evaluator elements the line does not know; mappings sharing a name in one object; Groovy that reads the JVM's clock rather than midPoint's `Clock` (`jdk-time`: `new Date()`, `Instant.now()`, `basic.fromNow`...: fine with the tester's `t.clock()`, which moves both, not with a clock override of midPoint alone); elements told apart by position only | error / warning / warning / note |
 
 ```java
@@ -2317,7 +2323,7 @@ assertThat(r.errors()).isEmpty();          // also findings(check[, severity]), 
 Without writing a test: `mvn test -pl tester/static/midpoint-4.8 -am -Dstatic.dir=<dir> [-Dstatic.schemaDir=<dir>]
 [-Dstatic.classpath=<jar,dir,...>]` writes `target/static-check/<dir name>.md` and fails on compile errors; for
 another build of the line's midPoint (a support build, a fork), add `-Dmidpoint48.version=<version>`. Use the module of your line, with
-Maven on its JDK (4.0: JDK 11). What differs between the lines' checks (Groovy messages, upgrade statuses, evaluator sets) is in
+Maven on its JDK. What differs between the lines' checks (Groovy messages, upgrade statuses, evaluator sets) is in
 `docs/redesign.md`.
 
 ## Line notes
@@ -2327,90 +2333,62 @@ Behaviour differences between the lines, found by the PoC tests: each pinned bot
 column names them; `git show 1e39281^:tester/core/src/test/java/com/github/wadahiro/midpoint/tester/<Test>.java`), the
 findings stand. Read them before porting expectations between lines.
 
-| Difference | 4.0 | 4.4 | 4.8 | 4.9 | 4.10 | 4.11 | Pinned in |
-|---|---|---|---|---|---|---|---|
-| A report's CSV export | not tested (no object collection reports) | no byte order mark | 4.8.14: starts with a UTF-8 byte order mark (4.8.12: none); `ReportOutput` reads the header without it | not checked | not checked | not checked | `ReportScenarioTest` |
-| Template mapping of an added user: the evaluation for the old state (empty sources) | kept: the final outcome is `new=["John Doe"] removed=["null null"] \| old=["null null"]`; a failing script fails there first | an intermediate outcome only | as 4.4 | as 4.4 | as 4.4 | not checked | `RecorderTest.mappingWithError` |
-| Hook without `state` | secondary three times, each with the focus | primary, secondary, secondary without focus, final | as 4.4 | as 4.4 | as 4.4 | not checked | `ChangeTest.importObjectsIsOneRun` |
-| Correlation | legacy `synchronization` format (fixtures-4.4), no correlation context | as 4.0 | `correlation` in the object type; `correlationContext`, `correlatorState` | as 4.8 | as 4.8 | not checked | `RecorderTest.correlationExpression` |
-| `focus` of a correlation or reaction condition without an owner | null | null | an empty pre-focus (`UserType` without a name) | as 4.8 | as 4.8 | not checked | `SynchronizationTest.unmatchedStaffIsAdded` |
-| A single correlation candidate | linked without confirmation | confirmed; a rejected one gives a new user | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.singleCandidateMustBeConfirmed` |
-| Reaction conditions | none: an unmatched contractor is added | evaluated | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.unmatchedContractorIsAddedOnlyWithoutReactionCondition` |
-| Import of an account no object type classifies | fails ("No objectclass specified") | fails ("No object class found for the shadow") | `classificationCondition` false: imported without a user | as 4.8 | as 4.8 | not checked | `SynchronizationTest.serviceAccountsAreNotSynchronized` |
-| The 4.4 format: an object type's `baseContext`, the `synchronization` section (condition, correlation, confirmation, reaction conditions), `notificationConfiguration/mail` | the line's format (fixtures-4.0) | the line's format | still read (deprecated) with the same outcomes; the synchronization condition is the classification condition: a service account is imported without a user instead of failing | as 4.8 | as 4.8 | not checked | `LegacyFormatTest` |
-| Import of an account midPoint created (already classified) | not pinned | the synchronization condition is evaluated again | the classification condition is not evaluated | as 4.8 | as 4.8 | not checked | `SynchronizationTest.directoryMayDisableButNotEnable` |
-| Full-processing import of the system configuration | runs the autoassign mappings against it and fails | passes | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.fullProcessingImportOfTheSystemConfigurationRunsTheAutoassignMappings` |
-| Deleting an account | its attribute outbounds are evaluated | only its existence outbound | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.costCenterAssignsTheRoleAutomatically`, `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation`, `ActivationScenarioTest.deprovisioningDisablesAndDeletesThirtyDaysLater`, `ActivationTest.assignmentValidityEndsTheAccountsAsTheirResourcesDeprovision`, `DependencyTest.theDirectoryAccountGoesOnlyAfterTheAccountThatDependsOnIt` |
-| Deleting a user: the constructions of its roles | not evaluated | evaluated with a false condition | as 4.4 | as 4.4 | as 4.4 | not checked | `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation` |
-| A change the authorization refuses | the user template is evaluated first | refused before any mapping | as 4.4 | as 4.4 | as 4.4 | not checked | `AccessTest.isAuthorizedAndExecuteAsUser` |
-| The last evaluation of a search filter after a change | `assignmentTargetSearch`: the old state's; `associationTargetSearch`: the new state's | the reverse | as 4.4 | as 4.4 | as 4.4 | not checked | `SearchTest.assignmentTargetSearchFollowsTheCostCenter`, `EntitlementTest.associationTargetSearchFindsTheGroupComputedFromTheUser` |
-| Association inbound when a membership is added: the last evaluation | without the new membership | with it | as 4.4 | as 4.4 | as 4.4 | not checked | `EntitlementTest.associationFromLinkTakesOnlyTheGroupOfEachRole` |
-| Resource outbound: `source`, `containingObject`, `thisObject`, `assignmentPath` | not bound | the resource, the resource, null, null | as 4.4 | as 4.4 | as 4.4 | not checked | `VariablesTest.resourceOutbound` |
-| `iteration` in a role's construction | not bound | bound | as 4.4 | as 4.4 | as 4.4 | not checked | `VariablesTest.constructionInAnInducement` |
-| Inbound `focus` variable of a new user | not pinned | not pinned | a `PrismObject` | the `UserType` bean; also the variables `association`, `object` | as 4.9 | not checked | `RecorderTest.inboundMapping` |
-| Preview (`mp.preview`) | the user is not changed, but sequences advance and `createOnDemand` really creates (design experiment E3) | as 4.0 | `SIMULATED_PRODUCTION`: nothing written, no simulation result kept | `previewChanges` is `executeChanges` in `SIMULATED_PRODUCTION` mode; as 4.8 | as 4.9 | not checked | `RecorderTest.previewThenExecute` |
-| Approvers of stage 1, in order | in the order of the approver expressions | the org (candidates) first | as 4.0 | as 4.0 | as 4.0 | not checked | `ApprovalTest.preview` |
-| Approval display name: the object argument | its name | `UserDescriptiveName(<full name>, <name>)` | as 4.4 | as 4.4 | as 4.4 | not checked | `ApprovalDetailsTest.displayNameWithTheObjectDisplayInformation` |
-| `automaticallyCompleted` returning `skip` | a case, completed when its stage opens | no case | as 4.4 | as 4.4 | as 4.4 | not checked | `ApprovalDetailsTest.skipInItsShortForm` |
-| Certification stage opening and closing | in the call | in the call | in the call | a certification task (waited for; `Evaluation.task()` set) | as 4.9 | not checked | `CertificationTest.campaign` |
-| An expression in a certification scope's `searchFilter` | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | as 4.0 | as 4.0 | evaluated (the stage opens in a search-based activity) | as 4.9 | not checked | `CertificationScopeTest.theSearchFilterSelectsTheCertifiedUsers` |
-| Recipient expression returning a string | stays a string | as 4.0 | a `RecipientExpressionResultType` | as 4.8 | as 4.8 | not checked | `HookAndNotificationTest.notificationsPerRunAndPerTest` |
-| Mail transports | one, `notificationConfiguration/mail`; `<transport>mail:hr</transport>` is that transport (`TransportRegistry` drops what follows `:`) | as 4.0 | named `messageTransportConfiguration/mail` transports, each with its own servers and `defaultFrom` (an unknown `x:y` falls back to `x`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.htmlMailWithAnAttachmentThroughAnotherTransport` |
-| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | as 4.0 | as 4.0 | a container (normalized text: its type only) | as 4.9 | not checked | `MailNotificationTest.anAttachmentComputedPerUser` |
-| Effective status of a user whose lifecycle state is `archived` (MID-9026: `ARCHIVED` deprecated, never an effective status) | `archived` (also for `proposed`, `draft`), `archiveTimestamp` set | as 4.0 | `disabled`, `disableTimestamp` set, no `archiveTimestamp` (a filter on it finds no one) | as 4.8 | as 4.8 | as 4.10 | `HrLifecycleScenarioTest.anArchivedUsersEffectiveStatus` (`User.isArchived()`) |
-| A notification handler given as `xsi:type="CustomNotifierType"` (its `expression` builds the message) | run as a custom notifier (`EventHandlerRegistry` dispatches by class) | as 4.0 | every operation that notifies fails (`ClassCastException`: no `EventHandlerType`) | as 4.8 | as 4.8 | not checked | `HandlerNotifierTest` |
-| `recipientAddressExpression` of a transport | none | none | the address of a recipient that is a user (e.g. a notifier's default recipient) | as 4.8 | as 4.8 | not checked | `TransportRecipientsTest.theMailTransportAddressesTheUser` |
-| A notifier with two recipients | one mail to both | as 4.0 | one mail per recipient (`notificationSendingStrategy` default `separateNotificationToEachRecipient`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.oneMailPerRecipientFrom48` |
-| Encoded mail subject | `=?utf-8?Q?...` | `=?UTF-8?...` | as 4.4 | as 4.4 | as 4.4 | not checked | `MailNotificationTest.plainTextMailWithCcAndBcc` |
-| A failed `checkExpression` in `ValueCheck.failed()` | its `failureMessage` | its display label | as 4.4 | as 4.4 | as 4.4 | not checked | `ScriptTest.validateValue` |
-| Report import | none (`UnsupportedOperationException`) | `importReport` (columns by view order, `import/expression` with `input`, import script per row) | as 4.4 | as 4.4 | as 4.4 | not checked | `ReportImportTest` |
-| Dashboards | widgets of collections and objects (no `widgetData` source); variations as 4.8 | as 4.8 | variations applied in turn: a later false one resets the display | as 4.8 | a true variation's display is kept | not checked | `ReportTest.dashboardVariation` |
-| `schemaHandling/associationType` (`resource-ldap-association-types.xml`) | rejected (`delineation`) | as 4.0 | rejected (`associationType`) | read and run | as 4.9 | not checked | `AssociationTypeTest` |
-| Base contexts of a reference simulated by the `references` capability (real LDAP) | none | none | none | the object's filter evaluated with no variables when the account's associations are read (groups of another unit are not the account's); the subject's never evaluated; a reference type in an object type's `configuredCapabilities` is not read and an association on the object side of an association type is refused ("Association type references attribute ... that does not exist in object type ...") | as 4.9 | not checked | `ReferenceBaseContextTest` |
-| Value of a legacy association outbound | `ShadowAssociationType` | as 4.0 | as 4.0 | `ShadowAssociationValueType` | as 4.9 | not checked | `EntitlementTest.associationFromLinkAddsTheMemberToTheGroupOfTheRole` |
-| An association added to an account by a primary change (approved by `addAssociationAspect`) | a `ShadowAssociationType` in `association`; the condition's `association` is that | as 4.0 | as 4.0 | a `ShadowAssociationValueType` in `associations/ri:<name>` (seen on 4.10: a legacy `association` delta is ignored) | as 4.9 | not checked | `AssociationApprovalTest.onlyAdminGroupsNeedTheOwnersApproval` |
-| `assignmentTargetSearch` mapping, minus set when the target changes | the old assignment once | as 4.0 | as 4.0 | twice: as computed (no ID) and as stored | as 4.9 | not checked | `SearchTest.assignmentTargetSearchFollowsTheCostCenter` |
-| Import of a `targetRef` filter with an expression | skipped, left to the evaluation | as 4.0 | as 4.0 | fails: "filter matches no object" (use `resolutionTime=run`) | as 4.9 | not checked | `VariablesTest.importOfATargetFilterWithAnExpression` |
-| `SpringApplicationContextHolder` for scripts | `com.evolveum.midpoint.wf.impl.processes.common` | as 4.0 | `com.evolveum.midpoint.model.impl.expr` | as 4.8 | as 4.8 | not checked | `SampleConfigTest.bulkActionScriptWithASpringBean` |
-| A function of a missing library | `ObjectNotFoundException` | as 4.0 | `ConfigurationException` ("No function library with OID") | as 4.8 | as 4.8 | not checked | `SearchTest.functionOfAMissingLibrary` |
-| Task queries (activity format) | not tested (the 4.0 task format is not ported) | run | as 4.4 | as 4.4 | as 4.4 | not checked | `SearchTest.taskQuerySeesTheConfiguration` |
-| Task archetypes in the baseline | none on 4.0 | 507, 508, 509, 511, 520, 521, 530, 531 | as 4.4 | as 4.4 | as 4.4 | as 4.10 | `RuntimeTest.baselineAndWiring` |
-| A custom policy constraint (`policyConstraints/custom`) | none: an object state constraint with the same expression (`fixtures-4.0/policy`) | as 4.0 (`fixtures-4.4/policy`) | `custom` (4.7+) | as 4.8 | as 4.8 | not checked | `PolicyTest.contractorsNeedAnEndDate` |
-| `input` of a `scriptExecution` policy script | the user's `PrismObjectValue`: `input.description` fails, and so does the operation ("... is still UNKNOWN during cleanup"); the script's change is lost | the user (`input.description` resolves; the change is made) | as 4.4 | as 4.4 | as 4.4 | not checked | `PolicyTest.fieldStaffAreMarkedByAScript` |
-| Bulk action scripts | `execute-script` actions only (no `<s:execute>`): located at their script parameter (`.../action/parameter[script]`); scripting tasks are the scripting handlers with the bulk action in the extension | `<s:execute>`; activities `iterativeScripting`, `nonIterativeScripting` | as 4.4 | as 4.4 | as 4.4 | not checked | `ScriptingTaskTest`, `PolicyTest.fieldStaffAreMarkedByAScript` |
-| Provenance metadata on the value of an object type's association outbound | none | none | none | present | none | not checked | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
-| Dashboard reports (a widget's own view columns) | not tested | exported (HTML; a CSV export has the widget table only) | as 4.4 | as 4.4 | as 4.4 | not checked | `DashboardReportTest` |
-| Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | none | none | computed for the objects a preview task processes, summed in the simulation result | as 4.8 | as 4.8 | not checked | `SimulationTest` |
-| Audit recording expression (`audit/eventRecording/expression`: change or drop each record) | none (no such element) | evaluated for the request and the execution record | as 4.4 | as 4.4 | as 4.4 | not checked | `AuditRecordingTest` |
-| Custom audit property (`audit/eventRecording/property`) | on the execution record only (the request is audited before the system configuration is loaded) | on the request and the execution record | as 4.4 | as 4.4 | as 4.4 | not checked | `AuditPropertyTest.auditRecordsCarryTheCostCenterOfTheUser` |
-| Approval comments of an approved assignment | `assignment/metadata/createApprovalComment` and the user's `metadata/modifyApprovalComment` | as 4.0 | as 4.0 | the same items in value metadata (`process`) | as 4.9 | not checked | `ApprovalCommentsTest.theApprovedAssignmentKeepsTheFormattedComment` |
-| Certification comments of a certified assignment (`reviewerCommentsFormatting`, when the campaign closes) | `assignment/metadata/certifierComment` | as 4.0 | as 4.0 | in value metadata (`process`) | as 4.9 | not checked | `CertificationCommentsTest.theCertifiedAssignmentKeepsTheFormattedComment` |
-| Provenance feed populators of a resource object type (metadata and acquisition items) | none (no value metadata) | evaluated: inbound values carry the metadata (their `provenance`, e.g. the `originRef` of an acquisition populator, when the template keeps it: `meta/item[provenance]`) | as 4.4 | as 4.4 | not evaluated: values of resource objects get no value metadata (MID-10514) | not checked | `ValueMetadataTest.valuesFromHrNoteTheirRecord`, `valuesOfContractorsComeFromTheAgency` |
-| Asynchronous policy scripts, object collection default views in reports, activity reports, an activity's item and bucket processing conditions (also tailored), the object sets of import, reconciliation and repository tasks, activity tracing and profiling, dashboard widgets on filtered collections, report views | not tested | run | as 4.4 | as 4.4 | as 4.4 | not checked | `AsyncPolicyScriptTest`, `CollectionViewReportTest`, `ActivityReportsTest`, `ControlFlowTest`, `ResourceTaskQueryTest`, `RepositoryTaskQueryTest`, `ActivityTracingTest`, `DashboardWidgetTest`, `ReportViewTest` |
-| Explicit work buckets (filters with expressions) | in the `workManagement` of the task handlers | in the activity's `distribution`; a buckets report | as 4.4 | as 4.4 | as 4.4 | not checked | `ActivityDistributionTest` |
-| Shadow cleanup of a gone account | none | the deletion of every shadow of its query is notified without reading the resource: situation deleted, the shadow kept, not dead | each shadow is refreshed from the resource: situation deleted, dead | as 4.8 | as 4.8 | not checked | `RepositoryTaskQueryTest.theShadowsOfAShadowCleanupQuery` |
-| Role membership management, shadow reclassification tasks | none | none | membership management | both | as 4.9 | not checked | `RepositoryTaskQueryTest`, `ResourceTaskQueryTest` |
-| A report parameter with several values (a task's `reportParam`) | not tested (no object collection reports) | the export fails ("Attempt to get single value from item ... with multiple values") | the expressions get a list: a script filter returning it matches any value, a `path` expression fails ("Unexpected variable value") | as 4.8 | as 4.8 | not checked | `ReportTest.severalParameterValues` |
-| A correlation confirmation returning no value | the import fails in its result only: "Failed to import: ... Couldn't confirm user user" | fails: "... Couldn't confirm user user" (cause: "Expression returned no value (0) in confirmation expression ...") | fails: "... Couldn't confirm candidate owner: Expression returned no value in confirmation expression for filter correlator '...'" | as 4.8 | as 4.8 | not checked | `MisconfigurationTest.confirmationMustReturnOneValue` |
-| Focus archetype of an object type, `items` and `expression` correlators, confidence thresholds and expressions, correlation cases, indexed items, multi-source items | none (4.6+; indexing and multi-source 4.7+): skipped | as 4.0 | candidates restricted to the archetype; tiers; a candidate below `definite` makes the owner uncertain and opens a correlation case; an item indexed by a custom normalization is searched by its normalized value; multi-source items are selected from the authoritative identity | as 4.8 | as 4.8 | not checked | `CorrelationTest`, `IndexingTest`, `MultiSourceTest` |
-| A value policy without `minUniqueChars` | unique characters not checked | as 4.0 | as 4.0 | their minimum is `minLength` (StringPolicy) | as 4.9 | not checked | `PasswordReadingTest.uniqueCharactersDefaultToTheMinimalLength` |
-| Two structural archetypes on one user | refused after the template and inducements were evaluated (`ConfigurationException`) | refused before any evaluation (`SchemaException`) | as 4.4 | as 4.4 | as 4.4 | not checked | `ArchetypeTest.anObjectHasOneStructuralArchetype` |
-| `archetypeRef` of a user of a sub-archetype | none (no `superArchetypeRef`) | the assigned archetype | as 4.4 | also its super-archetypes | as 4.9 | not checked | `ArchetypeTest.aSubArchetypeTakesThePolicyAndInducementsOfItsSuperArchetype` |
-| A user's lifecycle state without a state model: `archived`; `suspended` | effective status ARCHIVED; suspended: DISABLED, assignments inactive (no account) | as 4.0 | DISABLED; suspended: DISABLED, assignments active (the account is kept, disabled) | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.withoutAModelOnlyActiveAndDeprecatedUsersAreEnabled` |
-| A model's state with `activeAssignments` false (an existing account) | the account is kept | as 4.0 | the assignments are inactive: the account is deleted | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.anArchivedStateWithoutAForcedStatusLeavesTheContractorEnabled` |
-| Security policy of an archetype (`securityPolicyRef`) | none: the global policy applies (`fixtures-4.4/security`) | as 4.0 | the archetype's password policy replaces the global one | as 4.8 | as 4.8 | not checked | `PasswordPolicyTest.privilegedUsersFollowTheSecurityPolicyOfTheirArchetype` |
-| A mapping with `timeFrom` whose condition is false (a delayed delete of an account disabled with its user) | the condition is not evaluated while the time is not reached, and the recompute trigger is set anyway (no effect when it fires) | the condition is evaluated first, a false one sets no trigger (MID-6040) | as 4.4 | as 4.4 | as 4.4 | not checked | `ActivationScenarioTest.accountEndsWithTheUsersValidityAndIsKept` |
-| Lifecycle state outbound of an account (`lifecycle/lifecycleState/outbound`) | evaluated: the account's lifecycle state (draft, then active; a draft account is provisioned) | as 4.0 | refused before the mapping: "Outbound mappings for 'lifecycleState' are no longer supported. Please migrate them to 'purpose' mappings." | as 4.8 | as 4.8 | not checked | `AccountLifecycleStateTest.anAccountIsDraftUntilTheUserHasAnEmployeeNumber` |
-| Import of an entry with an auxiliary object class no construction gives (mappings not `tolerant`) | the class is removed from the entry; the user keeps the inbound's value | as 4.0 | as 4.0 | the class is removed; the inbound is evaluated again without it, the user has no value | as 4.9 | not checked | `AuxiliaryObjectClassTest.withoutToleranceTheImportRemovesTheClass` |
-| Tag outbound of a multi-account object type; metadata mappings of a user template | none (no multi-accounts, no value metadata): skipped | one account per tag; only the mapping of a metadata item is applied (`meta/mapping` and `item/meta/mapping` never: an inverted check in `ItemValueMetadataProcessingSpec`) | as 4.4 | as 4.4 | as 4.4 | not checked | `AccountTagTest`, `MetadataMappingTest` |
-| Confidence expressions of filter and items correlators, of their items' searches, of attribute correlators and template items; an expression in a delineation filter | none (4.6+): skipped | as 4.0 | evaluated per candidate (a correlator's own) or per match metric (a search's, e.g. the Levenshtein distance); the delineation filter's expression is never evaluated, its branch matches nothing | as 4.8 | as 4.8 | not checked | `CorrelationConfidenceTest`, `ResourceMisconfigurationTest.anExpressionInADelineationFilterIsNeverEvaluated` |
-| A script without `<language>` (the initial system configuration) | Groovy | Groovy | Groovy | Groovy | Groovy | MEL (`expressions/defaultScriptLanguage`) | `FreshInstallationTest` |
-| Groovy in a resource, report, role... or an administrator's bulk action (the initial system configuration) | runs | runs | runs | runs | runs | refused: the object types' expression profiles (`configuration`, `reporting`, `safe`) have no Groovy | `FreshInstallationTest` |
-| The evaluator elements (`c:expressionEvaluator`'s substitution group) | | | | + association ones | + `filter` | + `complexAttributeSynchronization`, `javaMethodReference`, `null` | `StaticCheckTest.evaluatorsOfTheLine` |
-| prism's message for an item without a definition | `Item {ns}descripton has no definition` | as 4.0 | as 4.0 | `Item descripton has no definition` | as 4.9 | `Item 'descripton' has no definition` | `StaticCheckTest.schema` |
+| Difference | 4.4 | 4.8 | 4.9 | 4.10 | 4.11 | Pinned in |
+|---|---|---|---|---|---|---|
+| A report's CSV export | no byte order mark | 4.8.14: starts with a UTF-8 byte order mark (4.8.12: none); `ReportOutput` reads the header without it | not checked | not checked | not checked | `ReportScenarioTest` |
+| Correlation | legacy `synchronization` format (fixtures-4.4), no correlation context | `correlation` in the object type; `correlationContext`, `correlatorState` | as 4.8 | as 4.8 | not checked | `RecorderTest.correlationExpression` |
+| `focus` of a correlation or reaction condition without an owner | null | an empty pre-focus (`UserType` without a name) | as 4.8 | as 4.8 | not checked | `SynchronizationTest.unmatchedStaffIsAdded` |
+| Import of an account no object type classifies | fails ("No object class found for the shadow") | `classificationCondition` false: imported without a user | as 4.8 | as 4.8 | not checked | `SynchronizationTest.serviceAccountsAreNotSynchronized` |
+| The 4.4 format: an object type's `baseContext`, the `synchronization` section (condition, correlation, confirmation, reaction conditions), `notificationConfiguration/mail` | the line's format | still read (deprecated) with the same outcomes; the synchronization condition is the classification condition: a service account is imported without a user instead of failing | as 4.8 | as 4.8 | not checked | `LegacyFormatTest` |
+| Import of an account midPoint created (already classified) | the synchronization condition is evaluated again | the classification condition is not evaluated | as 4.8 | as 4.8 | not checked | `SynchronizationTest.directoryMayDisableButNotEnable` |
+| Inbound `focus` variable of a new user | not pinned | a `PrismObject` | the `UserType` bean; also the variables `association`, `object` | as 4.9 | not checked | `RecorderTest.inboundMapping` |
+| Preview (`mp.preview`) | the user is not changed, but sequences advance and `createOnDemand` really creates (design experiment E3) | `SIMULATED_PRODUCTION`: nothing written, no simulation result kept | `previewChanges` is `executeChanges` in `SIMULATED_PRODUCTION` mode; as 4.8 | as 4.9 | not checked | `RecorderTest.previewThenExecute` |
+| Approvers of stage 1, in order | the org (candidates) first | in the order of the approver expressions | in the order of the approver expressions | in the order of the approver expressions | not checked | `ApprovalTest.preview` |
+| Certification stage opening and closing | in the call | in the call | a certification task (waited for; `Evaluation.task()` set) | as 4.9 | not checked | `CertificationTest.campaign` |
+| An expression in a certification scope's `searchFilter` | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | evaluated (the stage opens in a search-based activity) | as 4.9 | not checked | `CertificationScopeTest.theSearchFilterSelectsTheCertifiedUsers` |
+| Recipient expression returning a string | stays a string | a `RecipientExpressionResultType` | as 4.8 | as 4.8 | not checked | `HookAndNotificationTest.notificationsPerRunAndPerTest` |
+| Mail transports | one, `notificationConfiguration/mail`; `<transport>mail:hr</transport>` is that transport (`TransportRegistry` drops what follows `:`) | named `messageTransportConfiguration/mail` transports, each with its own servers and `defaultFrom` (an unknown `x:y` falls back to `x`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.htmlMailWithAnAttachmentThroughAnotherTransport` |
+| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | a container (normalized text: its type only) | as 4.9 | not checked | `MailNotificationTest.anAttachmentComputedPerUser` |
+| Effective status of a user whose lifecycle state is `archived` (MID-9026: `ARCHIVED` deprecated, never an effective status) | `archived` (also for `proposed`, `draft`), `archiveTimestamp` set | `disabled`, `disableTimestamp` set, no `archiveTimestamp` (a filter on it finds no one) | as 4.8 | as 4.8 | as 4.10 | `HrLifecycleScenarioTest.anArchivedUsersEffectiveStatus` (`User.isArchived()`) |
+| A notification handler given as `xsi:type="CustomNotifierType"` (its `expression` builds the message) | run as a custom notifier (`EventHandlerRegistry` dispatches by class) | every operation that notifies fails (`ClassCastException`: no `EventHandlerType`) | as 4.8 | as 4.8 | not checked | `HandlerNotifierTest` |
+| `recipientAddressExpression` of a transport | none | the address of a recipient that is a user (e.g. a notifier's default recipient) | as 4.8 | as 4.8 | not checked | `TransportRecipientsTest.theMailTransportAddressesTheUser` |
+| A notifier with two recipients | one mail to both | one mail per recipient (`notificationSendingStrategy` default `separateNotificationToEachRecipient`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.oneMailPerRecipientFrom48` |
+| Dashboards | as 4.8 | variations applied in turn: a later false one resets the display | as 4.8 | a true variation's display is kept | not checked | `ReportTest.dashboardVariation` |
+| `schemaHandling/associationType` (`resource-ldap-association-types.xml`) | rejected (`delineation`) | rejected (`associationType`) | read and run | as 4.9 | not checked | `AssociationTypeTest` |
+| Base contexts of a reference simulated by the `references` capability (real LDAP) | none | none | the object's filter evaluated with no variables when the account's associations are read (groups of another unit are not the account's); the subject's never evaluated; a reference type in an object type's `configuredCapabilities` is not read and an association on the object side of an association type is refused ("Association type references attribute ... that does not exist in object type ...") | as 4.9 | not checked | `ReferenceBaseContextTest` |
+| Value of a legacy association outbound | `ShadowAssociationType` | `ShadowAssociationType` | `ShadowAssociationValueType` | as 4.9 | not checked | `EntitlementTest.associationFromLinkAddsTheMemberToTheGroupOfTheRole` |
+| An association added to an account by a primary change (approved by `addAssociationAspect`) | a `ShadowAssociationType` in `association`; the condition's `association` is that | a `ShadowAssociationType` in `association`; the condition's `association` is that | a `ShadowAssociationValueType` in `associations/ri:<name>` (seen on 4.10: a legacy `association` delta is ignored) | as 4.9 | not checked | `AssociationApprovalTest.onlyAdminGroupsNeedTheOwnersApproval` |
+| `assignmentTargetSearch` mapping, minus set when the target changes | the old assignment once | the old assignment once | twice: as computed (no ID) and as stored | as 4.9 | not checked | `SearchTest.assignmentTargetSearchFollowsTheCostCenter` |
+| Import of a `targetRef` filter with an expression | skipped, left to the evaluation | skipped, left to the evaluation | fails: "filter matches no object" (use `resolutionTime=run`) | as 4.9 | not checked | `VariablesTest.importOfATargetFilterWithAnExpression` |
+| `SpringApplicationContextHolder` for scripts | `com.evolveum.midpoint.wf.impl.processes.common` | `com.evolveum.midpoint.model.impl.expr` | as 4.8 | as 4.8 | not checked | `SampleConfigTest.bulkActionScriptWithASpringBean` |
+| A function of a missing library | `ObjectNotFoundException` | `ConfigurationException` ("No function library with OID") | as 4.8 | as 4.8 | not checked | `SearchTest.functionOfAMissingLibrary` |
+| Task archetypes in the baseline | 507, 508, 509, 511, 520, 521, 530, 531 | as 4.4 | as 4.4 | as 4.4 | as 4.10 | `RuntimeTest.baselineAndWiring` |
+| A custom policy constraint (`policyConstraints/custom`) | none: an object state constraint with the same expression (`fixtures-4.4/policy`) | `custom` (4.7+) | as 4.8 | as 4.8 | not checked | `PolicyTest.contractorsNeedAnEndDate` |
+| Provenance metadata on the value of an object type's association outbound | none | none | present | none | not checked | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
+| Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | none | computed for the objects a preview task processes, summed in the simulation result | as 4.8 | as 4.8 | not checked | `SimulationTest` |
+| Approval comments of an approved assignment | `assignment/metadata/createApprovalComment` and the user's `metadata/modifyApprovalComment` | `assignment/metadata/createApprovalComment` and the user's `metadata/modifyApprovalComment` | the same items in value metadata (`process`) | as 4.9 | not checked | `ApprovalCommentsTest.theApprovedAssignmentKeepsTheFormattedComment` |
+| Certification comments of a certified assignment (`reviewerCommentsFormatting`, when the campaign closes) | `assignment/metadata/certifierComment` | `assignment/metadata/certifierComment` | in value metadata (`process`) | as 4.9 | not checked | `CertificationCommentsTest.theCertifiedAssignmentKeepsTheFormattedComment` |
+| Provenance feed populators of a resource object type (metadata and acquisition items) | evaluated: inbound values carry the metadata (their `provenance`, e.g. the `originRef` of an acquisition populator, when the template keeps it: `meta/item[provenance]`) | as 4.4 | as 4.4 | not evaluated: values of resource objects get no value metadata (MID-10514) | not checked | `ValueMetadataTest.valuesFromHrNoteTheirRecord`, `valuesOfContractorsComeFromTheAgency` |
+| Shadow cleanup of a gone account | the deletion of every shadow of its query is notified without reading the resource: situation deleted, the shadow kept, not dead | each shadow is refreshed from the resource: situation deleted, dead | as 4.8 | as 4.8 | not checked | `RepositoryTaskQueryTest.theShadowsOfAShadowCleanupQuery` |
+| Role membership management, shadow reclassification tasks | none | membership management | both | as 4.9 | not checked | `RepositoryTaskQueryTest`, `ResourceTaskQueryTest` |
+| A report parameter with several values (a task's `reportParam`) | the export fails ("Attempt to get single value from item ... with multiple values") | the expressions get a list: a script filter returning it matches any value, a `path` expression fails ("Unexpected variable value") | as 4.8 | as 4.8 | not checked | `ReportTest.severalParameterValues` |
+| A correlation confirmation returning no value | fails: "... Couldn't confirm user user" (cause: "Expression returned no value (0) in confirmation expression ...") | fails: "... Couldn't confirm candidate owner: Expression returned no value in confirmation expression for filter correlator '...'" | as 4.8 | as 4.8 | not checked | `MisconfigurationTest.confirmationMustReturnOneValue` |
+| Focus archetype of an object type, `items` and `expression` correlators, confidence thresholds and expressions, correlation cases, indexed items, multi-source items | none (4.6+; indexing and multi-source 4.7+): skipped | candidates restricted to the archetype; tiers; a candidate below `definite` makes the owner uncertain and opens a correlation case; an item indexed by a custom normalization is searched by its normalized value; multi-source items are selected from the authoritative identity | as 4.8 | as 4.8 | not checked | `CorrelationTest`, `IndexingTest`, `MultiSourceTest` |
+| A value policy without `minUniqueChars` | unique characters not checked | unique characters not checked | their minimum is `minLength` (StringPolicy) | as 4.9 | not checked | `PasswordReadingTest.uniqueCharactersDefaultToTheMinimalLength` |
+| `archetypeRef` of a user of a sub-archetype | the assigned archetype | as 4.4 | also its super-archetypes | as 4.9 | not checked | `ArchetypeTest.aSubArchetypeTakesThePolicyAndInducementsOfItsSuperArchetype` |
+| A user's lifecycle state without a state model: `archived`; `suspended` | effective status ARCHIVED; suspended: DISABLED, assignments inactive (no account) | DISABLED; suspended: DISABLED, assignments active (the account is kept, disabled) | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.withoutAModelOnlyActiveAndDeprecatedUsersAreEnabled` |
+| A model's state with `activeAssignments` false (an existing account) | the account is kept | the assignments are inactive: the account is deleted | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.anArchivedStateWithoutAForcedStatusLeavesTheContractorEnabled` |
+| Security policy of an archetype (`securityPolicyRef`) | none: the global policy applies (`fixtures-4.4/security`) | the archetype's password policy replaces the global one | as 4.8 | as 4.8 | not checked | `PasswordPolicyTest.privilegedUsersFollowTheSecurityPolicyOfTheirArchetype` |
+| Lifecycle state outbound of an account (`lifecycle/lifecycleState/outbound`) | evaluated: the account's lifecycle state (draft, then active; a draft account is provisioned) | refused before the mapping: "Outbound mappings for 'lifecycleState' are no longer supported. Please migrate them to 'purpose' mappings." | as 4.8 | as 4.8 | not checked | `AccountLifecycleStateTest.anAccountIsDraftUntilTheUserHasAnEmployeeNumber` |
+| Import of an entry with an auxiliary object class no construction gives (mappings not `tolerant`) | the class is removed from the entry; the user keeps the inbound's value | the class is removed from the entry; the user keeps the inbound's value | the class is removed; the inbound is evaluated again without it, the user has no value | as 4.9 | not checked | `AuxiliaryObjectClassTest.withoutToleranceTheImportRemovesTheClass` |
+| Confidence expressions of filter and items correlators, of their items' searches, of attribute correlators and template items; an expression in a delineation filter | none (4.6+): skipped | evaluated per candidate (a correlator's own) or per match metric (a search's, e.g. the Levenshtein distance); the delineation filter's expression is never evaluated, its branch matches nothing | as 4.8 | as 4.8 | not checked | `CorrelationConfidenceTest`, `ResourceMisconfigurationTest.anExpressionInADelineationFilterIsNeverEvaluated` |
+| A script without `<language>` (the initial system configuration) | Groovy | Groovy | Groovy | Groovy | MEL (`expressions/defaultScriptLanguage`) | `FreshInstallationTest` |
+| Groovy in a resource, report, role... or an administrator's bulk action (the initial system configuration) | runs | runs | runs | runs | refused: the object types' expression profiles (`configuration`, `reporting`, `safe`) have no Groovy | `FreshInstallationTest` |
+| The evaluator elements (`c:expressionEvaluator`'s substitution group) | | | + association ones | + `filter` | + `complexAttributeSynchronization`, `javaMethodReference`, `null` | `StaticCheckTest.evaluatorsOfTheLine` |
+| prism's message for an item without a definition | `Item {ns}descripton has no definition` | `Item {ns}descripton has no definition` | `Item descripton has no definition` | as 4.9 | `Item 'descripton' has no definition` | `StaticCheckTest.schema` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
-line and older ones (e.g. resources without `delineation` for 4.4 and 4.0). A configuration you test on several lines
+line and older ones (e.g. resources without `delineation` for 4.4). A configuration you test on several lines
 needs the same: midPoint of an older line cannot read a newer format. A newer line still reads parts of an older one
 (deprecated): `LegacyFormatTest` imports the 4.4 variants on 4.8+ too (`Fixtures.legacy`).
 
@@ -2422,7 +2400,7 @@ never evaluated (`ApprovalNamesTest`); the approvers of `addAssociationAspect` f
 `automaticallyApproved` never read (`AssociationApproversTest`); a mail transport's `recipientFilterExpression`
 effective only with `redirectToFile`, a file transport's never evaluated (`TransportRecipientsTest`); a merge
 configuration's `default` value expression (`MergeDefaultTest`); a collection stats constraint counting the collection
-that holds it, 4.4+ (`CollectionStatsTest`); a simulation metric's `selectionRestriction`, a domain filter with an
+that holds it (`CollectionStatsTest`); a simulation metric's `selectionRestriction`, a domain filter with an
 expression matching nothing, 4.8+ (`SimulationPredicatesTest`); an import task's query of resource objects replaces the
 activity's own by default (`queryApplication` `replace`: it must then name the resource, else "Resource not defined in a
 search query"; `append` adds it), a skipped bucket is not searched, auto-scaling takes only the running tasks of its
@@ -2434,7 +2412,7 @@ action or a message expression (`ObjectStateConstraintTest`); the lockout status
 attribute, and the existence, lockout status and lifecycle inbounds never evaluated (`LockoutTest`); the base context
 filter of an object type, evaluated with no variables when provisioning searches (`BaseContextTest`, real LDAP;
 `objectType/baseContext` in the 4.4 format, `delineation/baseContext` in 4.6+); the buckets of a tailored segmentation of
-the explicit type, 4.4+ (`ResourceTaskQueryTest`); the synchronization sorter classifying
+the explicit type (`ResourceTaskQueryTest`); the synchronization sorter classifying
 accounts (`SynchronizationSorterTest`); an inbound in a construction refused
 (`ResourceMisconfigurationTest.anInboundInAConstructionIsRefused`); the auxiliary object class inbound of a tolerant
 object type, the outbound never evaluated (`AuxiliaryObjectClassTest`); an expression in the filter of an object state
@@ -2452,16 +2430,14 @@ filters evaluated with the owner as `subject` (`AccessTest.taskSearchesWithItsOw
 input (`effectiveStatus`), no status provisioned without a status outbound, `validFrom` / `validTo` of users and
 assignments applied by the validity scanner, a simulated status attribute, disable instead of delete (`disableReason`
 `#deprovision`), the delayed delete's trigger on the shadow and its deletion by the trigger scanner; the JVM's wall
-clock moving with `t.clock()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 11 for 4.0 and
-4.4, JDK 21 for 4.8+).
+clock moving with `t.clock()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 17 for 4.4,
+JDK 21 for 4.8 and later).
 
 Other line notes:
 
-- **4.0**: the mapping hook is the model's mapping evaluator (4.0's `MappingImpl` cannot be subclassed), and neither
-  4.0 nor 4.4 has `ConfigurationItemOrigin`: a mapping is placed by finding its value in the origin object. Two
-  prism-equivalent mappings in one object fall back to the name or the canonical form.
-- **4.4 / 4.0 accounts** are imported by searching the shadow and `importFromResource`; scanners and report exports
-  are tasks switched to the background.
+- **4.4**: there is no `ConfigurationItemOrigin`: a mapping is placed by finding its value in the origin object (two
+  prism-equivalent mappings in one object fall back to the name or the canonical form). Accounts are imported by
+  searching the shadow and `importFromResource`; scanners and report exports are tasks switched to the background.
 - **4.9 / 4.10**: the tester clears a repository cache 4.9+ does not clear after a database rollback
   (`ExtItemCache.nameToExtItem`; production never rolls back). 4.9 has the API of 4.10 at every place the tester
   touches; its initial objects are in `repo/system-init/src/main/resources/initial-objects` of the sources.
@@ -2532,7 +2508,7 @@ Other line notes:
 | `tester.forks` | `1` | test JVMs per line module (this repository's POM; downstream: Surefire `forkCount` plus `tester.forks` and `tester.fork`) |
 | `tester.manifest` | `midpoint-config-tester.yaml` | the manifest of `@MidPointConfigTest` without a value |
 | `tester.taskTimeout` | `60` | seconds a driver call waits for background tasks |
-| `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` (see [Speed](#speed)) |
+| `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` (see [Deployment cache and parallel test JVMs](#deployment-cache-and-parallel-test-jvms)) |
 | `tester.log` | `target/tester.log` | the log file, when the project has no logback configuration of its own |
 | `pgmem.binary` (or `PGMEM_BINARY`) | from `pgmem-native` | the pgmem binary |
 | `static.dir`, `static.schemaDir` | none | static checks of your configuration (static module) |
@@ -2556,9 +2532,8 @@ pom.xml               root POM: midPoint versions, repositories, plugin versions
 tester/
   pom.xml             tester parent: adds core/ to every line module, surefire settings
   core/               line-neutral sources (public API, runtime, recorder) and the shared tests
-  base-4.0/           parent of 4.0 and 4.4 (JDK 11): approvals, certification, script hook, notification transport
-  midpoint-4.0/       4.0: dependencies, harness, Spring context, recorder hook, drivers, SQL, baseline objects
-  midpoint-4.4/       4.4: likewise
+  base-4.0/           parent of the JDK 11 lines: approvals, certification, script hook, notification transport
+  midpoint-4.4/       4.4: dependencies, harness, Spring context, recorder hook, drivers, SQL, baseline objects
   base-4.8/           parent of 4.8+ (native repository): harness, Spring context, recorder hooks, drivers
   midpoint-4.8/       LineSupport, SQL and baseline objects of 4.8
   midpoint-4.9/       LineSupport, SQL and baseline objects of 4.9
@@ -2578,79 +2553,21 @@ Quartz hold and task runs, time shift, file redirection, live sync, mirror optio
 ```bash
 mvn test -pl tester/midpoint-4.8 -am                       # one line
 mvn test -Pnon-lts -pl tester/midpoint-4.8,tester/midpoint-4.9,tester/midpoint-4.10,tester/midpoint-4.11 -am  # 4.8+ lines
-mvn test -pl tester/midpoint-4.0 -am                       # 4.0 (Maven on JDK 11)
 mvn test -pl tester/static/midpoint-4.8 -am                # static checks of one line
 ```
 
-Patch versions can be overridden: `-Dmidpoint40.version=...`, `-Dmidpoint44.version=...`, `-Dmidpoint48.version=4.8.11`,
+Patch versions can be overridden: `-Dmidpoint44.version=...`, `-Dmidpoint48.version=4.8.11`,
 `-Dmidpoint49.version=...`, `-Dmidpoint410.version=...`, `-Dmidpoint411.version=...` (`RuntimeTest` checks that the line matches the release the module is built against).
-The 4.0 BOM pins old test libraries (JUnit 5.3), so `midpoint-4.0` imports a newer JUnit BOM first.
 
-### Speed
+### Maven Build Cache
 
-A build of every line (each with Maven on its JDK, [JDKs](#jdks)) takes under 4 minutes on a laptop (8 minutes before phase 4 removed the
-PoC tests): each line module 31-43 s for 117 tests, midPoint's start 6-7 s of it, each static module 5 s, the example
-15 s. Most of a line module's time is midPoint's own work; the tester keeps its own share small:
-
-- One JVM per line module, one midPoint per JVM; a reset restores pgmem's in-memory snapshot (about 15 ms), never
-  restarts anything. The reset before a class is skipped when the class before has just reset to the baseline and
-  nothing ran since (no driver call, no task, no Quartz job; otherwise the full reset).
-- Driver calls wait for background work by polling the task rows every 20 ms; measured, the wait is the task work
-  itself (an event-driven wake-up gained nothing).
-- `TaskRunsTest` waits on the real time where it must (a recurring task every 2 s: the held-run check ends at the held
-  firing, about 2 s).
-- `-Dtester.timing=true` writes `<workDir>/tester/timing.md` (and prints it) after the last class: count, total, mean and
-  maximum of every phase (startup, resets, snapshots, driver calls and their waits, `@BeforeAll`).
-
-Deployment cache (`@MidPointConfigTest`, on by default): a JVM restores a deployment loaded by an earlier JVM instead of
-importing it again. Measured on 4.8 (load time per JVM, midPoint's start not included):
-
-| Deployment | Fresh load | From the cache |
-|---|---|---|
-| `scenarios/access` (the line's initial objects included, the first load of a JVM) | 2.4 s | 0.27 s |
-| `scenarios/hr` | 0.8 s | 0.38 s |
-| synthetic: 300 roles, 50 orgs, 1000 users with 3 assignments each | 9.2 s (4.4: 9.4 s, 4.0: 4.2 s, raw import) | 0.54 s (4.4: 0.56 s, 4.0: 0.46 s) |
-
-What is saved and restored: every table of the database (binary `COPY` over JDBC: pgmem keeps its snapshots in
-memory only), the mirror objects, CSV files and LDAP entries with their change log (serialized), the mapped files, the
-import order, the warnings and what the initial import did. On a restore the files are prepared again (the stand-ins
-of this JVM: ports, CSV paths), the database is copied in with the reset's machinery (Quartz held, caches cleared,
-Quartz jobs synchronized with the restored task rows), this JVM's node record is kept, and the stand-ins' connector
-configuration and the mail redirection are written over the restored values. Timestamps in the database are those of
-the cached load (a trigger the load set relative to "now" is as old as the entry).
-
-Parallel test JVMs (`-Dtester.forks=N`, opt-in): measured on a 10-core Apple laptop, 4.8 line module, warm cache,
-wall time of `mvn test` for the module, peak memory of the test JVMs and pgmem together, average CPU:
-
-| Tests | forks=1 | forks=2 | forks=4 |
-|---|---|---|---|
-| full suite before phase 4 (458 tests) | 82 s, 6.8 GB, 200 % | 86 s, 7.5 GB, 420 % | 90 s, 7.9 GB, 685 % |
-| tests of phase 3 (21) | 17 s, 2.0 GB, 284 % | 20 s, 2.9 GB, 432 % | 26 s, 5.9 GB, 613 % |
-| 48 joiner/mover/leaver scenarios (probe) | 41 s, 3.6 GB, 224 % | 40 s, 4.2 GB, 478 % | 54 s, 6.5 GB, 764 % |
-
-midPoint already uses about two cores per JVM, and N midPoints starting together take 17-21 s each instead of 7 s: on
-this machine the forks only add heat (the fans run at 4 forks). They pay where the tests wait on the real time or on
-a machine with many more cores. Each fork writes its own `<workDir>/fork-<n>/tester/` (timing
-of its own classes). A downstream project sets `<forkCount>`, `<reuseForks>true` and
-`-Dtester.forks=N -Dtester.fork=${surefire.forkNumber}` in the `argLine` (Surefire replaces the fork number there).
-
-Opt-ins:
-
-- **Maven Build Cache** (`.mvn/extensions.xml`, `.mvn/maven-build-cache-config.xml`), off unless
-  `-Dmaven.build.cache.enabled=true` (for example in `MAVEN_OPTS`): a module whose inputs did not change since a passing
-  build is not built and tested again. Inputs are the module's `src/` and effective POM (dependencies, so midPoint
-  versions and the pgmem profile too) plus `tester/core` (shared sources, tests, fixtures, accepted files) for every
-  line and static module, the `base-4.0` / `base-4.8` sources for their lines, and `static/core` for the static
-  modules. A change in `tester/core` reruns every module; one in `midpoint-4.9` only that one (about 80 s instead of 7
-  minutes; nothing changed: 2 s). The cache does not see `-D` properties, so `static.dir`, `static.schemaDir`, `tester.*`, `pgmem.binary` and `-Dtest`
-  switch it off for the build (profiles `no-build-cache-*` of the root POM). A module served from the cache runs no tests, so its `target/tester/` reports
-  are not written. Only `-Dpgmem.binary` is caught, not the
-  `PGMEM_BINARY` environment variable. A project of your own that reads other `-D` properties in its tests needs a
-  profile like `no-build-cache-<property>` for each. `-Dmaven.build.cache.skipCache=true` builds everything once
-  without reading the cache; `rm -rf ~/.m2/build-cache/v1.1/io.github.wadahiro.midpoint` forgets this repository's
-  entries (the cache directory is shared with other projects).
-- **Lines in parallel**: `mvn -T 2 test` builds two line modules at once (each its own JVM and pgmem; more heat, about
-  3 GB heap each). Tests inside a JVM always run one at a time.
+The build of this repository can use the Maven Build Cache (`.mvn/extensions.xml`, `.mvn/maven-build-cache-config.xml`),
+off unless `-Dmaven.build.cache.enabled=true` (for example in `MAVEN_OPTS`): a module whose inputs did not change since
+a passing build is not built and tested again. Inputs are the module's `src/` and effective POM plus `tester/core` for
+every line and static module, the `base-*` sources for their lines and `static/core` for the static modules. The cache
+does not see `-D` properties, so `static.dir`, `static.schemaDir`, `tester.*`, `pgmem.binary` and `-Dtest` switch it
+off for the build (profiles `no-build-cache-*` of the root POM); a module served from the cache runs no tests and
+writes no `target/tester/` reports. `-Dmaven.build.cache.skipCache=true` builds everything once without reading it.
 
 ### JDKs
 
@@ -2659,18 +2576,16 @@ line's parent checks it before the tests (`tester.jdk`, maven-enforcer), not wit
 
 | Line | Recommended | Supported |
 |---|---|---|
-| 4.0 | 11 | 11 (midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later) |
 | 4.4 | 17 | 11, 17 |
 | 4.8, 4.9, 4.10 | 21 | 17, 21 |
 | 4.11 | 25 | 21, 25 |
 
-A config repository pins the JDK of its line where Maven runs: a `mise.toml` (`[tools] java = "temurin-11"`) or a
+A config repository pins the JDK of its line where Maven runs: a `mise.toml` (`[tools] java = "temurin-21"`) or a
 `.sdkmanrc` in the repository, or `JAVA_HOME`; nothing per machine. The tester's own build needs JDK 17 or later to
 compile (4.8+ and the Kotest layer), so a line is built and tested on its own, with Maven on its JDK, as CI does (one job
 per line):
 
 ```bash
-JAVA_HOME=<jdk-11> mvn test -pl tester/midpoint-4.0,tester/static/midpoint-4.0 -am
 JAVA_HOME=<jdk-17> mvn test -pl tester/midpoint-4.4,tester/static/midpoint-4.4 -am
 JAVA_HOME=<jdk-21> mvn test -pl tester/midpoint-4.8,tester/static/midpoint-4.8 -am
 ```
