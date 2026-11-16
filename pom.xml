@@ -66,11 +66,12 @@
         <midpoint48.version>4.8.14</midpoint48.version>
         <midpoint49.version>4.9.9</midpoint49.version>
         <midpoint410.version>4.10.5</midpoint410.version>
+        <midpoint411.version>4.11.0</midpoint411.version>
         <!-- tester/ for the modules outside it; tester/pom.xml and tester/static/pom.xml set it from their modules'
              places (maven.multiModuleProjectDirectory is the reactor's, not this repository's, in another reactor) -->
         <tester.dir>${maven.multiModuleProjectDirectory}/tester</tester.dir>
-        <!-- Byte Buddy of the file redirection (mp.files()): new enough for the class files of JDK 21 -->
-        <bytebuddy.version>1.15.4</bytebuddy.version>
+        <!-- Byte Buddy of the file redirection (mp.files()): new enough for the class files of JDK 25 (midPoint 4.11's) -->
+        <bytebuddy.version>1.17.8</bytebuddy.version>
         <!-- in-memory PostgreSQL of the tester; the classifier is set by the os profiles below -->
         <pgmem.version>1.18.2</pgmem.version>
         <pgmem.classifier>linux-x86_64</pgmem.classifier>

@@ -28,7 +28,10 @@ public interface ScriptCall {
     /** A variable of a declared type (e.g. for null values). */
     ScriptCall variable(String name, Object value, Class<?> type);
 
-    /** The script language URI; Groovy by default. */
+    /**
+     * The script language URI; Groovy by default. Null: none, so the system configuration's default, as for a script
+     * without {@code <language>} (MEL in 4.11's initial system configuration, else Groovy).
+     */
     ScriptCall language(String languageUri);
 
     /** The type of the output values (XSD or midPoint type QName); {@code xsd:string} by default. */

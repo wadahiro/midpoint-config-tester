@@ -51,13 +51,14 @@
                 <ref>ri:fullname</ref>
                 <inbound>
                     <name>hr-givenName</name>
-                    <expression><script><code>input?.trim()?.split(/\s+/)?.getAt(0)</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>input?.trim()?.split(/\s+/)?.getAt(0)</code></script></expression>
                     <target><path>givenName</path></target>
                 </inbound>
                 <inbound>
                     <name>hr-familyName</name>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>
                                 def last = input?.trim()?.split(/\s+/)?.getAt(1)
                                 last ? last.toLowerCase().capitalize() : null
@@ -73,7 +74,7 @@
                     <name>hr-location</name>
                     <strength>strong</strength>
                     <source><path>locality</path></source>
-                    <expression><script><code>locality?.orig?.toUpperCase()</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>locality?.orig?.toUpperCase()</code></script></expression>
                 </outbound>
             </attribute>
             <attribute>

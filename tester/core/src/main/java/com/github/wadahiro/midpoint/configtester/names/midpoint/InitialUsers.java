@@ -1,4 +1,4 @@
-// Written by .claude/skills/add-midpoint-line/scripts/initial-names.py from the initial objects of midPoint 4.0, 4.4, 4.8, 4.9, 4.10.
+// Written by .claude/skills/add-midpoint-line/scripts/initial-names.py from the initial objects of midPoint 4.0, 4.4, 4.8, 4.9, 4.10, 4.11.
 // Do not edit: run the script again (InitialNamesTest checks it on every line).
 package com.github.wadahiro.midpoint.configtester.names.midpoint;
 
@@ -10,7 +10,7 @@ import com.github.wadahiro.midpoint.configtester.names.*;
  */
 public final class InitialUsers {
 
-    /** "administrator", 050-user-administrator.xml (4.0, 4.4, 4.8, 4.9, 4.10). */
+    /** "administrator", 050-user-administrator.xml (4.0, 4.4, 4.8, 4.9, 4.10, 4.11). */
     public static final UserRef ADMINISTRATOR = new UserRef("administrator", "00000000-0000-0000-0000-000000000002", Lines.ALL);
 
     private InitialUsers() {

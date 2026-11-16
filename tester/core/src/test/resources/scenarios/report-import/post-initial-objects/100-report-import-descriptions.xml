@@ -9,6 +9,7 @@
         <importScript>
             <s:execute>
                 <s:script>
+                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                     <code>
                         import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType
                         user = midpoint.searchObjectByName(UserType.class, name)

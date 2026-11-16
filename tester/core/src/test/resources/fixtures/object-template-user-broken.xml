@@ -7,13 +7,13 @@
         <strength>strong</strength>
         <source><path>givenName</path></source>
         <source><path>familyName</path></source>
-        <expression><script><code>"$givenName $familyName"</code></script></expression>
+        <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>"$givenName $familyName"</code></script></expression>
         <target><path>fullName</path></target>
     </mapping>
     <mapping>
         <name>employee-number</name>
         <source><path>costCenter</path></source>
-        <expression><script><code>throw new IllegalStateException('no number for ' + costCenter)</code></script></expression>
+        <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>throw new IllegalStateException('no number for ' + costCenter)</code></script></expression>
         <target><path>employeeNumber</path></target>
     </mapping>
 </objectTemplate>

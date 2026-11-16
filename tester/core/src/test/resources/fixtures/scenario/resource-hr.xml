@@ -45,7 +45,7 @@
                 <ref>ri:empno</ref>
                 <inbound>
                     <name>hr-name</name>
-                    <expression><script><code>'e' + input</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>'e' + input</code></script></expression>
                     <target><path>name</path></target>
                 </inbound>
                 <inbound>
@@ -64,7 +64,7 @@
                 <ref>ri:lastName</ref>
                 <inbound>
                     <name>hr-familyName</name>
-                    <expression><script><code>input?.trim()?.toLowerCase()?.capitalize()</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>input?.trim()?.toLowerCase()?.capitalize()</code></script></expression>
                     <target><path>familyName</path></target>
                 </inbound>
             </attribute>
@@ -83,6 +83,7 @@
                                 <q:path>employeeNumber</q:path>
                                 <expression>
                                     <script>
+                                        <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                                         <code>basic.getAttributeValue(shadow, 'empno')</code>
                                     </script>
                                 </expression>

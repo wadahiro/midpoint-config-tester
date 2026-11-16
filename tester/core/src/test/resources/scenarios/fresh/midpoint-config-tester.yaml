@@ -1,0 +1,4 @@
+# A deployment of nothing with midPoint's own system configuration as a fresh installation has it, on every line
+# (FreshInstallationTest): unlike the bare one, no overlay changes it on 4.11.
+config:
+  dirs: [../bare/objects]

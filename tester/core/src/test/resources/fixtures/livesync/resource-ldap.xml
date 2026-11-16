@@ -131,7 +131,7 @@
                 <outbound>
                     <name>ldap-dn</name>
                     <source><path>name</path></source>
-                    <expression><script><code>'uid=' + name + ',ou=people,dc=example,dc=com'</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>'uid=' + name + ',ou=people,dc=example,dc=com'</code></script></expression>
                 </outbound>
             </attribute>
             <attribute>
@@ -167,7 +167,7 @@
                     <name>ldap-mail</name>
                     <strength>strong</strength>
                     <source><path>name</path></source>
-                    <expression><script><code>name + '@example.com'</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>name + '@example.com'</code></script></expression>
                 </outbound>
             </attribute>
             <attribute>
@@ -206,6 +206,7 @@
                     <q:path>name</q:path>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>basic.getAttributeValue(shadow, 'uid')</code>
                         </script>
                     </expression>

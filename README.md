@@ -6,7 +6,7 @@ and tests are operation scenarios over it: an HR record arrives, a user requests
 assignment, the clock moves to a start date; then what midPoint made of it (users, accounts, groups, cases, mails,
 reports) is checked by name.
 
-- One artifact per midPoint release line (4.0, 4.4, 4.8, 4.9, 4.10). Each starts the line's own midPoint in the test JVM:
+- One artifact per midPoint release line (4.0, 4.4, 4.8, 4.9, 4.10, 4.11). Each starts the line's own midPoint in the test JVM:
   Spring context, Clockwork, provisioning, cases, approvals, certification, reports, task manager, on an in-memory
   PostgreSQL. No midPoint server or database has to be installed.
 - The deployment is loaded with the line's own initial and post-initial import (raw on 4.0, full processing on 4.4+);
@@ -88,6 +88,12 @@ start log and the load report say it (`time zone Asia/Tokyo (tester.timeZone)`, 
 argLine without the parent's left it to the tester). It is one per JVM: midPoint's database connections, Quartz and
 the logging take it when they start; a manifest may state it (`timeZone: Asia/Tokyo`), and a load fails on another one.
 
+On 4.11 a second property is required, `tester.safeScriptingLanguagesOnly`, as the server's `config.xml` has
+`expressions/safeScriptingLanguagesOnly`: `true` (a fresh 4.11 installation's `config.xml`) runs only MEL and safe
+Velocity, `false` every scripting language, Groovy too (a deployment upgraded to 4.11 keeps its `config.xml`, without
+the setting: false). The 4.11 parent passes it; the tester fails before midPoint starts without it. See
+[Scripting on 4.11](#scripting-on-411) for the system configuration, which decides the rest.
+
 Properties a repository may set: `tester.manifest.file` (default `midpoint-config-tester.yaml` next to the POM),
 `tester.names.skip`, `tester.forks`, and `midpoint.version` (or `midpoint40.version`... of the parent's line) for
 another build of the line's midPoint, a support build or a fork in the local repository: the parent manages midPoint's
@@ -102,8 +108,8 @@ manifest hold what a line needs differently. midPoint keeps static state, so a J
 
 ## Writing tests
 
-The API (`com.github.wadahiro.midpoint.configtester`: `@MidPointConfigTest`, `MidPointConfigTester`) targets the LTS lines 4.0, 4.4 and 4.8 first (4.9 and
-4.10 run it with 4.8's import semantics). The project points the tester at its `post-initial-objects` directory with a manifest,
+The API (`com.github.wadahiro.midpoint.configtester`: `@MidPointConfigTest`, `MidPointConfigTester`) targets the LTS lines 4.0, 4.4 and 4.8 first (4.9,
+4.10 and 4.11 run it with 4.8's import semantics). The project points the tester at its `post-initial-objects` directory with a manifest,
 `midpoint-config-tester.yaml`:
 
 ```yaml
@@ -1136,8 +1142,9 @@ of its own, or select the evaluations of a run. The tester's own engine tests (`
 | 4.8 | 4.8.14 | `midpoint-config-tester-4.8` | 17 / **21** | 4.0.24 | native |
 | 4.9 | 4.9.9 | `midpoint-config-tester-4.9` | 17 / **21** | 4.0.24 | native |
 | 4.10 | 4.10.5 | `midpoint-config-tester-4.10` | 17 / **21** | 4.0.24 | native |
+| 4.11 | 4.11.0 | `midpoint-config-tester-4.11` | 21 / **25** | 4.0.31 | native |
 
-A build from the root covers the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9 and 4.10 (tester, static checks,
+A build from the root covers the LTS lines 4.0, 4.4 and 4.8; the modules of 4.9, 4.10 and 4.11 (tester, static checks,
 parents) are built and tested only with `-Pnon-lts`. CI tests every line on every push, one job per line.
 
 All artifacts have the group `io.github.wadahiro.midpoint` and the same API (packages
@@ -1148,6 +1155,28 @@ between lines is midPoint's behaviour, see [Line notes](#line-notes).
 
 midPoint keeps static state, so a JVM holds one midPoint line. To test one configuration on two lines, run the same
 tests in two Maven modules (or two runs) with different tester artifacts.
+
+### Scripting on 4.11
+
+midPoint 4.11 restricts scripting in two places, and the tester takes both as the server has them:
+
+- `config.xml`, `expressions/safeScriptingLanguagesOnly`: the required `tester.safeScriptingLanguagesOnly` (see
+  [Getting started](#getting-started)).
+- The system configuration. The tester imports the line's initial objects as a fresh installation has them; 4.11's
+  system configuration makes MEL the default language of a script without `<language>`
+  (`expressions/defaultScriptLanguage`) and gives every object type it names an expression profile without Groovy:
+  `configuration` (resources, object templates, function libraries, marks, the system configuration), `reporting`
+  (reports, message templates), `safe` (roles, orgs, services, archetypes, policies, collections, dashboards,
+  certification); an administrator's bulk action runs in `configuration` (`expressions/defaults`). A deployment
+  without a system configuration of its own therefore scripts in MEL only (`FreshInstallationTest`).
+
+A deployment upgraded to 4.11 keeps the system configuration of its database, without these. Its repository puts its
+own `000-system-configuration.xml` among the post-initial objects (it replaces the initial one as a whole, as in
+production); the tester's own tests do it with a bulk action that removes the three settings
+(`tester/core/src/test/resources/scenarios/groovy-4.11`). A script that names no language runs as MEL wherever the
+system configuration says so: give Groovy scripts their `<language>`. `mp.script(...)` is Groovy unless
+`language(...)` says otherwise (`language(null)`: the system configuration's default). The static checks still take a
+script without `<language>` for Groovy (`ConfigScanner.isGroovy`), whatever the deployment's default.
 
 ## Resets
 
@@ -2263,7 +2292,7 @@ stored system configuration is its own (`NetworkGuardScenarioTest`, `ScriptedMai
 
 ## Static checks
 
-`midpoint-config-tester-static-<line>` (4.0, 4.4, 4.8, 4.9, 4.10) checks a directory of configuration XML against that midPoint line
+`midpoint-config-tester-static-<line>` (4.0, 4.4, 4.8, 4.9, 4.10, 4.11) checks a directory of configuration XML against that midPoint line
 without starting midPoint
 (no Spring, no database; a few seconds, most of it initializing prism). Every finding carries the identity the tester
 gives evaluations of the same place.
@@ -2297,83 +2326,87 @@ Behaviour differences between the lines, found by the PoC tests: each pinned bot
 column names them; `git show 1e39281^:tester/core/src/test/java/com/github/wadahiro/midpoint/tester/<Test>.java`), the
 findings stand. Read them before porting expectations between lines.
 
-| Difference | 4.0 | 4.4 | 4.8 | 4.9 | 4.10 | Pinned in |
-|---|---|---|---|---|---|---|
-| A report's CSV export | not tested (no object collection reports) | no byte order mark | 4.8.14: starts with a UTF-8 byte order mark (4.8.12: none); `ReportOutput` reads the header without it | not checked | not checked | `ReportScenarioTest` |
-| Template mapping of an added user: the evaluation for the old state (empty sources) | kept: the final outcome is `new=["John Doe"] removed=["null null"] \| old=["null null"]`; a failing script fails there first | an intermediate outcome only | as 4.4 | as 4.4 | as 4.4 | `RecorderTest.mappingWithError` |
-| Hook without `state` | secondary three times, each with the focus | primary, secondary, secondary without focus, final | as 4.4 | as 4.4 | as 4.4 | `ChangeTest.importObjectsIsOneRun` |
-| Correlation | legacy `synchronization` format (fixtures-4.4), no correlation context | as 4.0 | `correlation` in the object type; `correlationContext`, `correlatorState` | as 4.8 | as 4.8 | `RecorderTest.correlationExpression` |
-| `focus` of a correlation or reaction condition without an owner | null | null | an empty pre-focus (`UserType` without a name) | as 4.8 | as 4.8 | `SynchronizationTest.unmatchedStaffIsAdded` |
-| A single correlation candidate | linked without confirmation | confirmed; a rejected one gives a new user | as 4.4 | as 4.4 | as 4.4 | `SynchronizationTest.singleCandidateMustBeConfirmed` |
-| Reaction conditions | none: an unmatched contractor is added | evaluated | as 4.4 | as 4.4 | as 4.4 | `SynchronizationTest.unmatchedContractorIsAddedOnlyWithoutReactionCondition` |
-| Import of an account no object type classifies | fails ("No objectclass specified") | fails ("No object class found for the shadow") | `classificationCondition` false: imported without a user | as 4.8 | as 4.8 | `SynchronizationTest.serviceAccountsAreNotSynchronized` |
-| The 4.4 format: an object type's `baseContext`, the `synchronization` section (condition, correlation, confirmation, reaction conditions), `notificationConfiguration/mail` | the line's format (fixtures-4.0) | the line's format | still read (deprecated) with the same outcomes; the synchronization condition is the classification condition: a service account is imported without a user instead of failing | as 4.8 | as 4.8 | `LegacyFormatTest` |
-| Import of an account midPoint created (already classified) | not pinned | the synchronization condition is evaluated again | the classification condition is not evaluated | as 4.8 | as 4.8 | `SynchronizationTest.directoryMayDisableButNotEnable` |
-| Full-processing import of the system configuration | runs the autoassign mappings against it and fails | passes | as 4.4 | as 4.4 | as 4.4 | `SynchronizationTest.fullProcessingImportOfTheSystemConfigurationRunsTheAutoassignMappings` |
-| Deleting an account | its attribute outbounds are evaluated | only its existence outbound | as 4.4 | as 4.4 | as 4.4 | `SynchronizationTest.costCenterAssignsTheRoleAutomatically`, `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation`, `ActivationScenarioTest.deprovisioningDisablesAndDeletesThirtyDaysLater`, `ActivationTest.assignmentValidityEndsTheAccountsAsTheirResourcesDeprovision`, `DependencyTest.theDirectoryAccountGoesOnlyAfterTheAccountThatDependsOnIt` |
-| Deleting a user: the constructions of its roles | not evaluated | evaluated with a false condition | as 4.4 | as 4.4 | as 4.4 | `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation` |
-| A change the authorization refuses | the user template is evaluated first | refused before any mapping | as 4.4 | as 4.4 | as 4.4 | `AccessTest.isAuthorizedAndExecuteAsUser` |
-| The last evaluation of a search filter after a change | `assignmentTargetSearch`: the old state's; `associationTargetSearch`: the new state's | the reverse | as 4.4 | as 4.4 | as 4.4 | `SearchTest.assignmentTargetSearchFollowsTheCostCenter`, `EntitlementTest.associationTargetSearchFindsTheGroupComputedFromTheUser` |
-| Association inbound when a membership is added: the last evaluation | without the new membership | with it | as 4.4 | as 4.4 | as 4.4 | `EntitlementTest.associationFromLinkTakesOnlyTheGroupOfEachRole` |
-| Resource outbound: `source`, `containingObject`, `thisObject`, `assignmentPath` | not bound | the resource, the resource, null, null | as 4.4 | as 4.4 | as 4.4 | `VariablesTest.resourceOutbound` |
-| `iteration` in a role's construction | not bound | bound | as 4.4 | as 4.4 | as 4.4 | `VariablesTest.constructionInAnInducement` |
-| Inbound `focus` variable of a new user | not pinned | not pinned | a `PrismObject` | the `UserType` bean; also the variables `association`, `object` | as 4.9 | `RecorderTest.inboundMapping` |
-| Preview (`mp.preview`) | the user is not changed, but sequences advance and `createOnDemand` really creates (design experiment E3) | as 4.0 | `SIMULATED_PRODUCTION`: nothing written, no simulation result kept | `previewChanges` is `executeChanges` in `SIMULATED_PRODUCTION` mode; as 4.8 | as 4.9 | `RecorderTest.previewThenExecute` |
-| Approvers of stage 1, in order | in the order of the approver expressions | the org (candidates) first | as 4.0 | as 4.0 | as 4.0 | `ApprovalTest.preview` |
-| Approval display name: the object argument | its name | `UserDescriptiveName(<full name>, <name>)` | as 4.4 | as 4.4 | as 4.4 | `ApprovalDetailsTest.displayNameWithTheObjectDisplayInformation` |
-| `automaticallyCompleted` returning `skip` | a case, completed when its stage opens | no case | as 4.4 | as 4.4 | as 4.4 | `ApprovalDetailsTest.skipInItsShortForm` |
-| Certification stage opening and closing | in the call | in the call | in the call | a certification task (waited for; `Evaluation.task()` set) | as 4.9 | `CertificationTest.campaign` |
-| An expression in a certification scope's `searchFilter` | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | as 4.0 | as 4.0 | evaluated (the stage opens in a search-based activity) | as 4.9 | `CertificationScopeTest.theSearchFilterSelectsTheCertifiedUsers` |
-| Recipient expression returning a string | stays a string | as 4.0 | a `RecipientExpressionResultType` | as 4.8 | as 4.8 | `HookAndNotificationTest.notificationsPerRunAndPerTest` |
-| Mail transports | one, `notificationConfiguration/mail`; `<transport>mail:hr</transport>` is that transport (`TransportRegistry` drops what follows `:`) | as 4.0 | named `messageTransportConfiguration/mail` transports, each with its own servers and `defaultFrom` (an unknown `x:y` falls back to `x`) | as 4.8 | as 4.8 | `MailNotificationTest.htmlMailWithAnAttachmentThroughAnotherTransport` |
-| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | as 4.0 | as 4.0 | a container (normalized text: its type only) | as 4.9 | `MailNotificationTest.anAttachmentComputedPerUser` |
-| Effective status of a user whose lifecycle state is `archived` (MID-9026: `ARCHIVED` deprecated, never an effective status) | `archived` (also for `proposed`, `draft`), `archiveTimestamp` set | as 4.0 | `disabled`, `disableTimestamp` set, no `archiveTimestamp` (a filter on it finds no one) | as 4.8 | as 4.8 | `HrLifecycleScenarioTest.anArchivedUsersEffectiveStatus` (`User.isArchived()`) |
-| A notification handler given as `xsi:type="CustomNotifierType"` (its `expression` builds the message) | run as a custom notifier (`EventHandlerRegistry` dispatches by class) | as 4.0 | every operation that notifies fails (`ClassCastException`: no `EventHandlerType`) | as 4.8 | as 4.8 | `HandlerNotifierTest` |
-| `recipientAddressExpression` of a transport | none | none | the address of a recipient that is a user (e.g. a notifier's default recipient) | as 4.8 | as 4.8 | `TransportRecipientsTest.theMailTransportAddressesTheUser` |
-| A notifier with two recipients | one mail to both | as 4.0 | one mail per recipient (`notificationSendingStrategy` default `separateNotificationToEachRecipient`) | as 4.8 | as 4.8 | `MailNotificationTest.oneMailPerRecipientFrom48` |
-| Encoded mail subject | `=?utf-8?Q?...` | `=?UTF-8?...` | as 4.4 | as 4.4 | as 4.4 | `MailNotificationTest.plainTextMailWithCcAndBcc` |
-| A failed `checkExpression` in `ValueCheck.failed()` | its `failureMessage` | its display label | as 4.4 | as 4.4 | as 4.4 | `ScriptTest.validateValue` |
-| Report import | none (`UnsupportedOperationException`) | `importReport` (columns by view order, `import/expression` with `input`, import script per row) | as 4.4 | as 4.4 | as 4.4 | `ReportImportTest` |
-| Dashboards | widgets of collections and objects (no `widgetData` source); variations as 4.8 | as 4.8 | variations applied in turn: a later false one resets the display | as 4.8 | a true variation's display is kept | `ReportTest.dashboardVariation` |
-| `schemaHandling/associationType` (`resource-ldap-association-types.xml`) | rejected (`delineation`) | as 4.0 | rejected (`associationType`) | read and run | as 4.9 | `AssociationTypeTest` |
-| Base contexts of a reference simulated by the `references` capability (real LDAP) | none | none | none | the object's filter evaluated with no variables when the account's associations are read (groups of another unit are not the account's); the subject's never evaluated; a reference type in an object type's `configuredCapabilities` is not read and an association on the object side of an association type is refused ("Association type references attribute ... that does not exist in object type ...") | as 4.9 | `ReferenceBaseContextTest` |
-| Value of a legacy association outbound | `ShadowAssociationType` | as 4.0 | as 4.0 | `ShadowAssociationValueType` | as 4.9 | `EntitlementTest.associationFromLinkAddsTheMemberToTheGroupOfTheRole` |
-| An association added to an account by a primary change (approved by `addAssociationAspect`) | a `ShadowAssociationType` in `association`; the condition's `association` is that | as 4.0 | as 4.0 | a `ShadowAssociationValueType` in `associations/ri:<name>` (seen on 4.10: a legacy `association` delta is ignored) | as 4.9 | `AssociationApprovalTest.onlyAdminGroupsNeedTheOwnersApproval` |
-| `assignmentTargetSearch` mapping, minus set when the target changes | the old assignment once | as 4.0 | as 4.0 | twice: as computed (no ID) and as stored | as 4.9 | `SearchTest.assignmentTargetSearchFollowsTheCostCenter` |
-| Import of a `targetRef` filter with an expression | skipped, left to the evaluation | as 4.0 | as 4.0 | fails: "filter matches no object" (use `resolutionTime=run`) | as 4.9 | `VariablesTest.importOfATargetFilterWithAnExpression` |
-| `SpringApplicationContextHolder` for scripts | `com.evolveum.midpoint.wf.impl.processes.common` | as 4.0 | `com.evolveum.midpoint.model.impl.expr` | as 4.8 | as 4.8 | `SampleConfigTest.bulkActionScriptWithASpringBean` |
-| A function of a missing library | `ObjectNotFoundException` | as 4.0 | `ConfigurationException` ("No function library with OID") | as 4.8 | as 4.8 | `SearchTest.functionOfAMissingLibrary` |
-| Task queries (activity format) | not tested (the 4.0 task format is not ported) | run | as 4.4 | as 4.4 | as 4.4 | `SearchTest.taskQuerySeesTheConfiguration` |
-| Task archetypes in the baseline | none on 4.0 | 507, 508, 509, 511, 520, 521, 530, 531 | as 4.4 | as 4.4 | as 4.4 | `RuntimeTest.baselineAndWiring` |
-| A custom policy constraint (`policyConstraints/custom`) | none: an object state constraint with the same expression (`fixtures-4.0/policy`) | as 4.0 (`fixtures-4.4/policy`) | `custom` (4.7+) | as 4.8 | as 4.8 | `PolicyTest.contractorsNeedAnEndDate` |
-| `input` of a `scriptExecution` policy script | the user's `PrismObjectValue`: `input.description` fails, and so does the operation ("... is still UNKNOWN during cleanup"); the script's change is lost | the user (`input.description` resolves; the change is made) | as 4.4 | as 4.4 | as 4.4 | `PolicyTest.fieldStaffAreMarkedByAScript` |
-| Bulk action scripts | `execute-script` actions only (no `<s:execute>`): located at their script parameter (`.../action/parameter[script]`); scripting tasks are the scripting handlers with the bulk action in the extension | `<s:execute>`; activities `iterativeScripting`, `nonIterativeScripting` | as 4.4 | as 4.4 | as 4.4 | `ScriptingTaskTest`, `PolicyTest.fieldStaffAreMarkedByAScript` |
-| Provenance metadata on the value of an object type's association outbound | none | none | none | present | none | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
-| Dashboard reports (a widget's own view columns) | not tested | exported (HTML; a CSV export has the widget table only) | as 4.4 | as 4.4 | as 4.4 | `DashboardReportTest` |
-| Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | none | none | computed for the objects a preview task processes, summed in the simulation result | as 4.8 | as 4.8 | `SimulationTest` |
-| Audit recording expression (`audit/eventRecording/expression`: change or drop each record) | none (no such element) | evaluated for the request and the execution record | as 4.4 | as 4.4 | as 4.4 | `AuditRecordingTest` |
-| Custom audit property (`audit/eventRecording/property`) | on the execution record only (the request is audited before the system configuration is loaded) | on the request and the execution record | as 4.4 | as 4.4 | as 4.4 | `AuditPropertyTest.auditRecordsCarryTheCostCenterOfTheUser` |
-| Approval comments of an approved assignment | `assignment/metadata/createApprovalComment` and the user's `metadata/modifyApprovalComment` | as 4.0 | as 4.0 | the same items in value metadata (`process`) | as 4.9 | `ApprovalCommentsTest.theApprovedAssignmentKeepsTheFormattedComment` |
-| Certification comments of a certified assignment (`reviewerCommentsFormatting`, when the campaign closes) | `assignment/metadata/certifierComment` | as 4.0 | as 4.0 | in value metadata (`process`) | as 4.9 | `CertificationCommentsTest.theCertifiedAssignmentKeepsTheFormattedComment` |
-| Provenance feed populators of a resource object type (metadata and acquisition items) | none (no value metadata) | evaluated: inbound values carry the metadata (their `provenance`, e.g. the `originRef` of an acquisition populator, when the template keeps it: `meta/item[provenance]`) | as 4.4 | as 4.4 | not evaluated: values of resource objects get no value metadata (MID-10514) | `ValueMetadataTest.valuesFromHrNoteTheirRecord`, `valuesOfContractorsComeFromTheAgency` |
-| Asynchronous policy scripts, object collection default views in reports, activity reports, an activity's item and bucket processing conditions (also tailored), the object sets of import, reconciliation and repository tasks, activity tracing and profiling, dashboard widgets on filtered collections, report views | not tested | run | as 4.4 | as 4.4 | as 4.4 | `AsyncPolicyScriptTest`, `CollectionViewReportTest`, `ActivityReportsTest`, `ControlFlowTest`, `ResourceTaskQueryTest`, `RepositoryTaskQueryTest`, `ActivityTracingTest`, `DashboardWidgetTest`, `ReportViewTest` |
-| Explicit work buckets (filters with expressions) | in the `workManagement` of the task handlers | in the activity's `distribution`; a buckets report | as 4.4 | as 4.4 | as 4.4 | `ActivityDistributionTest` |
-| Shadow cleanup of a gone account | none | the deletion of every shadow of its query is notified without reading the resource: situation deleted, the shadow kept, not dead | each shadow is refreshed from the resource: situation deleted, dead | as 4.8 | as 4.8 | `RepositoryTaskQueryTest.theShadowsOfAShadowCleanupQuery` |
-| Role membership management, shadow reclassification tasks | none | none | membership management | both | as 4.9 | `RepositoryTaskQueryTest`, `ResourceTaskQueryTest` |
-| A report parameter with several values (a task's `reportParam`) | not tested (no object collection reports) | the export fails ("Attempt to get single value from item ... with multiple values") | the expressions get a list: a script filter returning it matches any value, a `path` expression fails ("Unexpected variable value") | as 4.8 | as 4.8 | `ReportTest.severalParameterValues` |
-| A correlation confirmation returning no value | the import fails in its result only: "Failed to import: ... Couldn't confirm user user" | fails: "... Couldn't confirm user user" (cause: "Expression returned no value (0) in confirmation expression ...") | fails: "... Couldn't confirm candidate owner: Expression returned no value in confirmation expression for filter correlator '...'" | as 4.8 | as 4.8 | `MisconfigurationTest.confirmationMustReturnOneValue` |
-| Focus archetype of an object type, `items` and `expression` correlators, confidence thresholds and expressions, correlation cases, indexed items, multi-source items | none (4.6+; indexing and multi-source 4.7+): skipped | as 4.0 | candidates restricted to the archetype; tiers; a candidate below `definite` makes the owner uncertain and opens a correlation case; an item indexed by a custom normalization is searched by its normalized value; multi-source items are selected from the authoritative identity | as 4.8 | as 4.8 | `CorrelationTest`, `IndexingTest`, `MultiSourceTest` |
-| A value policy without `minUniqueChars` | unique characters not checked | as 4.0 | as 4.0 | their minimum is `minLength` (StringPolicy) | as 4.9 | `PasswordReadingTest.uniqueCharactersDefaultToTheMinimalLength` |
-| Two structural archetypes on one user | refused after the template and inducements were evaluated (`ConfigurationException`) | refused before any evaluation (`SchemaException`) | as 4.4 | as 4.4 | as 4.4 | `ArchetypeTest.anObjectHasOneStructuralArchetype` |
-| `archetypeRef` of a user of a sub-archetype | none (no `superArchetypeRef`) | the assigned archetype | as 4.4 | also its super-archetypes | as 4.9 | `ArchetypeTest.aSubArchetypeTakesThePolicyAndInducementsOfItsSuperArchetype` |
-| A user's lifecycle state without a state model: `archived`; `suspended` | effective status ARCHIVED; suspended: DISABLED, assignments inactive (no account) | as 4.0 | DISABLED; suspended: DISABLED, assignments active (the account is kept, disabled) | as 4.8 | as 4.8 | `LifecycleStateModelTest.withoutAModelOnlyActiveAndDeprecatedUsersAreEnabled` |
-| A model's state with `activeAssignments` false (an existing account) | the account is kept | as 4.0 | the assignments are inactive: the account is deleted | as 4.8 | as 4.8 | `LifecycleStateModelTest.anArchivedStateWithoutAForcedStatusLeavesTheContractorEnabled` |
-| Security policy of an archetype (`securityPolicyRef`) | none: the global policy applies (`fixtures-4.4/security`) | as 4.0 | the archetype's password policy replaces the global one | as 4.8 | as 4.8 | `PasswordPolicyTest.privilegedUsersFollowTheSecurityPolicyOfTheirArchetype` |
-| A mapping with `timeFrom` whose condition is false (a delayed delete of an account disabled with its user) | the condition is not evaluated while the time is not reached, and the recompute trigger is set anyway (no effect when it fires) | the condition is evaluated first, a false one sets no trigger (MID-6040) | as 4.4 | as 4.4 | as 4.4 | `ActivationScenarioTest.accountEndsWithTheUsersValidityAndIsKept` |
-| Lifecycle state outbound of an account (`lifecycle/lifecycleState/outbound`) | evaluated: the account's lifecycle state (draft, then active; a draft account is provisioned) | as 4.0 | refused before the mapping: "Outbound mappings for 'lifecycleState' are no longer supported. Please migrate them to 'purpose' mappings." | as 4.8 | as 4.8 | `AccountLifecycleStateTest.anAccountIsDraftUntilTheUserHasAnEmployeeNumber` |
-| Import of an entry with an auxiliary object class no construction gives (mappings not `tolerant`) | the class is removed from the entry; the user keeps the inbound's value | as 4.0 | as 4.0 | the class is removed; the inbound is evaluated again without it, the user has no value | as 4.9 | `AuxiliaryObjectClassTest.withoutToleranceTheImportRemovesTheClass` |
-| Tag outbound of a multi-account object type; metadata mappings of a user template | none (no multi-accounts, no value metadata): skipped | one account per tag; only the mapping of a metadata item is applied (`meta/mapping` and `item/meta/mapping` never: an inverted check in `ItemValueMetadataProcessingSpec`) | as 4.4 | as 4.4 | as 4.4 | `AccountTagTest`, `MetadataMappingTest` |
-| Confidence expressions of filter and items correlators, of their items' searches, of attribute correlators and template items; an expression in a delineation filter | none (4.6+): skipped | as 4.0 | evaluated per candidate (a correlator's own) or per match metric (a search's, e.g. the Levenshtein distance); the delineation filter's expression is never evaluated, its branch matches nothing | as 4.8 | as 4.8 | `CorrelationConfidenceTest`, `ResourceMisconfigurationTest.anExpressionInADelineationFilterIsNeverEvaluated` |
+| Difference | 4.0 | 4.4 | 4.8 | 4.9 | 4.10 | 4.11 | Pinned in |
+|---|---|---|---|---|---|---|---|
+| A report's CSV export | not tested (no object collection reports) | no byte order mark | 4.8.14: starts with a UTF-8 byte order mark (4.8.12: none); `ReportOutput` reads the header without it | not checked | not checked | not checked | `ReportScenarioTest` |
+| Template mapping of an added user: the evaluation for the old state (empty sources) | kept: the final outcome is `new=["John Doe"] removed=["null null"] \| old=["null null"]`; a failing script fails there first | an intermediate outcome only | as 4.4 | as 4.4 | as 4.4 | not checked | `RecorderTest.mappingWithError` |
+| Hook without `state` | secondary three times, each with the focus | primary, secondary, secondary without focus, final | as 4.4 | as 4.4 | as 4.4 | not checked | `ChangeTest.importObjectsIsOneRun` |
+| Correlation | legacy `synchronization` format (fixtures-4.4), no correlation context | as 4.0 | `correlation` in the object type; `correlationContext`, `correlatorState` | as 4.8 | as 4.8 | not checked | `RecorderTest.correlationExpression` |
+| `focus` of a correlation or reaction condition without an owner | null | null | an empty pre-focus (`UserType` without a name) | as 4.8 | as 4.8 | not checked | `SynchronizationTest.unmatchedStaffIsAdded` |
+| A single correlation candidate | linked without confirmation | confirmed; a rejected one gives a new user | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.singleCandidateMustBeConfirmed` |
+| Reaction conditions | none: an unmatched contractor is added | evaluated | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.unmatchedContractorIsAddedOnlyWithoutReactionCondition` |
+| Import of an account no object type classifies | fails ("No objectclass specified") | fails ("No object class found for the shadow") | `classificationCondition` false: imported without a user | as 4.8 | as 4.8 | not checked | `SynchronizationTest.serviceAccountsAreNotSynchronized` |
+| The 4.4 format: an object type's `baseContext`, the `synchronization` section (condition, correlation, confirmation, reaction conditions), `notificationConfiguration/mail` | the line's format (fixtures-4.0) | the line's format | still read (deprecated) with the same outcomes; the synchronization condition is the classification condition: a service account is imported without a user instead of failing | as 4.8 | as 4.8 | not checked | `LegacyFormatTest` |
+| Import of an account midPoint created (already classified) | not pinned | the synchronization condition is evaluated again | the classification condition is not evaluated | as 4.8 | as 4.8 | not checked | `SynchronizationTest.directoryMayDisableButNotEnable` |
+| Full-processing import of the system configuration | runs the autoassign mappings against it and fails | passes | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.fullProcessingImportOfTheSystemConfigurationRunsTheAutoassignMappings` |
+| Deleting an account | its attribute outbounds are evaluated | only its existence outbound | as 4.4 | as 4.4 | as 4.4 | not checked | `SynchronizationTest.costCenterAssignsTheRoleAutomatically`, `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation`, `ActivationScenarioTest.deprovisioningDisablesAndDeletesThirtyDaysLater`, `ActivationTest.assignmentValidityEndsTheAccountsAsTheirResourcesDeprovision`, `DependencyTest.theDirectoryAccountGoesOnlyAfterTheAccountThatDependsOnIt` |
+| Deleting a user: the constructions of its roles | not evaluated | evaluated with a false condition | as 4.4 | as 4.4 | as 4.4 | not checked | `HrToLdapScenarioTest.hrDrivesTheDirectoryThroughReconciliation` |
+| A change the authorization refuses | the user template is evaluated first | refused before any mapping | as 4.4 | as 4.4 | as 4.4 | not checked | `AccessTest.isAuthorizedAndExecuteAsUser` |
+| The last evaluation of a search filter after a change | `assignmentTargetSearch`: the old state's; `associationTargetSearch`: the new state's | the reverse | as 4.4 | as 4.4 | as 4.4 | not checked | `SearchTest.assignmentTargetSearchFollowsTheCostCenter`, `EntitlementTest.associationTargetSearchFindsTheGroupComputedFromTheUser` |
+| Association inbound when a membership is added: the last evaluation | without the new membership | with it | as 4.4 | as 4.4 | as 4.4 | not checked | `EntitlementTest.associationFromLinkTakesOnlyTheGroupOfEachRole` |
+| Resource outbound: `source`, `containingObject`, `thisObject`, `assignmentPath` | not bound | the resource, the resource, null, null | as 4.4 | as 4.4 | as 4.4 | not checked | `VariablesTest.resourceOutbound` |
+| `iteration` in a role's construction | not bound | bound | as 4.4 | as 4.4 | as 4.4 | not checked | `VariablesTest.constructionInAnInducement` |
+| Inbound `focus` variable of a new user | not pinned | not pinned | a `PrismObject` | the `UserType` bean; also the variables `association`, `object` | as 4.9 | not checked | `RecorderTest.inboundMapping` |
+| Preview (`mp.preview`) | the user is not changed, but sequences advance and `createOnDemand` really creates (design experiment E3) | as 4.0 | `SIMULATED_PRODUCTION`: nothing written, no simulation result kept | `previewChanges` is `executeChanges` in `SIMULATED_PRODUCTION` mode; as 4.8 | as 4.9 | not checked | `RecorderTest.previewThenExecute` |
+| Approvers of stage 1, in order | in the order of the approver expressions | the org (candidates) first | as 4.0 | as 4.0 | as 4.0 | not checked | `ApprovalTest.preview` |
+| Approval display name: the object argument | its name | `UserDescriptiveName(<full name>, <name>)` | as 4.4 | as 4.4 | as 4.4 | not checked | `ApprovalDetailsTest.displayNameWithTheObjectDisplayInformation` |
+| `automaticallyCompleted` returning `skip` | a case, completed when its stage opens | no case | as 4.4 | as 4.4 | as 4.4 | not checked | `ApprovalDetailsTest.skipInItsShortForm` |
+| Certification stage opening and closing | in the call | in the call | in the call | a certification task (waited for; `Evaluation.task()` set) | as 4.9 | not checked | `CertificationTest.campaign` |
+| An expression in a certification scope's `searchFilter` | never evaluated: the repository gets the filter as it is, an `equal` without a value matches the objects without the item (other users are certified) | as 4.0 | as 4.0 | evaluated (the stage opens in a search-based activity) | as 4.9 | not checked | `CertificationScopeTest.theSearchFilterSelectsTheCertifiedUsers` |
+| Recipient expression returning a string | stays a string | as 4.0 | a `RecipientExpressionResultType` | as 4.8 | as 4.8 | not checked | `HookAndNotificationTest.notificationsPerRunAndPerTest` |
+| Mail transports | one, `notificationConfiguration/mail`; `<transport>mail:hr</transport>` is that transport (`TransportRegistry` drops what follows `:`) | as 4.0 | named `messageTransportConfiguration/mail` transports, each with its own servers and `defaultFrom` (an unknown `x:y` falls back to `x`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.htmlMailWithAnAttachmentThroughAnotherTransport` |
+| Result of a notifier's or message template's attachment expression | a `NotificationMessageAttachmentType` bean (normalized text: its properties) | as 4.0 | as 4.0 | a container (normalized text: its type only) | as 4.9 | not checked | `MailNotificationTest.anAttachmentComputedPerUser` |
+| Effective status of a user whose lifecycle state is `archived` (MID-9026: `ARCHIVED` deprecated, never an effective status) | `archived` (also for `proposed`, `draft`), `archiveTimestamp` set | as 4.0 | `disabled`, `disableTimestamp` set, no `archiveTimestamp` (a filter on it finds no one) | as 4.8 | as 4.8 | as 4.10 | `HrLifecycleScenarioTest.anArchivedUsersEffectiveStatus` (`User.isArchived()`) |
+| A notification handler given as `xsi:type="CustomNotifierType"` (its `expression` builds the message) | run as a custom notifier (`EventHandlerRegistry` dispatches by class) | as 4.0 | every operation that notifies fails (`ClassCastException`: no `EventHandlerType`) | as 4.8 | as 4.8 | not checked | `HandlerNotifierTest` |
+| `recipientAddressExpression` of a transport | none | none | the address of a recipient that is a user (e.g. a notifier's default recipient) | as 4.8 | as 4.8 | not checked | `TransportRecipientsTest.theMailTransportAddressesTheUser` |
+| A notifier with two recipients | one mail to both | as 4.0 | one mail per recipient (`notificationSendingStrategy` default `separateNotificationToEachRecipient`) | as 4.8 | as 4.8 | not checked | `MailNotificationTest.oneMailPerRecipientFrom48` |
+| Encoded mail subject | `=?utf-8?Q?...` | `=?UTF-8?...` | as 4.4 | as 4.4 | as 4.4 | not checked | `MailNotificationTest.plainTextMailWithCcAndBcc` |
+| A failed `checkExpression` in `ValueCheck.failed()` | its `failureMessage` | its display label | as 4.4 | as 4.4 | as 4.4 | not checked | `ScriptTest.validateValue` |
+| Report import | none (`UnsupportedOperationException`) | `importReport` (columns by view order, `import/expression` with `input`, import script per row) | as 4.4 | as 4.4 | as 4.4 | not checked | `ReportImportTest` |
+| Dashboards | widgets of collections and objects (no `widgetData` source); variations as 4.8 | as 4.8 | variations applied in turn: a later false one resets the display | as 4.8 | a true variation's display is kept | not checked | `ReportTest.dashboardVariation` |
+| `schemaHandling/associationType` (`resource-ldap-association-types.xml`) | rejected (`delineation`) | as 4.0 | rejected (`associationType`) | read and run | as 4.9 | not checked | `AssociationTypeTest` |
+| Base contexts of a reference simulated by the `references` capability (real LDAP) | none | none | none | the object's filter evaluated with no variables when the account's associations are read (groups of another unit are not the account's); the subject's never evaluated; a reference type in an object type's `configuredCapabilities` is not read and an association on the object side of an association type is refused ("Association type references attribute ... that does not exist in object type ...") | as 4.9 | not checked | `ReferenceBaseContextTest` |
+| Value of a legacy association outbound | `ShadowAssociationType` | as 4.0 | as 4.0 | `ShadowAssociationValueType` | as 4.9 | not checked | `EntitlementTest.associationFromLinkAddsTheMemberToTheGroupOfTheRole` |
+| An association added to an account by a primary change (approved by `addAssociationAspect`) | a `ShadowAssociationType` in `association`; the condition's `association` is that | as 4.0 | as 4.0 | a `ShadowAssociationValueType` in `associations/ri:<name>` (seen on 4.10: a legacy `association` delta is ignored) | as 4.9 | not checked | `AssociationApprovalTest.onlyAdminGroupsNeedTheOwnersApproval` |
+| `assignmentTargetSearch` mapping, minus set when the target changes | the old assignment once | as 4.0 | as 4.0 | twice: as computed (no ID) and as stored | as 4.9 | not checked | `SearchTest.assignmentTargetSearchFollowsTheCostCenter` |
+| Import of a `targetRef` filter with an expression | skipped, left to the evaluation | as 4.0 | as 4.0 | fails: "filter matches no object" (use `resolutionTime=run`) | as 4.9 | not checked | `VariablesTest.importOfATargetFilterWithAnExpression` |
+| `SpringApplicationContextHolder` for scripts | `com.evolveum.midpoint.wf.impl.processes.common` | as 4.0 | `com.evolveum.midpoint.model.impl.expr` | as 4.8 | as 4.8 | not checked | `SampleConfigTest.bulkActionScriptWithASpringBean` |
+| A function of a missing library | `ObjectNotFoundException` | as 4.0 | `ConfigurationException` ("No function library with OID") | as 4.8 | as 4.8 | not checked | `SearchTest.functionOfAMissingLibrary` |
+| Task queries (activity format) | not tested (the 4.0 task format is not ported) | run | as 4.4 | as 4.4 | as 4.4 | not checked | `SearchTest.taskQuerySeesTheConfiguration` |
+| Task archetypes in the baseline | none on 4.0 | 507, 508, 509, 511, 520, 521, 530, 531 | as 4.4 | as 4.4 | as 4.4 | as 4.10 | `RuntimeTest.baselineAndWiring` |
+| A custom policy constraint (`policyConstraints/custom`) | none: an object state constraint with the same expression (`fixtures-4.0/policy`) | as 4.0 (`fixtures-4.4/policy`) | `custom` (4.7+) | as 4.8 | as 4.8 | not checked | `PolicyTest.contractorsNeedAnEndDate` |
+| `input` of a `scriptExecution` policy script | the user's `PrismObjectValue`: `input.description` fails, and so does the operation ("... is still UNKNOWN during cleanup"); the script's change is lost | the user (`input.description` resolves; the change is made) | as 4.4 | as 4.4 | as 4.4 | not checked | `PolicyTest.fieldStaffAreMarkedByAScript` |
+| Bulk action scripts | `execute-script` actions only (no `<s:execute>`): located at their script parameter (`.../action/parameter[script]`); scripting tasks are the scripting handlers with the bulk action in the extension | `<s:execute>`; activities `iterativeScripting`, `nonIterativeScripting` | as 4.4 | as 4.4 | as 4.4 | not checked | `ScriptingTaskTest`, `PolicyTest.fieldStaffAreMarkedByAScript` |
+| Provenance metadata on the value of an object type's association outbound | none | none | none | present | none | not checked | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
+| Dashboard reports (a widget's own view columns) | not tested | exported (HTML; a CSV export has the widget table only) | as 4.4 | as 4.4 | as 4.4 | not checked | `DashboardReportTest` |
+| Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | none | none | computed for the objects a preview task processes, summed in the simulation result | as 4.8 | as 4.8 | not checked | `SimulationTest` |
+| Audit recording expression (`audit/eventRecording/expression`: change or drop each record) | none (no such element) | evaluated for the request and the execution record | as 4.4 | as 4.4 | as 4.4 | not checked | `AuditRecordingTest` |
+| Custom audit property (`audit/eventRecording/property`) | on the execution record only (the request is audited before the system configuration is loaded) | on the request and the execution record | as 4.4 | as 4.4 | as 4.4 | not checked | `AuditPropertyTest.auditRecordsCarryTheCostCenterOfTheUser` |
+| Approval comments of an approved assignment | `assignment/metadata/createApprovalComment` and the user's `metadata/modifyApprovalComment` | as 4.0 | as 4.0 | the same items in value metadata (`process`) | as 4.9 | not checked | `ApprovalCommentsTest.theApprovedAssignmentKeepsTheFormattedComment` |
+| Certification comments of a certified assignment (`reviewerCommentsFormatting`, when the campaign closes) | `assignment/metadata/certifierComment` | as 4.0 | as 4.0 | in value metadata (`process`) | as 4.9 | not checked | `CertificationCommentsTest.theCertifiedAssignmentKeepsTheFormattedComment` |
+| Provenance feed populators of a resource object type (metadata and acquisition items) | none (no value metadata) | evaluated: inbound values carry the metadata (their `provenance`, e.g. the `originRef` of an acquisition populator, when the template keeps it: `meta/item[provenance]`) | as 4.4 | as 4.4 | not evaluated: values of resource objects get no value metadata (MID-10514) | not checked | `ValueMetadataTest.valuesFromHrNoteTheirRecord`, `valuesOfContractorsComeFromTheAgency` |
+| Asynchronous policy scripts, object collection default views in reports, activity reports, an activity's item and bucket processing conditions (also tailored), the object sets of import, reconciliation and repository tasks, activity tracing and profiling, dashboard widgets on filtered collections, report views | not tested | run | as 4.4 | as 4.4 | as 4.4 | not checked | `AsyncPolicyScriptTest`, `CollectionViewReportTest`, `ActivityReportsTest`, `ControlFlowTest`, `ResourceTaskQueryTest`, `RepositoryTaskQueryTest`, `ActivityTracingTest`, `DashboardWidgetTest`, `ReportViewTest` |
+| Explicit work buckets (filters with expressions) | in the `workManagement` of the task handlers | in the activity's `distribution`; a buckets report | as 4.4 | as 4.4 | as 4.4 | not checked | `ActivityDistributionTest` |
+| Shadow cleanup of a gone account | none | the deletion of every shadow of its query is notified without reading the resource: situation deleted, the shadow kept, not dead | each shadow is refreshed from the resource: situation deleted, dead | as 4.8 | as 4.8 | not checked | `RepositoryTaskQueryTest.theShadowsOfAShadowCleanupQuery` |
+| Role membership management, shadow reclassification tasks | none | none | membership management | both | as 4.9 | not checked | `RepositoryTaskQueryTest`, `ResourceTaskQueryTest` |
+| A report parameter with several values (a task's `reportParam`) | not tested (no object collection reports) | the export fails ("Attempt to get single value from item ... with multiple values") | the expressions get a list: a script filter returning it matches any value, a `path` expression fails ("Unexpected variable value") | as 4.8 | as 4.8 | not checked | `ReportTest.severalParameterValues` |
+| A correlation confirmation returning no value | the import fails in its result only: "Failed to import: ... Couldn't confirm user user" | fails: "... Couldn't confirm user user" (cause: "Expression returned no value (0) in confirmation expression ...") | fails: "... Couldn't confirm candidate owner: Expression returned no value in confirmation expression for filter correlator '...'" | as 4.8 | as 4.8 | not checked | `MisconfigurationTest.confirmationMustReturnOneValue` |
+| Focus archetype of an object type, `items` and `expression` correlators, confidence thresholds and expressions, correlation cases, indexed items, multi-source items | none (4.6+; indexing and multi-source 4.7+): skipped | as 4.0 | candidates restricted to the archetype; tiers; a candidate below `definite` makes the owner uncertain and opens a correlation case; an item indexed by a custom normalization is searched by its normalized value; multi-source items are selected from the authoritative identity | as 4.8 | as 4.8 | not checked | `CorrelationTest`, `IndexingTest`, `MultiSourceTest` |
+| A value policy without `minUniqueChars` | unique characters not checked | as 4.0 | as 4.0 | their minimum is `minLength` (StringPolicy) | as 4.9 | not checked | `PasswordReadingTest.uniqueCharactersDefaultToTheMinimalLength` |
+| Two structural archetypes on one user | refused after the template and inducements were evaluated (`ConfigurationException`) | refused before any evaluation (`SchemaException`) | as 4.4 | as 4.4 | as 4.4 | not checked | `ArchetypeTest.anObjectHasOneStructuralArchetype` |
+| `archetypeRef` of a user of a sub-archetype | none (no `superArchetypeRef`) | the assigned archetype | as 4.4 | also its super-archetypes | as 4.9 | not checked | `ArchetypeTest.aSubArchetypeTakesThePolicyAndInducementsOfItsSuperArchetype` |
+| A user's lifecycle state without a state model: `archived`; `suspended` | effective status ARCHIVED; suspended: DISABLED, assignments inactive (no account) | as 4.0 | DISABLED; suspended: DISABLED, assignments active (the account is kept, disabled) | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.withoutAModelOnlyActiveAndDeprecatedUsersAreEnabled` |
+| A model's state with `activeAssignments` false (an existing account) | the account is kept | as 4.0 | the assignments are inactive: the account is deleted | as 4.8 | as 4.8 | not checked | `LifecycleStateModelTest.anArchivedStateWithoutAForcedStatusLeavesTheContractorEnabled` |
+| Security policy of an archetype (`securityPolicyRef`) | none: the global policy applies (`fixtures-4.4/security`) | as 4.0 | the archetype's password policy replaces the global one | as 4.8 | as 4.8 | not checked | `PasswordPolicyTest.privilegedUsersFollowTheSecurityPolicyOfTheirArchetype` |
+| A mapping with `timeFrom` whose condition is false (a delayed delete of an account disabled with its user) | the condition is not evaluated while the time is not reached, and the recompute trigger is set anyway (no effect when it fires) | the condition is evaluated first, a false one sets no trigger (MID-6040) | as 4.4 | as 4.4 | as 4.4 | not checked | `ActivationScenarioTest.accountEndsWithTheUsersValidityAndIsKept` |
+| Lifecycle state outbound of an account (`lifecycle/lifecycleState/outbound`) | evaluated: the account's lifecycle state (draft, then active; a draft account is provisioned) | as 4.0 | refused before the mapping: "Outbound mappings for 'lifecycleState' are no longer supported. Please migrate them to 'purpose' mappings." | as 4.8 | as 4.8 | not checked | `AccountLifecycleStateTest.anAccountIsDraftUntilTheUserHasAnEmployeeNumber` |
+| Import of an entry with an auxiliary object class no construction gives (mappings not `tolerant`) | the class is removed from the entry; the user keeps the inbound's value | as 4.0 | as 4.0 | the class is removed; the inbound is evaluated again without it, the user has no value | as 4.9 | not checked | `AuxiliaryObjectClassTest.withoutToleranceTheImportRemovesTheClass` |
+| Tag outbound of a multi-account object type; metadata mappings of a user template | none (no multi-accounts, no value metadata): skipped | one account per tag; only the mapping of a metadata item is applied (`meta/mapping` and `item/meta/mapping` never: an inverted check in `ItemValueMetadataProcessingSpec`) | as 4.4 | as 4.4 | as 4.4 | not checked | `AccountTagTest`, `MetadataMappingTest` |
+| Confidence expressions of filter and items correlators, of their items' searches, of attribute correlators and template items; an expression in a delineation filter | none (4.6+): skipped | as 4.0 | evaluated per candidate (a correlator's own) or per match metric (a search's, e.g. the Levenshtein distance); the delineation filter's expression is never evaluated, its branch matches nothing | as 4.8 | as 4.8 | not checked | `CorrelationConfidenceTest`, `ResourceMisconfigurationTest.anExpressionInADelineationFilterIsNeverEvaluated` |
+| A script without `<language>` (the initial system configuration) | Groovy | Groovy | Groovy | Groovy | Groovy | MEL (`expressions/defaultScriptLanguage`) | `FreshInstallationTest` |
+| Groovy in a resource, report, role... or an administrator's bulk action (the initial system configuration) | runs | runs | runs | runs | runs | refused: the object types' expression profiles (`configuration`, `reporting`, `safe`) have no Groovy | `FreshInstallationTest` |
+| The evaluator elements (`c:expressionEvaluator`'s substitution group) | | | | + association ones | + `filter` | + `complexAttributeSynchronization`, `javaMethodReference`, `null` | `StaticCheckTest.evaluatorsOfTheLine` |
+| prism's message for an item without a definition | `Item {ns}descripton has no definition` | as 4.0 | as 4.0 | `Item descripton has no definition` | as 4.9 | `Item 'descripton' has no definition` | `StaticCheckTest.schema` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
 line and older ones (e.g. resources without `delineation` for 4.4 and 4.0). A configuration you test on several lines
@@ -2432,6 +2465,12 @@ Other line notes:
   (`ExtItemCache.nameToExtItem`; production never rolls back). 4.9 has the API of 4.10 at every place the tester
   touches; its initial objects are in `repo/system-init/src/main/resources/initial-objects` of the sources.
 - **4.10**: resource mappings are copies of single attribute definitions.
+- **4.11**: the script executors are renamed (`ScriptFactory`, `ScriptExecutor`; the hook wraps MEL's too), the cache
+  invalidation has its own dispatcher, and an expression runs only with a trust descriptor: the tester's ad-hoc
+  scripts and the post-initial bulk actions are trusted with the full profile (as `PostInitialDataImport`), a test's
+  bulk action as the logged-in user (as the GUI's bulk action page). The ConnId connector factory is injected by its
+  class, so the tester's proxy of a connector factory is a subclass on every line. 4.11 adds the default home page
+  (`/home/default`, `#selfAll` among its actions) and `displayName` to users.
 
 ## Limitations
 
@@ -2523,6 +2562,7 @@ tester/
   midpoint-4.8/       LineSupport, SQL and baseline objects of 4.8
   midpoint-4.9/       LineSupport, SQL and baseline objects of 4.9
   midpoint-4.10/      LineSupport, SQL and baseline objects of 4.10
+  midpoint-4.11/      LineSupport, SQL and baseline objects of 4.11
   static/             static checks (own parent): core/ sources and tests, midpoint-<line>/ per line
 parent/               parents of config repositories: common pom.xml, midpoint-<line>/ per line
 examples/hr-ldap/     an example config repository on the 4.8 parent, tested in the build
@@ -2536,13 +2576,13 @@ Quartz hold and task runs, time shift, file redirection, live sync, mirror optio
 
 ```bash
 mvn test -pl tester/midpoint-4.8 -am                       # one line
-mvn test -pl tester/midpoint-4.8,tester/midpoint-4.9,tester/midpoint-4.10 -am  # 4.8+ lines
+mvn test -Pnon-lts -pl tester/midpoint-4.8,tester/midpoint-4.9,tester/midpoint-4.10,tester/midpoint-4.11 -am  # 4.8+ lines
 mvn test -pl tester/midpoint-4.0 -am                       # 4.0 (Maven on JDK 11)
 mvn test -pl tester/static/midpoint-4.8 -am                # static checks of one line
 ```
 
 Patch versions can be overridden: `-Dmidpoint40.version=...`, `-Dmidpoint44.version=...`, `-Dmidpoint48.version=4.8.11`,
-`-Dmidpoint49.version=...`, `-Dmidpoint410.version=...` (`RuntimeTest` checks that the line matches the release the module is built against).
+`-Dmidpoint49.version=...`, `-Dmidpoint410.version=...`, `-Dmidpoint411.version=...` (`RuntimeTest` checks that the line matches the release the module is built against).
 The 4.0 BOM pins old test libraries (JUnit 5.3), so `midpoint-4.0` imports a newer JUnit BOM first.
 
 ### Speed
@@ -2621,6 +2661,7 @@ line's parent checks it before the tests (`tester.jdk`, maven-enforcer), not wit
 | 4.0 | 11 | 11 (midPoint 4.0's Groovy 2.5.8 does not start on JDK 16 or later) |
 | 4.4 | 17 | 11, 17 |
 | 4.8, 4.9, 4.10 | 21 | 17, 21 |
+| 4.11 | 25 | 21, 25 |
 
 A config repository pins the JDK of its line where Maven runs: a `mise.toml` (`[tools] java = "temurin-11"`) or a
 `.sdkmanrc` in the repository, or `JAVA_HOME`; nothing per machine. The tester's own build needs JDK 17 or later to

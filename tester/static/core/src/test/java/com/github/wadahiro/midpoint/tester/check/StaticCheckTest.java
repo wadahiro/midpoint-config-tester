@@ -98,7 +98,8 @@ class StaticCheckTest {
 
     @Test
     void schema() {
-        // prism 4.9+ names an item and a filter by local name
+        // prism 4.9+ names an item and a filter by local name, 4.11+ the item in quotes
+        String quote = MidPointLine.isBefore(LINE, "4.11") ? "" : "'";
         String q = MidPointLine.isBefore(LINE, "4.9") ? "{http://midpoint.evolveum.com/xml/ns/public/query-3}" : "";
         String c = MidPointLine.isBefore(LINE, "4.9") ? "{http://midpoint.evolveum.com/xml/ns/public/common/common-3}"
                 : "";
@@ -111,7 +112,7 @@ class StaticCheckTest {
                         // evaluator where the line has none
                         "ERROR unreadable role:Searcher");
         assertThat(report.findings(Check.SCHEMA, Severity.WARNING).get(0).message())
-                .isEqualTo("Item " + c + "descripton has no definition");
+                .isEqualTo("Item " + quote + c + "descripton" + quote + " has no definition");
         assertThat(report.findings(Check.SCHEMA, Severity.ERROR).get(2).message())
                 .isEqualTo("not parsed even in compatibility mode: Unsupported query filter " + q + "equal");
     }
@@ -187,6 +188,11 @@ class StaticCheckTest {
         }
         if (!MidPointLine.isBefore(LINE, "4.10")) {
             evaluators = Stream.concat(evaluators.stream(), Stream.of("filter")).collect(Collectors.toList());
+        }
+        // 4.11: complex attributes, the Java method reference and the null evaluator (common-3.xsd)
+        if (!MidPointLine.isBefore(LINE, "4.11")) {
+            evaluators = Stream.concat(evaluators.stream(),
+                    Stream.of("complexAttributeSynchronization", "javaMethodReference", "null")).collect(Collectors.toList());
         }
         assertThat(StaticLine.evaluators(StaticLine.prismContext(null)))
                 .containsExactlyInAnyOrderElementsOf(evaluators);

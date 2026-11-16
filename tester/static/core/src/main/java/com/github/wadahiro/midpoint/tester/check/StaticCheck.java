@@ -229,9 +229,9 @@ public final class StaticCheck {
                 findings.add(new Finding(Check.SCHEMA, Severity.ERROR, "strict", fileIdentity, name, fileLine,
                         "import without compatMode fails: " + message(e)));
             }
-            for (String warning : compat.getWarnings()) {
+            for (Object warning : compat.getWarnings()) {
                 findings.add(new Finding(Check.SCHEMA, Severity.WARNING, "warning", fileIdentity, name, fileLine,
-                        firstLine(warning)));
+                        firstLine(warningText(warning))));
             }
         }
         if (!checks.contains(Check.UPGRADE) || skipped.containsKey(Check.UPGRADE)) {
@@ -471,6 +471,18 @@ public final class StaticCheck {
 
     private String name(Path file) {
         return dir.relativize(file).toString().replace(File.separatorChar, '/');
+    }
+
+    /** A parsing warning's text: a string up to 4.10, a {@code ValidationLog} record with its message from 4.11. */
+    private static String warningText(Object warning) {
+        if (warning instanceof String) {
+            return (String) warning;
+        }
+        try {
+            return String.valueOf(warning.getClass().getMethod("message").invoke(warning));
+        } catch (ReflectiveOperationException e) {
+            return String.valueOf(warning);
+        }
     }
 
     private static String message(Throwable e) {

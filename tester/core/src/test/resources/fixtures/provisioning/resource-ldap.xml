@@ -140,7 +140,7 @@
                 <ref>ri:dn</ref>
                 <outbound>
                     <source><path>name</path></source>
-                    <expression><script><code>'uid=' + name + ',ou=people,dc=example,dc=com'</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>'uid=' + name + ',ou=people,dc=example,dc=com'</code></script></expression>
                 </outbound>
             </attribute>
             <attribute>
@@ -164,7 +164,7 @@
                 <outbound>
                     <strength>strong</strength>
                     <source><path>name</path></source>
-                    <expression><script><code>name + '@example.com'</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>name + '@example.com'</code></script></expression>
                 </outbound>
             </attribute>
             <association>

@@ -1,4 +1,4 @@
-// Written by .claude/skills/add-midpoint-line/scripts/initial-names.py from the initial objects of midPoint 4.0, 4.4, 4.8, 4.9, 4.10.
+// Written by .claude/skills/add-midpoint-line/scripts/initial-names.py from the initial objects of midPoint 4.0, 4.4, 4.8, 4.9, 4.10, 4.11.
 // Do not edit: run the script again (InitialNamesTest checks it on every line).
 package com.github.wadahiro.midpoint.configtester.names.midpoint;
 
@@ -10,122 +10,152 @@ import com.github.wadahiro.midpoint.configtester.names.*;
  */
 public final class InitialMarks {
 
-    /** "Assignment modified", 816-assignment-modified.xml (4.9, 4.10). */
-    public static final MidPointObjectRef ASSIGNMENT_MODIFIED = new MidPointObjectRef("MarkType", "mark", "Assignment modified", "00000000-0000-0000-0000-000000000816", Lines.only("4.9", "4.10"));
+    /** "Assignment modified", 816-assignment-modified.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef ASSIGNMENT_MODIFIED = new MidPointObjectRef("MarkType", "mark", "Assignment modified", "00000000-0000-0000-0000-000000000816", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Assignment state", 820-assignment-state.xml (4.9, 4.10). */
-    public static final MidPointObjectRef ASSIGNMENT_STATE = new MidPointObjectRef("MarkType", "mark", "Assignment state", "00000000-0000-0000-0000-000000000820", Lines.only("4.9", "4.10"));
+    /** "Assignment state", 820-assignment-state.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef ASSIGNMENT_STATE = new MidPointObjectRef("MarkType", "mark", "Assignment state", "00000000-0000-0000-0000-000000000820", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Assignment time validity", 822-assignment-time-validity.xml (4.9, 4.10). */
-    public static final MidPointObjectRef ASSIGNMENT_TIME_VALIDITY = new MidPointObjectRef("MarkType", "mark", "Assignment time validity", "00000000-0000-0000-0000-000000000822", Lines.only("4.9", "4.10"));
+    /** "Assignment time validity", 822-assignment-time-validity.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef ASSIGNMENT_TIME_VALIDITY = new MidPointObjectRef("MarkType", "mark", "Assignment time validity", "00000000-0000-0000-0000-000000000822", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Correlate later", 802-mark-correlate-later.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef CORRELATE_LATER = new MidPointObjectRef("MarkType", "mark", "Correlate later", "00000000-0000-0000-0000-000000000802", Lines.only("4.8", "4.9", "4.10"));
+    /** "Correlate later", 802-mark-correlate-later.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef CORRELATE_LATER = new MidPointObjectRef("MarkType", "mark", "Correlate later", "00000000-0000-0000-0000-000000000802", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Decommission later", 801-mark-decommission-later.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef DECOMMISSION_LATER = new MidPointObjectRef("MarkType", "mark", "Decommission later", "00000000-0000-0000-0000-000000000801", Lines.only("4.8", "4.9", "4.10"));
+    /** "Decommission later", 801-mark-decommission-later.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef DECOMMISSION_LATER = new MidPointObjectRef("MarkType", "mark", "Decommission later", "00000000-0000-0000-0000-000000000801", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Do not touch", 803-mark-do-not-touch.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef DO_NOT_TOUCH = new MidPointObjectRef("MarkType", "mark", "Do not touch", "00000000-0000-0000-0000-000000000803", Lines.only("4.8", "4.9", "4.10"));
+    /** "Do not touch", 803-mark-do-not-touch.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef DO_NOT_TOUCH = new MidPointObjectRef("MarkType", "mark", "Do not touch", "00000000-0000-0000-0000-000000000803", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Exclusion violation", 811-exclusion-violation.xml (4.9, 4.10). */
-    public static final MidPointObjectRef EXCLUSION_VIOLATION = new MidPointObjectRef("MarkType", "mark", "Exclusion violation", "00000000-0000-0000-0000-000000000811", Lines.only("4.9", "4.10"));
+    /** "Exclusion violation", 811-exclusion-violation.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef EXCLUSION_VIOLATION = new MidPointObjectRef("MarkType", "mark", "Exclusion violation", "00000000-0000-0000-0000-000000000811", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Focus activated", 710-mark-focus-activated.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_ACTIVATED = new MidPointObjectRef("MarkType", "mark", "Focus activated", "00000000-0000-0000-0000-000000000710", Lines.only("4.8", "4.9", "4.10"));
+    /** "Failed", 747-mark-item-value-failed.xml (4.11). */
+    public static final MidPointObjectRef FAILED = new MidPointObjectRef("MarkType", "mark", "Failed", "3a7de4b1-8c5f-4e9a-b2d6-0f1e8c3d7a5b", Lines.only("4.11"));
 
-    /** "Focus archetype changed", 714-mark-focus-archetype-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_ARCHETYPE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus archetype changed", "00000000-0000-0000-0000-000000000714", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus activated", 710-mark-focus-activated.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_ACTIVATED = new MidPointObjectRef("MarkType", "mark", "Focus activated", "00000000-0000-0000-0000-000000000710", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Focus assignments changed", 713-mark-focus-assignment-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_ASSIGNMENTS_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus assignments changed", "00000000-0000-0000-0000-000000000713", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus archetype changed", 714-mark-focus-archetype-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_ARCHETYPE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus archetype changed", "00000000-0000-0000-0000-000000000714", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Focus deactivated", 711-mark-focus-deactivated.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_DEACTIVATED = new MidPointObjectRef("MarkType", "mark", "Focus deactivated", "00000000-0000-0000-0000-000000000711", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus assignments changed", 713-mark-focus-assignment-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_ASSIGNMENTS_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus assignments changed", "00000000-0000-0000-0000-000000000713", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Focus parent organization reference changed", 715-mark-focus-parent-org-reference-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_PARENT_ORGANIZATION_REFERENCE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus parent organization reference changed", "00000000-0000-0000-0000-000000000715", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus deactivated", 711-mark-focus-deactivated.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_DEACTIVATED = new MidPointObjectRef("MarkType", "mark", "Focus deactivated", "00000000-0000-0000-0000-000000000711", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Focus renamed", 712-mark-focus-renamed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_RENAMED = new MidPointObjectRef("MarkType", "mark", "Focus renamed", "00000000-0000-0000-0000-000000000712", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus parent organization reference changed", 715-mark-focus-parent-org-reference-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_PARENT_ORGANIZATION_REFERENCE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus parent organization reference changed", "00000000-0000-0000-0000-000000000715", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Focus role membership changed", 716-mark-focus-role-membership-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef FOCUS_ROLE_MEMBERSHIP_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus role membership changed", "00000000-0000-0000-0000-000000000716", Lines.only("4.8", "4.9", "4.10"));
+    /** "Focus renamed", 712-mark-focus-renamed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_RENAMED = new MidPointObjectRef("MarkType", "mark", "Focus renamed", "00000000-0000-0000-0000-000000000712", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Has assignment", 817-has-assignment.xml (4.9, 4.10). */
-    public static final MidPointObjectRef HAS_ASSIGNMENT = new MidPointObjectRef("MarkType", "mark", "Has assignment", "00000000-0000-0000-0000-000000000817", Lines.only("4.9", "4.10"));
+    /** "Focus role membership changed", 716-mark-focus-role-membership-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef FOCUS_ROLE_MEMBERSHIP_CHANGED = new MidPointObjectRef("MarkType", "mark", "Focus role membership changed", "00000000-0000-0000-0000-000000000716", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Has no assignment", 818-has-no-assignment.xml (4.9, 4.10). */
-    public static final MidPointObjectRef HAS_NO_ASSIGNMENT = new MidPointObjectRef("MarkType", "mark", "Has no assignment", "00000000-0000-0000-0000-000000000818", Lines.only("4.9", "4.10"));
+    /** "Has assignment", 817-has-assignment.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef HAS_ASSIGNMENT = new MidPointObjectRef("MarkType", "mark", "Has assignment", "00000000-0000-0000-0000-000000000817", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Invalid data", 804-mark-invalid-data.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef INVALID_DATA = new MidPointObjectRef("MarkType", "mark", "Invalid data", "00000000-0000-0000-0000-000000000804", Lines.only("4.8", "4.9", "4.10"));
+    /** "Has no assignment", 818-has-no-assignment.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef HAS_NO_ASSIGNMENT = new MidPointObjectRef("MarkType", "mark", "Has no assignment", "00000000-0000-0000-0000-000000000818", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Managed", 806-mark-managed.xml (4.9, 4.10). */
-    public static final MidPointObjectRef MANAGED = new MidPointObjectRef("MarkType", "mark", "Managed", "00000000-0000-0000-0000-000000000806", Lines.only("4.9", "4.10"));
+    /** "Invalid data", 804-mark-invalid-data.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef INVALID_DATA = new MidPointObjectRef("MarkType", "mark", "Invalid data", "00000000-0000-0000-0000-000000000804", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "No classification", 250-mark-no-classification.xml (4.10). */
-    public static final MidPointObjectRef NO_CLASSIFICATION = new MidPointObjectRef("MarkType", "mark", "No classification", "2bb936a6-91b4-4439-82ac-1b3e89c2a26a", Lines.only("4.10"));
+    /** "Item value added", 742-mark-item-value-added.xml (4.11). */
+    public static final MidPointObjectRef ITEM_VALUE_ADDED = new MidPointObjectRef("MarkType", "mark", "Item value added", "5f627d94-c4b1-46ff-b848-16df52b7597e", Lines.only("4.11"));
 
-    /** "Object modified", 815-object-modified.xml (4.9, 4.10). */
-    public static final MidPointObjectRef OBJECT_MODIFIED = new MidPointObjectRef("MarkType", "mark", "Object modified", "00000000-0000-0000-0000-000000000815", Lines.only("4.9", "4.10"));
+    /** "Item value change not applied", 746-mark-item-value-change-not-applied.xml (4.11). */
+    public static final MidPointObjectRef ITEM_VALUE_CHANGE_NOT_APPLIED = new MidPointObjectRef("MarkType", "mark", "Item value change not applied", "65eedb14-5aba-4692-bd93-62f7f56671b4", Lines.only("4.11"));
 
-    /** "Object state", 819-object-state.xml (4.9, 4.10). */
-    public static final MidPointObjectRef OBJECT_STATE = new MidPointObjectRef("MarkType", "mark", "Object state", "00000000-0000-0000-0000-000000000819", Lines.only("4.9", "4.10"));
+    /** "Item value modified", 744-mark-item-value-modified.xml (4.11). */
+    public static final MidPointObjectRef ITEM_VALUE_MODIFIED = new MidPointObjectRef("MarkType", "mark", "Item value modified", "de5563b7-96e9-4c34-8732-588de9ac1776", Lines.only("4.11"));
 
-    /** "Object time validity", 821-object-time-validity.xml (4.9, 4.10). */
-    public static final MidPointObjectRef OBJECT_TIME_VALIDITY = new MidPointObjectRef("MarkType", "mark", "Object time validity", "00000000-0000-0000-0000-000000000821", Lines.only("4.9", "4.10"));
+    /** "Item value not changed", 745-mark-item-value-not-changed.xml (4.11). */
+    public static final MidPointObjectRef ITEM_VALUE_NOT_CHANGED = new MidPointObjectRef("MarkType", "mark", "Item value not changed", "8f831987-f7d4-48fe-8dbf-662cec3bf81f", Lines.only("4.11"));
 
-    /** "Overassigned", 814-overassigned.xml (4.9, 4.10). */
-    public static final MidPointObjectRef OVERASSIGNED = new MidPointObjectRef("MarkType", "mark", "Overassigned", "00000000-0000-0000-0000-000000000814", Lines.only("4.9", "4.10"));
+    /** "Item value removed", 743-mark-item-value-removed.xml (4.11). */
+    public static final MidPointObjectRef ITEM_VALUE_REMOVED = new MidPointObjectRef("MarkType", "mark", "Item value removed", "c216b0c4-3381-432c-a67c-bcf6c3208266", Lines.only("4.11"));
 
-    /** "Privileged access", 250-mark-privileged-access.xml (4.10). */
-    public static final MidPointObjectRef PRIVILEGED_ACCESS = new MidPointObjectRef("MarkType", "mark", "Privileged access", "c58394cd-c883-4e41-927c-f90a7c7a0c97", Lines.only("4.10"));
+    /** "Managed", 806-mark-managed.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef MANAGED = new MidPointObjectRef("MarkType", "mark", "Managed", "00000000-0000-0000-0000-000000000806", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Projection activated", 730-mark-projection-activated.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_ACTIVATED = new MidPointObjectRef("MarkType", "mark", "Projection activated", "00000000-0000-0000-0000-000000000730", Lines.only("4.8", "4.9", "4.10"));
+    /** "No classification", 017-mark-no-classification.xml, 250-mark-no-classification.xml (4.10, 4.11). */
+    public static final MidPointObjectRef NO_CLASSIFICATION = new MidPointObjectRef("MarkType", "mark", "No classification", "2bb936a6-91b4-4439-82ac-1b3e89c2a26a", Lines.only("4.10", "4.11"));
 
-    /** "Projection deactivated", 731-mark-projection-deactivated.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_DEACTIVATED = new MidPointObjectRef("MarkType", "mark", "Projection deactivated", "00000000-0000-0000-0000-000000000731", Lines.only("4.8", "4.9", "4.10"));
+    /** "Object modified", 815-object-modified.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef OBJECT_MODIFIED = new MidPointObjectRef("MarkType", "mark", "Object modified", "00000000-0000-0000-0000-000000000815", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Projection entitlement changed", 734-mark-projection-entitlement-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_ENTITLEMENT_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection entitlement changed", "00000000-0000-0000-0000-000000000734", Lines.only("4.8", "4.9", "4.10"));
+    /** "Object state", 819-object-state.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef OBJECT_STATE = new MidPointObjectRef("MarkType", "mark", "Object state", "00000000-0000-0000-0000-000000000819", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Projection identifier changed", 733-mark-projection-identifier-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_IDENTIFIER_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection identifier changed", "00000000-0000-0000-0000-000000000733", Lines.only("4.8", "4.9", "4.10"));
+    /** "Object time validity", 821-object-time-validity.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef OBJECT_TIME_VALIDITY = new MidPointObjectRef("MarkType", "mark", "Object time validity", "00000000-0000-0000-0000-000000000821", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Projection password changed", 735-mark-projection-password-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_PASSWORD_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection password changed", "00000000-0000-0000-0000-000000000735", Lines.only("4.8", "4.9", "4.10"));
+    /** "Operational changes only", 748-mark-projection-operational-changes-only.xml (4.11). */
+    public static final MidPointObjectRef OPERATIONAL_CHANGES_ONLY = new MidPointObjectRef("MarkType", "mark", "Operational changes only", "00000000-0000-0000-0000-000000000748", Lines.only("4.11"));
 
-    /** "Projection renamed", 732-mark-projection-renamed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROJECTION_RENAMED = new MidPointObjectRef("MarkType", "mark", "Projection renamed", "00000000-0000-0000-0000-000000000732", Lines.only("4.8", "4.9", "4.10"));
+    /** "Overassigned", 814-overassigned.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef OVERASSIGNED = new MidPointObjectRef("MarkType", "mark", "Overassigned", "00000000-0000-0000-0000-000000000814", Lines.only("4.9", "4.10", "4.11"));
 
-    /** "Protected", 800-mark-protected.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef PROTECTED = new MidPointObjectRef("MarkType", "mark", "Protected", "00000000-0000-0000-0000-000000000800", Lines.only("4.8", "4.9", "4.10"));
+    /** "Privileged access", 017-mark-privileged-access.xml, 250-mark-privileged-access.xml (4.10, 4.11). */
+    public static final MidPointObjectRef PRIVILEGED_ACCESS = new MidPointObjectRef("MarkType", "mark", "Privileged access", "c58394cd-c883-4e41-927c-f90a7c7a0c97", Lines.only("4.10", "4.11"));
 
-    /** "Requirement violation", 812-requirement-violation.xml (4.9, 4.10). */
-    public static final MidPointObjectRef REQUIREMENT_VIOLATION = new MidPointObjectRef("MarkType", "mark", "Requirement violation", "00000000-0000-0000-0000-000000000812", Lines.only("4.9", "4.10"));
+    /** "Projection activated", 730-mark-projection-activated.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_ACTIVATED = new MidPointObjectRef("MarkType", "mark", "Projection activated", "00000000-0000-0000-0000-000000000730", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Resource object affected", 738-mark-projection-resource-object-affected.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef RESOURCE_OBJECT_AFFECTED = new MidPointObjectRef("MarkType", "mark", "Resource object affected", "00000000-0000-0000-0000-000000000738", Lines.only("4.8", "4.9", "4.10"));
+    /** "Projection deactivated", 731-mark-projection-deactivated.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_DEACTIVATED = new MidPointObjectRef("MarkType", "mark", "Projection deactivated", "00000000-0000-0000-0000-000000000731", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Shadow classification changed", 736-mark-shadow-classification-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef SHADOW_CLASSIFICATION_CHANGED = new MidPointObjectRef("MarkType", "mark", "Shadow classification changed", "00000000-0000-0000-0000-000000000736", Lines.only("4.8", "4.9", "4.10"));
+    /** "Projection entitlement changed", 734-mark-projection-entitlement-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_ENTITLEMENT_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection entitlement changed", "00000000-0000-0000-0000-000000000734", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Shadow correlation state changed", 737-mark-shadow-correlation-state-changed.xml (4.8, 4.9, 4.10). */
-    public static final MidPointObjectRef SHADOW_CORRELATION_STATE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Shadow correlation state changed", "00000000-0000-0000-0000-000000000737", Lines.only("4.8", "4.9", "4.10"));
+    /** "Projection identifier changed", 733-mark-projection-identifier-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_IDENTIFIER_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection identifier changed", "00000000-0000-0000-0000-000000000733", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Suspicious", 830-suspicious.xml (4.9, 4.10). */
-    public static final MidPointObjectRef SUSPICIOUS = new MidPointObjectRef("MarkType", "mark", "Suspicious", "00000000-0000-0000-0000-000000000830", Lines.only("4.9", "4.10"));
+    /** "Projection password changed", 735-mark-projection-password-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_PASSWORD_CHANGED = new MidPointObjectRef("MarkType", "mark", "Projection password changed", "00000000-0000-0000-0000-000000000735", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Underassigned", 813-underassigned.xml (4.9, 4.10). */
-    public static final MidPointObjectRef UNDERASSIGNED = new MidPointObjectRef("MarkType", "mark", "Underassigned", "00000000-0000-0000-0000-000000000813", Lines.only("4.9", "4.10"));
+    /** "Projection renamed", 732-mark-projection-renamed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROJECTION_RENAMED = new MidPointObjectRef("MarkType", "mark", "Projection renamed", "00000000-0000-0000-0000-000000000732", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Unmanaged", 805-mark-unmanaged.xml (4.9, 4.10). */
-    public static final MidPointObjectRef UNMANAGED = new MidPointObjectRef("MarkType", "mark", "Unmanaged", "00000000-0000-0000-0000-000000000805", Lines.only("4.9", "4.10"));
+    /** "Protected", 800-mark-protected.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef PROTECTED = new MidPointObjectRef("MarkType", "mark", "Protected", "00000000-0000-0000-0000-000000000800", Lines.only("4.8", "4.9", "4.10", "4.11"));
 
-    /** "Unowned", 250-mark-unowned.xml (4.10). */
-    public static final MidPointObjectRef UNOWNED = new MidPointObjectRef("MarkType", "mark", "Unowned", "5508aca4-2aef-47a6-ad50-892389823c91", Lines.only("4.10"));
+    /** "Requirement violation", 812-requirement-violation.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef REQUIREMENT_VIOLATION = new MidPointObjectRef("MarkType", "mark", "Requirement violation", "00000000-0000-0000-0000-000000000812", Lines.only("4.9", "4.10", "4.11"));
+
+    /** "Resource object affected", 738-mark-projection-resource-object-affected.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef RESOURCE_OBJECT_AFFECTED = new MidPointObjectRef("MarkType", "mark", "Resource object affected", "00000000-0000-0000-0000-000000000738", Lines.only("4.8", "4.9", "4.10", "4.11"));
+
+    /** "Shadow classification changed", 736-mark-shadow-classification-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef SHADOW_CLASSIFICATION_CHANGED = new MidPointObjectRef("MarkType", "mark", "Shadow classification changed", "00000000-0000-0000-0000-000000000736", Lines.only("4.8", "4.9", "4.10", "4.11"));
+
+    /** "Shadow correlation state changed", 737-mark-shadow-correlation-state-changed.xml (4.8, 4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef SHADOW_CORRELATION_STATE_CHANGED = new MidPointObjectRef("MarkType", "mark", "Shadow correlation state changed", "00000000-0000-0000-0000-000000000737", Lines.only("4.8", "4.9", "4.10", "4.11"));
+
+    /** "Shadow owner found", 739-mark-shadow-correlation-owner-found.xml (4.11). */
+    public static final MidPointObjectRef SHADOW_OWNER_FOUND = new MidPointObjectRef("MarkType", "mark", "Shadow owner found", "ca29f4d4-305b-4e72-9f1c-30a34619bd41", Lines.only("4.11"));
+
+    /** "Shadow owner not certain", 741-mark-shadow-correlation-owner-not-certain.xml (4.11). */
+    public static final MidPointObjectRef SHADOW_OWNER_NOT_CERTAIN = new MidPointObjectRef("MarkType", "mark", "Shadow owner not certain", "ed7018b7-5cc4-4675-9e1e-a6a158c2f31a", Lines.only("4.11"));
+
+    /** "Shadow owner not found", 740-mark-shadow-correlation-owner-not-found.xml (4.11). */
+    public static final MidPointObjectRef SHADOW_OWNER_NOT_FOUND = new MidPointObjectRef("MarkType", "mark", "Shadow owner not found", "e5246605-73ee-4682-9efb-73a915427d18", Lines.only("4.11"));
+
+    /** "Suspicious", 830-suspicious.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef SUSPICIOUS = new MidPointObjectRef("MarkType", "mark", "Suspicious", "00000000-0000-0000-0000-000000000830", Lines.only("4.9", "4.10", "4.11"));
+
+    /** "Underassigned", 813-underassigned.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef UNDERASSIGNED = new MidPointObjectRef("MarkType", "mark", "Underassigned", "00000000-0000-0000-0000-000000000813", Lines.only("4.9", "4.10", "4.11"));
+
+    /** "Unmanaged", 805-mark-unmanaged.xml (4.9, 4.10, 4.11). */
+    public static final MidPointObjectRef UNMANAGED = new MidPointObjectRef("MarkType", "mark", "Unmanaged", "00000000-0000-0000-0000-000000000805", Lines.only("4.9", "4.10", "4.11"));
+
+    /** "Unowned", 017-mark-unowned.xml, 250-mark-unowned.xml (4.10, 4.11). */
+    public static final MidPointObjectRef UNOWNED = new MidPointObjectRef("MarkType", "mark", "Unowned", "5508aca4-2aef-47a6-ad50-892389823c91", Lines.only("4.10", "4.11"));
 
     private InitialMarks() {
     }

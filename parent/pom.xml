@@ -61,6 +61,7 @@
             <modules>
                 <module>midpoint-4.9</module>
                 <module>midpoint-4.10</module>
+                <module>midpoint-4.11</module>
             </modules>
         </profile>
     </profiles>

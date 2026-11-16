@@ -39,6 +39,9 @@ jobs:
           - line: '4.10'
             java: 21
             modules: tester/midpoint-4.10,tester/static/midpoint-4.10
+          - line: '4.11'
+            java: 25
+            modules: tester/midpoint-4.11,tester/static/midpoint-4.11
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5

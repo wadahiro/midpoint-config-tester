@@ -18,6 +18,7 @@
                             <s:parameter>
                                 <s:name>script</s:name>
                                 <value>
+                                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                                     <code><![CDATA[
 def out = new File('/opt/midpoint/var/export/user-names.txt')
 out.parentFile.mkdirs()

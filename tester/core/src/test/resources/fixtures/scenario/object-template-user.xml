@@ -8,21 +8,21 @@
         <strength>strong</strength>
         <source><path>givenName</path></source>
         <source><path>familyName</path></source>
-        <expression><script><code>"$givenName $familyName"</code></script></expression>
+        <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>"$givenName $familyName"</code></script></expression>
         <target><path>fullName</path></target>
     </mapping>
     <mapping>
         <name>scenario-department-role</name>
         <strength>strong</strength>
         <source><path>costCenter</path></source>
-        <condition><script><code>costCenter != null</code></script></condition>
+        <condition><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>costCenter != null</code></script></condition>
         <expression>
             <assignmentTargetSearch>
                 <targetType>RoleType</targetType>
                 <filter>
                     <q:equal>
                         <q:path>name</q:path>
-                        <expression><script><code>'Dept ' + costCenter</code></script></expression>
+                        <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>'Dept ' + costCenter</code></script></expression>
                     </q:equal>
                 </filter>
             </assignmentTargetSearch>

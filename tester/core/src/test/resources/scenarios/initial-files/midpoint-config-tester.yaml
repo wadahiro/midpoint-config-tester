@@ -2,5 +2,8 @@
 # empty directory to write in (kept in git by a .gitkeep), as a deployment's volume has them.
 config:
   dirs: [../bare/objects]
+  overlays:
+    # 4.11: the system configuration of a deployment that scripts in Groovy, as upgraded (../groovy-4.11)
+    "4.11": { dirs: [../groovy-4.11] }
 files:
   initial: { /opt/data: files/opt-data }

@@ -21,6 +21,7 @@
         </collection>
         <condition>
             <script>
+                <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                 <code>!object.name.orig.startsWith('test')</code>
             </script>
         </condition>
@@ -37,6 +38,7 @@
             </resultHandling>
             <expression>
                 <script>
+                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                     <code>
                         import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType
                         object.parentOrgRef.collect { midpoint.getObject(OrgType.class, it.oid) }
@@ -53,6 +55,7 @@
             </resultHandling>
             <expression>
                 <script>
+                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                     <code>object.costCenter == 'LEFT' ? null : 'current'</code>
                 </script>
             </expression>
@@ -63,6 +66,7 @@
             <order>3</order>
             <expression>
                 <script>
+                    <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                     <code>[object.emailAddress, object.telephoneNumber].findAll { it != null }</code>
                 </script>
             </expression>
@@ -79,6 +83,7 @@
                 <export>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>object.givenName.orig + ' ' + object.familyName.orig</code>
                         </script>
                     </expression>
@@ -91,6 +96,7 @@
                 <export>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>input?.toLowerCase()</code>
                         </script>
                     </expression>
@@ -102,6 +108,7 @@
                 <export>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>org?.name?.orig</code>
                         </script>
                     </expression>
@@ -113,6 +120,7 @@
                 <export>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>contacts?.join(', ')</code>
                         </script>
                     </expression>
@@ -124,6 +132,7 @@
                 <export>
                     <expression>
                         <script>
+                            <language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>
                             <code>report.resolveRoles(object.assignment).collect { it.name.orig }</code>
                         </script>
                     </expression>

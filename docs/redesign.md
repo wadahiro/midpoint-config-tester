@@ -1069,7 +1069,7 @@ that build the path from a string and do the I/O themselves; reports write their
 inputs and assert the outputs without the real directories, isolated per test.
 
 **Chosen: a Java agent instrumenting the constructors of `java.io.File` and `sun.nio.fs.UnixPath`** (`FileAgent`,
-Byte Buddy 1.15.4, inlined `Advice` on exit). A `File`'s `path` field, or a `UnixPath`'s `path` bytes, under a mapped
+Byte Buddy `bytebuddy.version`, inlined `Advice` on exit). A `File`'s `path` field, or a `UnixPath`'s `path` bytes, under a mapped
 directory is replaced by the physical path. Every `java.io` stream, reader, writer and `RandomAccessFile` constructs a
 `File` from a name (JDK 11 and 21: `FileOutputStream(String)` is `this(new File(name))`, `FileWriter(String)` is
 `new FileOutputStream(name)`...), and every `java.nio.file` operation works on a `UnixPath`, which `Path.of`,
@@ -1125,6 +1125,44 @@ baseline.
 it would also break the JVM's own file access (class path, `midpoint.home`, the temporary directory) and scripts that
 read real files on purpose. The tester only changes mapped directories; the README says to map every directory the
 configuration uses.
+
+## midPoint 4.11 (step 6h)
+
+`tester/midpoint-4.11` (4.11.0) is `base-4.8` plus a copy of 4.10's `LineSupport` with the adapters 4.11 needs; its
+SQL and baseline objects are the release's (the numbers of the baseline files unchanged). The API probe and a compile
+of the copied module showed four places in `base-4.8`, now behind `LineSupport` on every 4.8+ line:
+
+- The script executors: `ScriptExpressionFactory.evaluatorMap` of `ScriptEvaluator`s is `ScriptFactory.executorMap` of
+  `ScriptExecutor`s (`execute(ScriptExecutionContext)`, the script bean a public getter). `ScriptHook48` wraps them by
+  name (`LineSupport.SCRIPT_API`), MEL's executor too.
+- `ExpressionFactory.makeExpression` and `ExpressionUtil.evaluateFilterExpressions` take no expression profile: it
+  comes from the expression's trust descriptor.
+- `CacheDispatcher` is `ClusterwideCacheInvalidationDispatcher`.
+- `MappingImpl.evaluate` throws `SubscriptionComplianceException` too, a class the lines before do not have:
+  `RecordingMappingImpl` rethrows as thrown.
+
+Run time showed two more. The ConnId connector factory is injected by its class
+(`ConnectorInstallationServiceImpl.factoryImpl`): `EffectsHook` wraps a connector factory in a subclass proxy (Spring's
+`ProxyFactory`), on every line. And an expression runs only with a trust descriptor ("TrustDescriptor is required but
+not set"): the tester sets the one midPoint sets at the same place, `trusted()` for its ad-hoc scripts and the
+post-initial bulk actions (`PostInitialDataImport`), `forCurrentPrincipal()` for a test's bulk action (`PageAction`).
+
+4.11 restricts scripting, and the tester takes it as the server has it (decided with the user): `config.xml`'s
+`expressions/safeScriptingLanguagesOnly` is the required `tester.safeScriptingLanguagesOnly` (the tester's own suite
+false); the initial system configuration, imported as a fresh installation has it, makes MEL the default language and
+gives the object types profiles without Groovy (`FreshInstallationTest`). The fixtures of the shared tests named no
+language: 25 tests passed on 4.11 with Groovy code parsed as MEL. Their scripts name Groovy now, and the deployments
+without a system configuration of their own take, on 4.11, a bulk action that removes the default language and the
+profiles (`scenarios/groovy-4.11`), as a deployment upgraded to 4.11 has them. `mp.script` is Groovy unless the test
+gives a language.
+
+Gates: the default home page (`/home/default`) in the access matrix, `personalNumber` and `displayName` in
+`UserItems`, the initial names (new archetypes, marks, services), the static checks' evaluators
+(`complexAttributeSynchronization`, `javaMethodReference`, `null`) and prism's quoted item names. Open: the static
+checks take a script without a language for Groovy whatever the deployment's default (`ConfigScanner.isGroovy`).
+
+JDK 25, which midPoint 4.11 recommends, needs a Byte Buddy that reads its class files: `bytebuddy.version` is 1.17.8,
+midPoint 4.11's own (1.15.4 stopped at Java 24), on every line. The 4.11 line passes on 21 and 25; CI runs it on 25.
 
 ## Build order (4.8)
 

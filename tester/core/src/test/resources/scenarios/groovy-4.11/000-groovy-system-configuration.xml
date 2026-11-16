@@ -1,0 +1,42 @@
+<!--
+    The tester's own tests are a deployment that scripts in Groovy. A fresh 4.11 installation's system configuration
+    runs only MEL: MEL is the default language, and every object type it names gets an expression profile without
+    Groovy (configuration, reporting, safe; a bulk action of an administrator: configuration). This bulk action (run
+    by the post-initial import, trusted) removes those, so that the system configuration is as a deployment upgraded
+    to 4.11 keeps it: Groovy by default, no profile. The deployments without a system configuration of their own take
+    it on 4.11 (their manifest's overlay "4.11").
+
+    For the tester's own tests only: a config repository ships the system configuration its servers have, as its own
+    000-system-configuration.xml among the post-initial objects (README, Scripting on 4.11), not a change of midPoint's.
+-->
+<s:executeScript xmlns:s="http://midpoint.evolveum.com/xml/ns/public/model/scripting-3"
+                 xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                 xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <s:pipeline>
+        <s:search>
+            <s:type>c:SystemConfigurationType</s:type>
+        </s:search>
+        <s:action>
+            <s:type>modify</s:type>
+            <s:parameter>
+                <s:name>delta</s:name>
+                <c:value xsi:type="t:ObjectDeltaType">
+                    <t:changeType>modify</t:changeType>
+                    <t:itemDelta>
+                        <t:modificationType>replace</t:modificationType>
+                        <t:path>c:defaultObjectPolicyConfiguration</t:path>
+                    </t:itemDelta>
+                    <t:itemDelta>
+                        <t:modificationType>replace</t:modificationType>
+                        <t:path>c:expressions/c:defaults</t:path>
+                    </t:itemDelta>
+                    <t:itemDelta>
+                        <t:modificationType>replace</t:modificationType>
+                        <t:path>c:expressions/c:defaultScriptLanguage</t:path>
+                    </t:itemDelta>
+                </c:value>
+            </s:parameter>
+        </s:action>
+    </s:pipeline>
+</s:executeScript>

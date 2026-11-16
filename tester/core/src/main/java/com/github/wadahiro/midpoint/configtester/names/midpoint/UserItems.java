@@ -36,7 +36,9 @@ public final class UserItems {
     /** 4.0 only: replaced by {@code subtype} and archetypes. */
     public static final ItemRef EMPLOYEE_TYPE = item("employeeType", Lines.only("4.0"));
     /** 4.8+. */
-    public static final ItemRef PERSONAL_NUMBER = item("personalNumber", Lines.only("4.8", "4.9", "4.10"));
+    public static final ItemRef PERSONAL_NUMBER = item("personalNumber", Lines.except("4.0", "4.4"));
+    /** 4.11+: the person template fills it from {@code preferredName}, else {@code fullName}. */
+    public static final ItemRef DISPLAY_NAME = item("displayName", Lines.except("4.0", "4.4", "4.8", "4.9", "4.10"));
 
     public static final ItemRef ADMINISTRATIVE_STATUS = item("activation/administrativeStatus");
     public static final ItemRef EFFECTIVE_STATUS = item("activation/effectiveStatus");

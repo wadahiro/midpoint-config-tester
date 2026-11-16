@@ -10,7 +10,7 @@
                 <ref>ri:title</ref>
                 <outbound>
                     <name>employee-title</name>
-                    <expression><script><code>thisObject.name.orig</code></script></expression>
+                    <expression><script><language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language><code>thisObject.name.orig</code></script></expression>
                 </outbound>
             </attribute>
         </construction>

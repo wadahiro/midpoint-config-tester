@@ -13,11 +13,14 @@ import com.github.wadahiro.midpoint.tester.ScriptCall;
 /** {@link ScriptCall}: evaluated by the line's drivers. */
 final class ScriptCallImpl implements ScriptCall {
 
+    private static final String GROOVY = "http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy";
+
     private final MidPointImpl mp;
     private final String code;
     private final Map<String, Object> variables = new LinkedHashMap<>();
     private final Map<String, Class<?>> types = new LinkedHashMap<>();
-    private String language;
+    /** Groovy unless given: not the system configuration's default (MEL in 4.11's initial one). */
+    private String language = GROOVY;
     private QName returnType;
 
     ScriptCallImpl(MidPointImpl mp, String code) {

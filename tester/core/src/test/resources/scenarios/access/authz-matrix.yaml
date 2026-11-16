@@ -40,10 +40,12 @@ default: N
 rules:
   - name: self-service
     for: "*"
-    rows: [pages/self, pages/identityRecovery, pages/resetPassword, pages/PasswordQuestions, self/search, self/get,
-           self/items/read, requestable-role/search, requestable-role/get]
+    rows: [pages/self, pages/identityRecovery, pages/resetPassword, pages/PasswordQuestions, pages/home/default,
+           self/search, self/get, self/items/read, requestable-role/search, requestable-role/get]
     value: Y
-    note: the End user role's self-service pages (#selfAll), their own user, the roles they may request
+    note: >-
+      the End user role's self-service pages (#selfAll), their own user, the roles they may request; 4.11's default
+      home page (/home/default, PageDefaultHome) takes #selfAll too
   - name: post-authentication-is-a-login-step
     for: "*"
     rows: [pages/self/postAuthentication]

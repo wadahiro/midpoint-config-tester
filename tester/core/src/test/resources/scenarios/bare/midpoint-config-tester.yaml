@@ -3,3 +3,6 @@
 # empties and forgets what a test imported.
 config:
   dirs: [objects]
+  overlays:
+    # 4.11: the system configuration of a deployment that scripts in Groovy, as upgraded (../groovy-4.11)
+    "4.11": { dirs: [../groovy-4.11] }
