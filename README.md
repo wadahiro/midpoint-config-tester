@@ -33,8 +33,8 @@ manifest `midpoint-config-tester.yaml` and the tests, with a POM whose parent is
 line. [`examples/getting-started`](examples/getting-started) is such a repository, with the files shown here: HR (a
 CSV export) feeds users, enabled from their start date to their end date (activation `validFrom` and `validTo`), the
 user template gives them the role of their department from their start date on, the roles provision LDAP accounts,
-and a user may request VPN Access, which alice approves (undecided for 3 days, it is rejected); mails tell her of the
-request and the requester of the decision.
+and a user may request VPN Access, for good or until a date, which alice approves (undecided for 3 days, it is
+rejected); mails tell her of the request and the requester of the decision.
 
 ```
 pom.xml                         the parent of the line and the repository's coordinates
@@ -189,6 +189,19 @@ class HrLifecycleTest {
         t.target("LDAP").account(JOHN).isDisabled();
     }
 
+    @Test
+    void vpnAccessFor30DaysEndsOnItsDate(MidPointConfigTester t) {
+        hireJohn(t);
+        LocalDate end = t.clock().today().plusDays(30);
+        t.actor("e1001").request().assign("VPN Access", a -> a.validTo(end));   // the assignment's validTo
+        t.workItems().assignedTo("alice").single().approve(t.actor("alice"));
+        t.target("LDAP").account(JOHN).hasAttribute("businessCategory", "vpn");
+
+        t.clock().advanceTo(end).advance("PT1H").runDue();
+        t.target("LDAP").account(JOHN).hasNoAttribute("businessCategory");
+        t.user("e1001").hasAccountOn("LDAP");   // his department keeps the account
+    }
+
     /** Both tests start from John's request: midPoint as the @BeforeAll left it, restored for each. */
     @Nested
     @TestInstance(Lifecycle.PER_CLASS)
@@ -276,6 +289,22 @@ class HrLifecycleSpec : MidPointConfigSpec({
             t.task("Reconcile HR").run()
             if (known) t.user("e1001").hasAssignment("Dept $department").hasAccountOn("LDAP")
             else t.user("e1001").hasNoAssignment("Dept Sales").hasNoAccountOn("LDAP")   // no role for Finance
+        }
+
+        "John has VPN Access for 30 days" - {
+            val end = t.clock().today().plusDays(30)
+            t.actor("e1001").request().assign("VPN Access") { it.validTo(end) }
+            t.workItems().assignedTo("alice").single().approve(t.actor("alice"))
+
+            precondition("his LDAP account has the VPN") {
+                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasAttribute("businessCategory", "vpn")
+            }
+
+            "on the 30th day the VPN goes from his LDAP account, which his department keeps" {
+                t.clock().advanceTo(end).advance("PT1H").runDue()
+                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasNoAttribute("businessCategory")
+                t.user("e1001").hasAccountOn("LDAP")
+            }
         }
 
         "John leaves in 5 days" - {

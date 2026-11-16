@@ -34,6 +34,22 @@ class HrLifecycleSpec : MidPointConfigSpec({
             else t.user("e1001").hasNoAssignment("Dept Sales").hasNoAccountOn("LDAP")   // no role for Finance
         }
 
+        "John has VPN Access for 30 days" - {
+            val end = t.clock().today().plusDays(30)
+            t.actor("e1001").request().assign("VPN Access") { it.validTo(end) }
+            t.workItems().assignedTo("alice").single().approve(t.actor("alice"))
+
+            precondition("his LDAP account has the VPN") {
+                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasAttribute("businessCategory", "vpn")
+            }
+
+            "on the 30th day the VPN goes from his LDAP account, which his department keeps" {
+                t.clock().advanceTo(end).advance("PT1H").runDue()
+                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasNoAttribute("businessCategory")
+                t.user("e1001").hasAccountOn("LDAP")
+            }
+        }
+
         "John leaves in 5 days" - {
             val end = t.clock().today().plusDays(5)
             t.source("HR").modify("1001", "endDate", end.toString())

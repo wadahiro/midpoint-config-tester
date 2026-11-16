@@ -80,8 +80,9 @@
                 <outbound><name>ldap-mail</name><strength>strong</strength><source><path>emailAddress</path></source></outbound>
             </attribute>
             <attribute>
-                <!-- the services the account may use: given by the roles -->
+                <!-- the services the account may use: given by the roles, and only by them -->
                 <ref>ri:businessCategory</ref>
+                <tolerant>false</tolerant>
                 <limitations><maxOccurs>unbounded</maxOccurs></limitations>
             </attribute>
             <activation>

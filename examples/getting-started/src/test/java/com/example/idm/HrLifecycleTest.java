@@ -62,6 +62,19 @@ class HrLifecycleTest {
         t.target("LDAP").account(JOHN).isDisabled();
     }
 
+    @Test
+    void vpnAccessFor30DaysEndsOnItsDate(MidPointConfigTester t) {
+        hireJohn(t);
+        LocalDate end = t.clock().today().plusDays(30);
+        t.actor("e1001").request().assign("VPN Access", a -> a.validTo(end));   // the assignment's validTo
+        t.workItems().assignedTo("alice").single().approve(t.actor("alice"));
+        t.target("LDAP").account(JOHN).hasAttribute("businessCategory", "vpn");
+
+        t.clock().advanceTo(end).advance("PT1H").runDue();
+        t.target("LDAP").account(JOHN).hasNoAttribute("businessCategory");
+        t.user("e1001").hasAccountOn("LDAP");   // his department keeps the account
+    }
+
     /** Both tests start from John's request: midPoint as the @BeforeAll left it, restored for each. */
     @Nested
     @TestInstance(Lifecycle.PER_CLASS)
