@@ -47,15 +47,20 @@ class HrLifecycleSpec : MidPointConfigSpec({
                     changes().of("e1001").single().only("assignment", "roleMembershipRef")
                     connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single()
                         .only("businessCategory")
-                    changes().ofType(CaseType::class.java).ignored()
+                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
                     changes().ofType(TaskType::class.java).added().single()   // the task that executes the approved change
                 }
+                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved()
             }
 
             "alice rejects: John and his LDAP account stay as they were" {
                 t.workItems().assignedTo("alice").single().reject(t.actor("alice")).verifyAll {
-                    changes().ofType(CaseType::class.java).ignored()
+                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
+                    changes().of("e1001").none()                        // John as he was
+                    connectorCalls().to("LDAP").writes().none()         // his LDAP account as it was
                 }
+                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
+                t.workItems().assignedTo("alice").none()
             }
         }
     }
