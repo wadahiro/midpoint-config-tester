@@ -109,7 +109,9 @@ did not keep), or a spec breaks a rule of its structure (a missing precondition)
 `Services.X`) are focuses alike: `exists`, `hasItem`, `values`, `hasAssignment` (an assignment of a role, an org, a
 service or an archetype with the default relation, as `assign` makes it; another relation:
 `hasAssignment("IT", SchemaConstants.ORG_MANAGER)`), `isEnabled`, `asObject`, `why`, and the verbs `assign` (with a
-relation too: `assign("IT", SchemaConstants.ORG_MANAGER)`), `unassign`, `recompute`. A focus is taken by name or by
+relation too: `assign("IT", SchemaConstants.ORG_MANAGER)`; with a validity, the assignment's `activation`:
+`assign("Contractor", a -> a.validFrom(start).validTo(end))`, a date the start of that day in the server's time
+zone; the same in `modify(m -> m.assign(...))` and an actor's `request().assign(...)`), `unassign`, `recompute`. A focus is taken by name or by
 OID, wherever a name goes (`assign(oid)`, `parent(oid)`); `name()` is midPoint's name of it now. A role, org or service has its `members()`
 (`roleMembershipRef` with the default relation: not its managers or owners), an org its `parents()`.
 

@@ -151,7 +151,8 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
     library's); an operator's Suspend: `t.task(name).suspend()`; stopped in the middle: `.stopAfter(n).run()`
   - users: `t.user(n).exists().hasItem(path, v).hasAssignment(r).hasAccountOn(r).isEnabled()/isDisabled()/isArchived()`;
     `values(path)` for extension items; `hasAssignment(r)` is the default relation, a manager's
-    `hasAssignment(r, SchemaConstants.ORG_MANAGER)`
+    `hasAssignment(r, SchemaConstants.ORG_MANAGER)`; an assignment with a validity:
+    `assign(r, a -> a.validTo(end))` (also in `request().assign` and `modify(m -> m.assign(...))`)
   - focuses by name or OID: `t.org(name).add(...)` for a name the test gives and midPoint keeps; a focus an object
     template names (or renames): `val org = t.addOrg { ... }` (`addUser`, `addRole`, `addService`), then `org` and
     `org.oid()` where a name goes, never the name it was added with

@@ -13,9 +13,11 @@ import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.constants.SchemaConstants;
+import com.evolveum.midpoint.prism.xml.XmlTypeConverter;
 import com.evolveum.midpoint.util.QNameUtil;
 import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ActivationType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentHolderType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
@@ -79,12 +81,27 @@ final class ChangeImpl<O extends ObjectType> implements Change {
 
     @Override
     public Change assign(String target, QName relation) {
+        return assign(target, relation, null, null);
+    }
+
+    @Override
+    public Change assign(String target, QName relation, java.time.Instant validFrom, java.time.Instant validTo) {
         AbstractRoleType role = mp.existing(AbstractRoleType.class, target);
         AssignmentType assignment = new AssignmentType()
                 .targetRef(new ObjectReferenceType()
                         .oid(role.getOid())
                         .type(ObjectTypes.getObjectType(role.getClass()).getTypeQName())
                         .relation(relation));
+        if (validFrom != null || validTo != null) {
+            ActivationType activation = new ActivationType();
+            if (validFrom != null) {
+                activation.setValidFrom(XmlTypeConverter.createXMLGregorianCalendar(validFrom.toEpochMilli()));
+            }
+            if (validTo != null) {
+                activation.setValidTo(XmlTypeConverter.createXMLGregorianCalendar(validTo.toEpochMilli()));
+            }
+            assignment.setActivation(activation);
+        }
         // with its definition: 4.0 previews (approvals) fail on a value without one
         try {
             PrismContainerDefinition<AssignmentType> definition = prismContext().getSchemaRegistry()

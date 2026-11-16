@@ -539,6 +539,20 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         return assign(target.on(tester.line()), relation);
     }
 
+    /**
+     * Assigns the target with a relation or a validity ({@link NewAssignment}), as an administrator in the GUI would:
+     * {@code t.user("jdoe").assign("Contractor", a -> a.validFrom(start).validTo(end))}.
+     */
+    public Effects assign(String target, java.util.function.Consumer<NewAssignment> spec) {
+        NewAssignment a = NewAssignment.of(tester, spec);
+        return tester.effectsOf(() -> tester.deployment().api().change(type, name)
+                .assign(target, a.relation, a.validFrom, a.validTo).execute());
+    }
+
+    public Effects assign(AssignableRef target, java.util.function.Consumer<NewAssignment> spec) {
+        return assign(target.on(tester.line()), spec);
+    }
+
     public Effects unassign(AssignableRef target, QName relation) {
         return unassign(target.on(tester.line()), relation);
     }

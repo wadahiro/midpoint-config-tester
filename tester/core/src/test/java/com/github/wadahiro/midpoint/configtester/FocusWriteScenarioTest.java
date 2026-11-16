@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +26,9 @@ import com.github.wadahiro.midpoint.configtester.sample.hr.UserExtension;
 class FocusWriteScenarioTest {
 
     static final String NS = "http://example.com/xml/ns/tester-extension";
+    static final String JDOE = "uid=jdoe,ou=people,dc=example,dc=com";
+    static final String SALES = "cn=sales,ou=groups,dc=example,dc=com";
+    static final String IT = "cn=it,ou=groups,dc=example,dc=com";
 
     @Test
     void aUserAddedByItsNameOnly(MidPointConfigTester t) {
@@ -151,6 +157,31 @@ class FocusWriteScenarioTest {
                 .hasMessageContaining("No role, org, service or archetype");
         assertThatThrownBy(() -> t.role("Dept Sales").modify(m -> m.password("x")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("A password is a user's");
+    }
+
+    @Test
+    void anAssignmentHasTheValidityTheTestGives(MidPointConfigTester t) {
+        t.user("jdoe").add(u -> u.givenName("John").familyName("Doe"));
+        LocalDate end = t.clock().today().plusDays(30);
+
+        t.user("jdoe").assign(Roles.DEPT_SALES, a -> a.validTo(end)).connectorCalls().to("LDAP").adds().single();
+        assertThat(t.user("jdoe").asObject().getAssignment().get(0).getActivation().getValidTo()
+                .toGregorianCalendar().toInstant()).isEqualTo(end.atStartOfDay(t.clock().zone()).toInstant());
+        t.user("jdoe").modify(m -> m.assign("Dept IT", a -> a.validFrom(end)));
+        assertThat(t.user("jdoe").asObject().getAssignment()).hasSize(2);
+
+        assertThat(roles(t)).containsExactly(Roles.DEPT_SALES.oid());   // IT not yet
+        t.target(Resources.LDAP).account(JDOE).memberOf(SALES).notMemberOf(IT);
+
+        t.clock().advanceTo(end).advance("PT1H").runDue();   // Sales ends, IT begins
+        assertThat(roles(t)).containsExactly(Roles.DEPT_IT.oid());
+        t.target(Resources.LDAP).account(JDOE).memberOf(IT).notMemberOf(SALES);
+    }
+
+    /** The roles midPoint counts the user a member of: the assignments valid now. */
+    static List<String> roles(MidPointConfigTester t) {
+        return t.user("jdoe").asObject().getRoleMembershipRef().stream().map(r -> r.getOid())
+                .collect(Collectors.toList());
     }
 
     @Test

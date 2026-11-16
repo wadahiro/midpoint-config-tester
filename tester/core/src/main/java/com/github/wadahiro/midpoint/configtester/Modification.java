@@ -79,12 +79,23 @@ public final class Modification {
 
     /** Assigns the role, org, service or archetype of this name. */
     public Modification assign(String target) {
-        return assign(target, null);
+        return assign(target, (QName) null);
     }
 
     public Modification assign(String target, QName relation) {
         change.assign(existingTarget(target), relation);
         return this;
+    }
+
+    /** Assigns the target with a relation or a validity ({@link NewAssignment}). */
+    public Modification assign(String target, java.util.function.Consumer<NewAssignment> spec) {
+        NewAssignment a = NewAssignment.of(focus.tester, spec);
+        change.assign(existingTarget(target), a.relation, a.validFrom, a.validTo);
+        return this;
+    }
+
+    public Modification assign(AssignableRef target, java.util.function.Consumer<NewAssignment> spec) {
+        return assign(target.on(focus.tester.line()), spec);
     }
 
     public Modification assign(AssignableRef target) {

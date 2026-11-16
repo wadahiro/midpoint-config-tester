@@ -83,6 +83,8 @@
             </attribute>
             <association>
                 <ref>ri:group</ref>
+                <!-- midPoint is the master of the memberships: one no assignment gives is removed -->
+                <tolerant>false</tolerant>
                 <kind>entitlement</kind>
                 <intent>group</intent>
                 <direction>objectToSubject</direction>

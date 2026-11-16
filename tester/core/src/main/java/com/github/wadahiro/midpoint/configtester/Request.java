@@ -48,6 +48,20 @@ public final class Request {
         return submit(tester.deployment().api().change(UserType.class, forUser).unassign(role, relation).delta());
     }
 
+    /**
+     * Requests the role (or org, service) for the user with a relation or a validity ({@link NewAssignment}), as the
+     * GUI's request lets the user choose them: {@code request().assign("VPN Access", a -> a.validTo(end))}.
+     */
+    public Effects assign(String role, java.util.function.Consumer<NewAssignment> spec) {
+        NewAssignment a = NewAssignment.of(tester, spec);
+        return submit(tester.deployment().api().change(UserType.class, forUser)
+                .assign(role, a.relation, a.validFrom, a.validTo).delta());
+    }
+
+    public Effects assign(AssignableRef role, java.util.function.Consumer<NewAssignment> spec) {
+        return assign(role.on(tester.line()), spec);
+    }
+
     public Effects assign(AssignableRef role) {
         return assign(role.on(tester.line()));
     }

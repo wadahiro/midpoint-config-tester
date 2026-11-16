@@ -42,6 +42,9 @@ public interface Change {
 
     Change assign(String target, QName relation);
 
+    /** Adds an assignment of the target valid from {@code validFrom} to {@code validTo} (either may be null). */
+    Change assign(String target, QName relation, java.time.Instant validFrom, java.time.Instant validTo);
+
     /** Deletes the object's assignments of the target (by name or OID) with the default relation. */
     Change unassign(String target);
 
