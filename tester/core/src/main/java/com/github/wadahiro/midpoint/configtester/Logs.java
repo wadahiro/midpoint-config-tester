@@ -87,11 +87,6 @@ public final class Logs {
         return this;
     }
 
-    /** Claims the selected elements without checking them ({@link Claims} only). */
-    public void ignored() {
-        Ledger.requireLedger(ledger);
-        ledger.claim(selected);
-    }
 
     public Logs none() {
         return exactly(0);

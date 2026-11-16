@@ -103,11 +103,6 @@ public final class Audit {
         return this;
     }
 
-    /** Claims the selected elements without checking them ({@link Claims} only). */
-    public void ignored() {
-        Ledger.requireLedger(ledger);
-        ledger.claim(selected);
-    }
 
     public Audit none() {
         return exactly(0);

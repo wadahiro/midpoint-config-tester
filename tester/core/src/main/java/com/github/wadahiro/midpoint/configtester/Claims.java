@@ -8,9 +8,9 @@ import com.github.wadahiro.midpoint.tester.Mail;
 
 /**
  * An exhaustive verification of a block's {@link Effects} ({@link Effects#verifyAll(java.util.function.Consumer...)},
- * {@link Effects#claims()}): the same selections, whose {@code exactly}, {@code none}, {@code single} and
- * {@code ignored} claim what they select; {@link #verifyAll()} then fails listing every changed object, connector
- * write, mail and error logged that no check claimed, e.g.
+ * {@link Effects#claims()}): the same selections, whose {@code exactly}, {@code none} and {@code single} claim what
+ * they select; {@link #verifyAll()} then fails listing every changed object, connector write, mail and error logged
+ * that no check claimed, e.g.
  *
  * <pre>{@code
  * effects.verifyAll(c -> {
@@ -75,7 +75,7 @@ public final class Claims {
         }
         if (!unclaimed.isEmpty()) {
             throw new AssertionError("Effects of the block not verified:\n  " + String.join("\n  ", unclaimed) + "\n"
-                    + Effects.ignoredNote());
+                    + Effects.notCountedNote());
         }
         return effects;
     }

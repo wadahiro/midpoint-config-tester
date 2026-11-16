@@ -86,7 +86,7 @@ out.hasRows(2).hasRowWith("User", "jack");
 | `values`, `value`, `asObject`, `state`, `tag`, `names`, `members` | a read, for AssertJ | the value |
 | `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
-| `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` (and `ignored` for effects) |
+| `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` |
 | `effects.verifyAll(c -> ...)` | a verification: the checks claim, then nothing else may have happened | `Effects`; `AssertionError` |
 | `effects.claims()` | the same in steps: claims nothing until `verifyAll()` | `Claims` |
 

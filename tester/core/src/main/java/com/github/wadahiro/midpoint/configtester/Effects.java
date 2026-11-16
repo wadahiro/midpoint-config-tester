@@ -266,7 +266,7 @@ public final class Effects {
         return logs;
     }
 
-    static String ignoredNote() {
+    static String notCountedNote() {
         return "(not counted: metadata, operationExecution, task and node modifications, a shadow's synchronization"
                 + " timestamps, situation description and cached attributes, connector reads, logs below ERROR, audit records)";
     }

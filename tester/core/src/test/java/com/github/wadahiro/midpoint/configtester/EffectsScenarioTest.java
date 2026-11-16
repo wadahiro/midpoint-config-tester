@@ -171,6 +171,5 @@ class EffectsScenarioTest {
 
         assertThat(reads.repositoryCalls().count()).isZero();
         reads.none();
-        assertThatThrownBy(() -> reads.mails().ignored()).isInstanceOf(IllegalStateException.class);
     }
 }

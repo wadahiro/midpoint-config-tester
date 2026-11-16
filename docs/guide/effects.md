@@ -36,9 +36,9 @@ t.user("jack").hasNoAssignment("Privileged Access")                         // n
 
 A check that something did not happen, and a check of what happened that also proves nothing else did, are
 verifications: in `effects.verifyAll(c -> ...)` (Kotest: `effects.verifyAll { ... }`, from
-`midpoint-config-tester-kotest`) each check claims what it selects (`exactly`, `none`, `single`, and `ignored()` for
-what the test does not care about), and the verification fails listing every changed object, connector write, mail
-and error logged that no check claimed. Several checks are one verification (`verifyAll(c -> ..., ldapGroups)`: a
+`midpoint-config-tester-kotest`) each check claims what it selects (`exactly`, `none`, `single`: an effect is
+claimed only by a check of it, none goes through unchecked), and the verification fails listing every changed object,
+connector write, mail and error logged that no check claimed. Several checks are one verification (`verifyAll(c -> ..., ldapGroups)`: a
 `Consumer<Claims>` reused across tests beside one written here); `effects.claims()` then `verifyAll()` is the same in
 steps. In Kotlin the lambda goes after the parentheses, `verifyAll { ... }`. `none()` is a verification without
 checks. Connector reads, logs below ERROR and audit records need no claim.
@@ -63,7 +63,7 @@ effects.repositoryCalls().reads().perMethod()          // {"getObject UserType"=
 ```java
 t.task("Reconcile HR").run().verifyAll(c -> {
     c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
-    c.changes().ofType(ShadowType.class).added().ignored();             // the group shadows midPoint discovered
+    c.changes().of("cn=it,ou=groups,dc=example,dc=com").added().single();  // the group shadow midPoint discovered
     c.connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou");
     c.connectorCalls().to("LDAP").modifies().exactly(3);
 });

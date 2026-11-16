@@ -12,8 +12,8 @@ import java.util.function.Predicate;
  * order made, narrowed by resource, account and operation, e.g.
  * {@code effects.connectorCalls().to("LDAP").modifies().of("jdoe").single().only("mail")}, or counted:
  * {@code effects.connectorCalls().to("HR").reads().count()}. Each narrowing returns a new selection. In
- * {@link Claims}, {@code exactly}, {@code none}, {@code single} and {@link #ignored()} claim what they select; only
- * writes have to be claimed.
+ * {@link Claims}, {@code exactly}, {@code none} and {@code single} claim what they select; only writes have to be
+ * claimed.
  */
 public final class ConnectorCalls {
 
@@ -113,11 +113,6 @@ public final class ConnectorCalls {
         return selected.get(0);
     }
 
-    /** Claims the selected calls without checking them ({@link Claims} only). */
-    public void ignored() {
-        Ledger.requireLedger(ledger);
-        ledger.claim(selected);
-    }
 
     private ConnectorCalls select(Predicate<ConnectorCall> keep, String what) {
         List<ConnectorCall> out = new ArrayList<>();

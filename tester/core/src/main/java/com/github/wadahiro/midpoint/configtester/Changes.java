@@ -8,8 +8,8 @@ import java.util.function.Predicate;
 /**
  * The objects a block added, modified or deleted in midPoint's repository ({@link Effects#changes()}), narrowed by
  * object, type and kind, e.g. {@code effects.changes().of("jdoe").single().only("activation/validTo")}. Each
- * narrowing returns a new selection. In {@link Claims}, {@code exactly}, {@code none}, {@code single} and
- * {@link #ignored()} claim what they select.
+ * narrowing returns a new selection. In {@link Claims}, {@code exactly}, {@code none} and {@code single} claim what
+ * they select.
  */
 public final class Changes {
 
@@ -115,11 +115,6 @@ public final class Changes {
         return selected.get(0);
     }
 
-    /** Claims the selected changes without checking them ({@link Claims} only). */
-    public void ignored() {
-        Ledger.requireLedger(ledger);
-        ledger.claim(selected);
-    }
 
     private Changes select(Predicate<ObjectChange> keep, String what) {
         List<ObjectChange> out = new ArrayList<>();

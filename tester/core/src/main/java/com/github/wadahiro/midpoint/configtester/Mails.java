@@ -133,11 +133,6 @@ public final class Mails {
         return this;
     }
 
-    /** Claims the selected elements without checking them ({@link Claims} only). */
-    public void ignored() {
-        Ledger.requireLedger(ledger);
-        ledger.claim(selected);
-    }
 
     public Mails none() {
         return exactly(0);
