@@ -1,3 +1,50 @@
+# [0.8.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.7.1...v0.8.0) (2026-11-16)
+
+
+* feat!: a verb that makes midPoint work returns what midPoint did ([c44fcb0](https://github.com/wadahiro/midpoint-config-tester/commit/c44fcb00adc0b15cef5f23933a69fb09db948f01))
+* feat!: one way to say each thing in the API ([273f3ce](https://github.com/wadahiro/midpoint-config-tester/commit/273f3ce9b819d4ccbd9972796f2000de862debd9))
+* feat!: run midPoint in the server's time zone, a required tester.timeZone ([b8f5d13](https://github.com/wadahiro/midpoint-config-tester/commit/b8f5d132d2661a499cc4b96e960446302618a7e9))
+* feat!: users, roles, orgs and services as focuses, their projections as they are on the target system ([e926194](https://github.com/wadahiro/midpoint-config-tester/commit/e926194a1f0fd201bd513e1ab3dac5b9d114a74f))
+* feat(kotest)!: check what a container's body made in a precondition, its first test ([f65d9d8](https://github.com/wadahiro/midpoint-config-tester/commit/f65d9d8e7556b80196c9b1206bd274186c83d7ed))
+
+
+### Bug Fixes
+
+* guard a fork's connections, Socket loaded before the agent ([7694b33](https://github.com/wadahiro/midpoint-config-tester/commit/7694b33744cbf93888a41704f66889cdf79ec34a))
+* **mirror:** do not return attributes the schema does not let midPoint read by default ([71cb063](https://github.com/wadahiro/midpoint-config-tester/commit/71cb0633cb83f743799060a3562788d578cf5c3d))
+* **mirror:** refuse an attribute the object class does not have ([7f3bde8](https://github.com/wadahiro/midpoint-config-tester/commit/7f3bde89116d81a87effeb9d484b5ec64eb008fb))
+
+
+### Features
+
+* add, modify and delete a user, role, org or service through the model ([8c9802b](https://github.com/wadahiro/midpoint-config-tester/commit/8c9802be9e79f60e42ebc48492b3636bb7179fc4))
+* claim the configuration at rest with Changes.focuses() ([a360cb0](https://github.com/wadahiro/midpoint-config-tester/commit/a360cb08d88797a100b214c2a8b741bbdcf9483d))
+* **static:** take a script without a language in the deployment's default language ([a2fd7c5](https://github.com/wadahiro/midpoint-config-tester/commit/a2fd7c59341bd5345d7bfb3887282dc5abc0b8e5))
+* **task:** suspend a task as the GUI's Suspend ([0bf7057](https://github.com/wadahiro/midpoint-config-tester/commit/0bf7057b2cd30596d7ec7730a45896cd4e03163e))
+* **tester:** add the midpoint 4.11 line ([c6fe6bb](https://github.com/wadahiro/midpoint-config-tester/commit/c6fe6bb06385af7b822b9db72ac7e194efbd3b99))
+* write items and linked accounts past the model through t.raw() ([fd09670](https://github.com/wadahiro/midpoint-config-tester/commit/fd09670ee5737c3809ec07350efca3331078ca03))
+
+
+### BREAKING CHANGES
+
+* a config repository sets <tester.timeZone> in its POM.
+* hasRole/hasNoRole are hasAssignment/hasNoAssignment and
+count the default relation only unless a relation is given; the Failure
+checks return the Failure; isInStage is atStage; the selections take a
+class instead of a type name; Status, Account.status() and
+User.setPassword are gone; Cases.named is an exact name.
+* accounts(resource) is a selection (names() gives the
+list); account(...) returns Projection<Account>; hasAccountOn fails when
+the target system does not have the linked account, and hasAccountOn and
+hasNoAccountOn count live shadows of kind account only;
+RawObject.add/delete are addValues/removeValues; Resource throws
+IllegalArgumentException for a resource the deployment does not have.
+* the verbs return Effects; a chain after a verb
+(campaign.closeStage().remediate(), user.assign(r).hasAssignment(r)) is
+two statements now.
+* a container whose body changes midPoint needs a
+precondition as its first test.
+
 ## [0.7.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.7.0...v0.7.1) (2026-11-12)
 
 
