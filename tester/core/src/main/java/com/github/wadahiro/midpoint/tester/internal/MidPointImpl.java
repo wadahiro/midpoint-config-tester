@@ -305,11 +305,21 @@ final class MidPointImpl implements MidPoint {
 
     /** The resource on its real CSV or LDAP connector, with the file or server the tester provides. */
     private Retargeted retargetReal(String resourceXml, String fileName, ResourceOptions options) {
-        RealResourceXml resource = RealResourceXml.parse(resourceXml, fileName);
+        com.github.wadahiro.midpoint.tester.RealSystem provided = options.real().system();
+        RealResourceXml resource = RealResourceXml.parse(resourceXml, fileName, provided != null);
         ManagedTarget existing = runtime.findTarget(resource.oid);
         ManagedTarget target;
         String xml;
-        if (resource.kind == RealResourceXml.Kind.CSV) {
+        if (provided != null) {
+            // a system the test provides: its connector as deployed, the properties set over its configuration
+            target = existing instanceof ProvidedTarget.Provided
+                    && ((ProvidedTarget.Provided) existing).system() == provided
+                    ? existing : ProvidedTarget.create(resource.oid, resource.name, provided);
+            Map<String, String> overrides = new LinkedHashMap<>(options.real().properties);
+            overrides.putAll(provided.configuration());
+            xml = resource.transform(this::connectorOid, overrides, java.util.Set.of(), null,
+                    mirrorScriptsConnectorOid());
+        } else if (resource.kind == RealResourceXml.Kind.CSV) {
             CsvTargetImpl csv;
             if (existing instanceof CsvTargetImpl) {
                 csv = (CsvTargetImpl) existing;

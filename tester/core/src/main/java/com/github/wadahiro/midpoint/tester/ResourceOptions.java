@@ -39,7 +39,8 @@ public final class ResourceOptions {
     private final List<Computed> computed;
     private final boolean referentialIntegrity;
     private final boolean caseInsensitiveNames;
-    private final boolean realConnector;
+    /** The real connector: null on the mirror. */
+    private final Real realConnector;
     /** {object class, attribute}: attributes of the mirror's classes that schemaHandling does not name. */
     private final List<String[]> attributes;
     /** The naming attribute of an object class, over {@link #namingAttribute}. */
@@ -52,7 +53,7 @@ public final class ResourceOptions {
     private final List<StoredValues> multiValued;
 
     private ResourceOptions(String namingAttribute, String identifier, List<Computed> computed,
-            boolean referentialIntegrity, boolean caseInsensitiveNames, boolean realConnector,
+            boolean referentialIntegrity, boolean caseInsensitiveNames, Real realConnector,
             List<String[]> attributes, java.util.Map<String, String> classNaming, java.nio.file.Path schema,
             String identifierValue, List<StoredValues> multiValued) {
         this.namingAttribute = namingAttribute;
@@ -69,7 +70,7 @@ public final class ResourceOptions {
     }
 
     public static ResourceOptions defaults() {
-        return new ResourceOptions(null, null, List.of(), false, false, false, List.of(), java.util.Map.of(), null,
+        return new ResourceOptions(null, null, List.of(), false, false, null, List.of(), java.util.Map.of(), null,
                 null, List.of());
     }
 
@@ -200,7 +201,71 @@ public final class ResourceOptions {
      */
     public ResourceOptions realConnector() {
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                true, attributes, classNaming, schema, identifierValue, multiValued);
+                Real.STAND_IN, attributes, classNaming, schema, identifierValue, multiValued);
+    }
+
+    /**
+     * Keeps the resource on its own connector, any connector on the test's class path, reaching a real system the
+     * test provides (experimental): {@code properties} set over its configuration properties (local names), then
+     * {@link RealSystem#configuration()}; the tester saves and restores the system's data through {@code system}, or,
+     * with {@link #NO_RESTORE}, not at all.
+     */
+    public ResourceOptions realConnector(RealSystem system, java.util.Map<String, String> properties) {
+        return realConnector(() -> system, properties);
+    }
+
+    /** The same, with the system made when the resource is first loaded (the manifest's {@code system} class). */
+    public ResourceOptions realConnector(java.util.function.Supplier<RealSystem> system,
+            java.util.Map<String, String> properties) {
+        return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
+                new Real(system, properties), attributes, classNaming, schema, identifierValue, multiValued);
+    }
+
+    /**
+     * For {@link #realConnector(RealSystem, java.util.Map)}: a system whose data the tester does not restore (manifest
+     * {@code restore: none}); a test then starts from the system as earlier tests left it, and a checkpoint fails.
+     */
+    public static final RealSystem NO_RESTORE = new RealSystem() {
+        @Override
+        public Object capture() {
+            return null;
+        }
+
+        @Override
+        public void restore(Object captured) {
+        }
+    };
+
+    /** How a resource keeps its real connector: the tester's stand-in (CSV, LDAP), or a system the test provides. */
+    public static final class Real {
+        static final Real STAND_IN = new Real(null, java.util.Map.of());
+
+        private final java.util.function.Supplier<RealSystem> supplier;
+        private RealSystem system;
+        public final java.util.Map<String, String> properties;
+
+        Real(java.util.function.Supplier<RealSystem> supplier, java.util.Map<String, String> properties) {
+            this.supplier = supplier;
+            this.properties = Collections.unmodifiableMap(new java.util.LinkedHashMap<>(properties));
+        }
+
+        /** Whether the test provides the system (else the tester's stand-in). */
+        public boolean provided() {
+            return supplier != null;
+        }
+
+        /** The system the test provides, made on the first call; null: the tester's stand-in. */
+        public synchronized RealSystem system() {
+            if (system == null && supplier != null) {
+                system = supplier.get();
+            }
+            return system;
+        }
+    }
+
+    /** How the resource keeps its real connector; null on the mirror. */
+    public Real real() {
+        return realConnector;
     }
 
     /**
@@ -301,7 +366,7 @@ public final class ResourceOptions {
     }
 
     public boolean isRealConnector() {
-        return realConnector;
+        return realConnector != null;
     }
 
     /** Local name of the naming attribute, or null. */

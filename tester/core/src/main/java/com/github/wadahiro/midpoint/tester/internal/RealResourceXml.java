@@ -43,7 +43,8 @@ final class RealResourceXml {
     static final String LDAP_CONNECTOR = "com.evolveum.polygon.connector.ldap.LdapConnector";
     private static final String NS_T = "http://prism.evolveum.com/xml/ns/public/types-3";
 
-    enum Kind { CSV, LDAP }
+    /** The tester's stand-ins (a file, an in-memory LDAP server), or a system the test provides (any connector). */
+    enum Kind { CSV, LDAP, PROVIDED }
 
     final String oid;
     final String name;
@@ -66,7 +67,7 @@ final class RealResourceXml {
     private final Element configurationProperties;
     private final String propertiesNamespace;
 
-    private RealResourceXml(Document doc) {
+    private RealResourceXml(Document doc, boolean provided) {
         this.doc = doc;
         this.resource = doc.getDocumentElement();
         this.oid = resource.getAttribute("oid");
@@ -86,14 +87,17 @@ final class RealResourceXml {
         String[] parts = propertiesNamespace.substring(NS_BUNDLE.length()).split("/");
         String bundle = parts[0];
         this.connectorType = parts.length > 1 ? parts[1] : "";
-        if (CSV_BUNDLE.equals(bundle)) {
+        if (provided) {
+            kind = Kind.PROVIDED;
+        } else if (CSV_BUNDLE.equals(bundle)) {
             kind = Kind.CSV;
         } else if (LDAP_BUNDLE.equals(bundle) && LDAP_CONNECTOR.equals(connectorType)) {
             kind = Kind.LDAP;
         } else {
             throw new IllegalArgumentException("ResourceOptions.realConnector() supports the CSV connector ("
-                    + CSV_BUNDLE + ") and the LDAP connector (" + LDAP_CONNECTOR + "), not " + bundle + "/"
-                    + connectorType);
+                    + CSV_BUNDLE + ") and the LDAP connector (" + LDAP_CONNECTOR + ") against the tester's stand-ins,"
+                    + " not " + bundle + "/" + connectorType + "; any connector reaches a system the test provides"
+                    + " with connector: real (experimental)");
         }
         properties = new LinkedHashMap<>();
         for (Node n = first; n != null; n = Xml.nextElement(n)) {
@@ -163,8 +167,13 @@ final class RealResourceXml {
 
     /** The definition from XML text; {@code source} names it in error messages. */
     static RealResourceXml parse(String xml, String source) {
+        return parse(xml, source, false);
+    }
+
+    /** With {@code provided}, any connector: the resource reaches a system the test provides. */
+    static RealResourceXml parse(String xml, String source, boolean provided) {
         try {
-            return new RealResourceXml(Xml.parse(xml));
+            return new RealResourceXml(Xml.parse(xml), provided);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(source + ": " + e.getMessage(), e);
         }
@@ -304,19 +313,47 @@ final class RealResourceXml {
         }
         overrides.forEach(this::setProperty);
         if (bindPassword != null) {
-            Element password = setProperty("bindPassword", "");
-            Element clear = doc.createElementNS(NS_T, "t:clearValue");
-            clear.setTextContent(bindPassword);
-            password.appendChild(clear);
+            setProtected("bindPassword", bindPassword);
         }
         return Xml.serialize(doc);
     }
 
-    private Element setProperty(String localName, String value) {
+    /** Sets a protected value (a password) as a clear value, which midPoint encrypts. */
+    private Element setProtected(String localName, String value) {
         List<Element> existing = propertyElements(localName);
         Element element;
         if (existing.isEmpty()) {
             element = doc.createElementNS(propertiesNamespace, "gen:" + localName);
+            configurationProperties.appendChild(element);
+        } else {
+            element = existing.get(0);
+            for (int i = 1; i < existing.size(); i++) {
+                configurationProperties.removeChild(existing.get(i));
+            }
+            while (element.getFirstChild() != null) {
+                element.removeChild(element.getFirstChild());
+            }
+        }
+        Element clear = doc.createElementNS(NS_T, "t:clearValue");
+        clear.setTextContent(value);
+        element.appendChild(clear);
+        return element;
+    }
+
+    private Element setProperty(String localName, String value) {
+        List<Element> existing = propertyElements(localName);
+        if (!existing.isEmpty() && Xml.firstElement(existing.get(0)) != null) {
+            // a protected value (<t:clearValue>, <t:encryptedData>): the new one in clear, midPoint encrypts it
+            return setProtected(localName, value);
+        }
+        Element element;
+        if (existing.isEmpty()) {
+            try {
+                element = doc.createElementNS(propertiesNamespace, "gen:" + localName);
+            } catch (org.w3c.dom.DOMException e) {
+                throw new IllegalArgumentException("'" + localName + "' is no name of a connector configuration property",
+                        e);
+            }
             configurationProperties.appendChild(element);
         } else {
             element = existing.get(0);

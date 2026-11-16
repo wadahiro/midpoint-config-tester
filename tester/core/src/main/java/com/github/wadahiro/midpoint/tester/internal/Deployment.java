@@ -756,7 +756,9 @@ public final class Deployment {
     private void loadInitialData(Manifest.Target target) {
         ManagedTarget system = runtime.findTarget(resourceOids.get(target.resource));
         try {
-            if (system instanceof CsvFile) {
+            if (system instanceof ProvidedTarget.Provided) {
+                ((ProvidedTarget.Provided) system).system().loadInitialData(target.initialData);
+            } else if (system instanceof CsvFile) {
                 ((CsvFile) system).writeText(Files.readString(target.initialData, StandardCharsets.UTF_8));
             } else if (system instanceof LdapDirectory) {
                 ((LdapDirectory) system).loadLdif(target.initialData.toFile());

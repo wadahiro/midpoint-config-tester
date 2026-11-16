@@ -461,7 +461,12 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         }
         List<String> names = new ArrayList<>();
         for (Projection<?> projection : found) {
-            if (projection.onTarget().read() != null) {
+            try {
+                if (projection.onTarget().read() != null) {
+                    return self();
+                }
+            } catch (UnsupportedOperationException e) {
+                // a system the test provides without a view of its data (RealSystem.view()): the link is what is known
                 return self();
             }
             names.add(projection.name());

@@ -2,14 +2,15 @@
 
 ## Limitations
 
-- **Target systems are mirrors** unless kept on the real CSV or LDAP connector. The mirror connector reproduces the
+- **Target systems are mirrors** unless kept on their real connectors. The mirror connector reproduces the
   schema and capabilities of a resource (readable passwords as the real connector's configuration says), not the
   behaviour of its real connector or system: no LDAP schema checks, no password policies of the target system itself
   (midPoint's own policies for the account apply), provisioning scripts recorded and not run, no asynchronous
   provisioning or updates;
   computed attributes, referential integrity and case insensitivity only as `ResourceOptions` say. Test
-  what midPoint computes, not what the connector does. The real connectors are limited to CSV and LDAP (no Active
-  Directory, no other connectors), the LDAP server is UnboundID's in-memory server with its standard schema (not
+  what midPoint computes, not what the connector does. The tester's own stand-ins on a real connector are for CSV and
+  LDAP only (any other connector reaches a system the test provides, [experimental](real-connectors.md)); its LDAP
+  server is UnboundID's in-memory server with its standard schema (not
   OpenLDAP, 389 DS or AD: their schema, overlays such as `memberOf`, password policies and controls differ; its
   change log gives live synchronization no deletions and fails it on renames, see [Real connectors](real-connectors.md)).
 - **Additional connectors stand in for their scripts only.** On a mirror a resource's `additionalConnector`s go, on a

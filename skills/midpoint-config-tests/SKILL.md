@@ -68,7 +68,7 @@ preparation scripts for that.
 | sets `<constants>` in config.xml (`<const>`, `midpoint.getConst`) | `constants: { name: test-value }` |
 | replaces one of midPoint's initial objects in its build (e.g. a system configuration with a PolyString normalizer) | an overlay directory with that file: a file with an initial object's OID replaces it as a whole, and `000-` sorts first |
 | uses a feature of its midPoint build the release lacks | run on that build (section 1); an overlay without the feature only as a last resort |
-| resources | `targets.<resource name>`: `mirror` (default, any connector) or `csv`/`ldap` (the real connector, experimental: docs/guide/real-connectors.md) |
+| resources | `targets.<resource name>`: `mirror` (default, any connector); experimental (docs/guide/real-connectors.md): `csv`/`ldap` (the real connector against the tester's stand-ins) or `real` (any connector against a system the test provides, with a `RealSystem` that restores its data) |
 | scripts call HTTP services (webhooks) via `java.net.URL` | `http.redirect: ["https://hooks.example.com"]`; requests are recorded |
 | mail | `mail: { redirect: true }` (default) |
 | recurring tasks | always held (no key): they run only when a test runs them (`t.task(name).run()`, `t.clock().runDue()`) |

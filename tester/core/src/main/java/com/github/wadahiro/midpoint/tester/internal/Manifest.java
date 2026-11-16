@@ -34,6 +34,7 @@ import com.github.wadahiro.midpoint.tester.ResourceOptions;
  *   HR:   { connector: csv, initialData: initial-data/hr.csv }   # the target system's content at the start
  *   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
  *   CRM:  { connector: mirror, namingAttribute: login, attributes: { AccountObjectClass: [category] } }
+ *   DIR:  { connector: real, system: com.example.TestDirectory, properties: { host: localhost } }   # experimental
  *   SCIM: { namingAttribute: { User: userName, Group: displayName } }   # by object class
  *   AD:   { schema: schema/ad.xml }   # the stored <schema>, exported from a midPoint connected to the real one
  * mail: { redirect: true }
@@ -59,7 +60,7 @@ public final class Manifest {
     /** What stands in for the system behind a resource. */
     public static final class Target {
         public final String resource;
-        /** {@code mirror}, {@code csv} or {@code ldap}. */
+        /** {@code mirror}, {@code csv}, {@code ldap} or {@code real}. */
         public final String connector;
         /** The file the target system starts with (a CSV file, an LDIF), or null. */
         public final Path initialData;
@@ -330,13 +331,24 @@ public final class Manifest {
         String where = "targets." + resource;
         Map<String, Object> spec = map(value, where);
         check(spec, where + ".", Set.of("connector", "initialData", "schema", "namingAttribute", "identifier", "referentialIntegrity",
-                "caseInsensitiveNames", "computed", "attributes", "multiValued", "keyedValues", "store"));
+                "caseInsensitiveNames", "computed", "attributes", "multiValued", "keyedValues", "store", "system",
+                "properties", "restore"));
         String connector = spec.get("connector") != null ? spec.get("connector").toString() : "mirror";
-        if (!Set.of("mirror", "csv", "ldap").contains(connector)) {
-            throw invalid(where + ".connector: mirror, csv or ldap, not " + connector);
+        if (!Set.of("mirror", "csv", "ldap", "real").contains(connector)) {
+            throw invalid(where + ".connector: mirror, csv, ldap or real, not " + connector);
+        }
+        if (!"real".equals(connector)) {
+            for (String key : List.of("system", "properties", "restore")) {
+                if (spec.containsKey(key)) {
+                    throw invalid(where + "." + key + ": only with connector: real");
+                }
+            }
         }
         ResourceOptions options = ResourceOptions.defaults();
-        if (!"mirror".equals(connector)) {
+        if ("real".equals(connector)) {
+            options = options.realConnector(realSystem(spec, where), stringMap(spec.get("properties"),
+                    where + ".properties"));
+        } else if (!"mirror".equals(connector)) {
             options = options.realConnector();
         }
         if (spec.get("schema") != null) {
@@ -492,6 +504,46 @@ public final class Manifest {
                 throw invalid("unknown key " + prefix + key + " (known: " + new java.util.TreeSet<>(allowed) + ")");
             }
         }
+    }
+
+    /**
+     * The system of a {@code connector: real} target: an instance of its class, made when the resource is loaded (the
+     * class is the test's, which a build reading the manifest earlier does not have), or none restored.
+     */
+    private static java.util.function.Supplier<com.github.wadahiro.midpoint.tester.RealSystem> realSystem(
+            Map<String, Object> spec, String where) {
+        Object system = spec.get("system");
+        Object restore = spec.get("restore");
+        if (restore != null && !"none".equals(restore.toString())) {
+            throw invalid(where + ".restore: none, not " + restore);
+        }
+        if (system == null) {
+            if (restore == null) {
+                throw invalid(where + ": a real system the tester restores (system: <class implementing RealSystem>),"
+                        + " or restore: none");
+            }
+            return () -> ResourceOptions.NO_RESTORE;
+        }
+        if (restore != null) {
+            throw invalid(where + ": system or restore: none, not both");
+        }
+        return () -> {
+            try {
+                ClassLoader loader = Thread.currentThread().getContextClassLoader();
+                Class<?> type = Class.forName(system.toString(), true,
+                        loader != null ? loader : Manifest.class.getClassLoader());
+                return (com.github.wadahiro.midpoint.tester.RealSystem) type.getConstructor().newInstance();
+            } catch (ReflectiveOperationException | ClassCastException | LinkageError e) {
+                throw invalid(where + ".system: " + system + " is no RealSystem with a public constructor without"
+                        + " arguments: " + e);
+            }
+        };
+    }
+
+    private static Map<String, String> stringMap(Object value, String where) {
+        Map<String, String> out = new LinkedHashMap<>();
+        map(value, where).forEach((k, v) -> out.put(k, String.valueOf(v)));
+        return out;
     }
 
     private static IllegalArgumentException invalid(String message) {

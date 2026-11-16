@@ -4,9 +4,76 @@ Experimental: the manifest's keys and the API may still change.
 
 By default every resource runs on the [mirror connector](environment.md#configuration-and-target-systems), which
 checks what midPoint sends and reads. A resource can run on its real connector instead, for the behaviour the mirror
-does not reproduce: how the connector parses and writes the target system's data, the system's own checks. Today the
-real connectors are Evolveum's CSV and LDAP connectors, against stand-ins the tester provides and restores with
-midPoint's state between tests: a file of its own and an in-memory LDAP server.
+does not reproduce: how the connector parses and writes the target system's data, the system's own checks. Two ways:
+
+- [Any connector, against a system the test provides](#any-connector-against-a-system-the-test-provides): an
+  Active Directory as a Samba 4 container, a SCIM service, a database, a server the test starts itself. The test
+  says how the tester saves and restores its data, so tests still start from a known state and branch.
+- [CSV and LDAP against the tester's stand-ins](#csv-and-ldap-against-the-testers-stand-ins): Evolveum's CSV and
+  LDAP connectors against a file and an in-memory LDAP server the tester provides and restores itself.
+
+## Any connector, against a system the test provides
+
+The resource keeps its connector and its connector configuration as deployed; the manifest sets the properties that
+point it at the test's system, and names the class that saves and restores the system's data:
+
+```yaml
+targets:
+  AD:
+    connector: real
+    system: com.example.idm.SambaDirectory        # implements RealSystem
+    properties: { host: localhost, port: 1636 }   # over the resource's configuration properties (local names)
+    initialData: initial-data/ad.ldif             # given to the system's loadInitialData
+network: { allow: [samba.example.com] }           # a system on another machine; localhost needs none
+```
+
+- **The connector** is the one the resource names, found on the test's class path: add its bundle as a test
+  dependency (the CSV and LDAP connectors come with the tester). A `connectorRef` filter by version must match it.
+- **`properties`** are set over the resource's configuration properties, then what the system's `configuration()`
+  returns (a port it chose when it started); a protected value (a password) is written as a clear value, which
+  midPoint encrypts. Quote a value with a comma (`"dc=example,dc=com"`).
+- **`system`** is a class with a public constructor without arguments that implements
+  `com.github.wadahiro.midpoint.tester.RealSystem`. The tester calls it on the test thread, with midPoint quiescent:
+
+  | Call | When |
+  |---|---|
+  | `start(resourceOid, resourceName)`, then `configuration()` | once per JVM, before midPoint imports the resource |
+  | `loadInitialData(file)` | at the load, for `initialData` |
+  | `capture()` | right before the tester saves midPoint's database: after the load, at a checkpoint (a nested class's `@BeforeAll`, a Kotest container's code) |
+  | `restore(captured)` | after midPoint's database is restored, before any task may start: at every reset; `null`: the resource is no longer used |
+  | `persistentContent()`, `restorePersistent(...)` | for the deployment cache; `null` from `persistentContent()`: the deployment is not cached |
+  | `view()` | a `TargetSystem` for `t.target(...)`; `null`: the test reads the system's data itself, and `hasAccountOn` checks midPoint's link only |
+
+  `restore` returns when the system is back: midPoint reads it next. A system that cannot be restored is
+  `restore: none` instead of `system`: each test then starts from it as the earlier tests left it, which the load
+  says in the log; write the tests so (names of their own, cleaning up).
+- **Effects** have the connector's calls as for any resource; its additional connectors go to mirrors that accept the
+  provisioning scripts ([Provisioning scripts](environment.md#provisioning-scripts-and-additional-connectors)). A
+  connector that runs scripts itself runs them on the system.
+
+The tester's own tests implement it for a CSV file and for an UnboundID in-memory LDAP server the test starts
+([`CsvFileSystem`](../../tester/core/src/test/java/com/github/wadahiro/midpoint/configtester/provided/CsvFileSystem.java),
+[`InMemoryLdapSystem`](../../tester/core/src/test/java/com/github/wadahiro/midpoint/configtester/provided/InMemoryLdapSystem.java),
+`scenarios/hr-provided`); a container exports and imports its data instead (an LDIF of the directory, a database
+dump). A minimal one:
+
+```java
+public class TestDirectory implements RealSystem {
+    private InMemoryDirectoryServer server;
+
+    @Override public void start(String resourceOid, String resourceName) { server = ...; server.startListening(); }
+    @Override public Map<String, String> configuration() {
+        return Map.of("host", "127.0.0.1", "port", String.valueOf(server.getListenPort()), "connectionSecurity", "none");
+    }
+    @Override public void loadInitialData(Path ldif) { server.importFromLDIF(false, ldif.toFile()); }
+    @Override public Object capture() { return server.createSnapshot(); }
+    @Override public void restore(Object captured) {
+        if (captured == null) { server.shutDown(true); } else { server.restoreSnapshot((InMemoryDirectoryServerSnapshot) captured); }
+    }
+}
+```
+
+In Java, `ResourceOptions.defaults().realConnector(system, properties)` does the same for `mp.importResource`.
 
 ## CSV and LDAP against the tester's stand-ins
 

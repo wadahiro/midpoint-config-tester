@@ -99,6 +99,27 @@ class ManifestTest {
                 .hasMessageContaining("timeZone: a time zone (an IANA ID, e.g. Asia/Tokyo), not JST+9");
     }
 
+    @Test
+    void aRealSystemTheTestProvides() throws IOException {
+        Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
+                + "  AD: { connector: real, system: java.lang.String, properties: { host: \"samba.local\", port: 636 } }\n"
+                + "  Files: { connector: real, restore: none }\n");
+
+        assertThat(m.targets.get("AD").connector).isEqualTo("real");
+        assertThat(m.targets.get("AD").options.real().provided()).isTrue();
+        assertThat(m.targets.get("AD").options.real().properties).containsEntry("host", "samba.local")
+                .containsEntry("port", "636");
+        // the class is made when the resource loads
+        assertThatThrownBy(() -> m.targets.get("AD").options.real().system())
+                .hasMessageContaining("targets.AD.system: java.lang.String is no RealSystem");
+        assertThat(m.targets.get("Files").options.real().system())
+                .isSameAs(com.github.wadahiro.midpoint.tester.ResourceOptions.NO_RESTORE);
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n  AD: { connector: real }\n"))
+                .hasMessageContaining("targets.AD: a real system the tester restores");
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n  AD: { connector: ldap, restore: none }\n"))
+                .hasMessageContaining("targets.AD.restore: only with connector: real");
+    }
+
     private Manifest read(String yaml) throws IOException {
         Files.createDirectories(dir.resolve("objects"));
         Path file = dir.resolve("midpoint-config-tester.yaml");

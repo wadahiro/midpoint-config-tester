@@ -1,0 +1,23 @@
+# The HR sample (scenarios/hr) with both resources on their real connectors, reaching systems the test provides
+# (ProvidedSystemsScenarioTest, experimental connector: real): a CSV file and an in-memory LDAP server of the test's
+# own RealSystem implementations, which the tester saves and restores with midPoint's state.
+config:
+  dirs: [../hr/post-initial-objects]
+  schema: ../../schema
+  properties:
+    ldapBase: dc=example,dc=com
+    mailDomain: example.com
+  overlays:
+    "4.0": { dirs: [../hr/overlays/4.0] }
+    "4.8": { dirs: [../hr/overlays/4.8] }
+targets:
+  HR:
+    connector: real
+    system: com.github.wadahiro.midpoint.configtester.provided.CsvFileSystem
+    initialData: initial-data/hr.csv
+  LDAP:
+    connector: real
+    system: com.github.wadahiro.midpoint.configtester.provided.InMemoryLdapSystem
+    properties: { baseContext: "dc=example,dc=com" }   # set over the resource's, before the system's
+    initialData: ../hr/initial-data/directory.ldif
+mail: { redirect: true }
