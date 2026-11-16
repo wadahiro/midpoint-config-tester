@@ -34,8 +34,9 @@ import groovy.lang.GroovyClassLoader;
  * elsewhere). Its place ({@link Entry#place}) is a best-effort guess from the element path; the path itself is always
  * reported.
  *
- * Scripts without a language or in Groovy (midPoint's default) are compiled the way midPoint compiles them without an
- * expression profile. Compiling resolves the classes named in imports, {@code new}, declarations, casts and class
+ * Groovy scripts are compiled the way midPoint compiles them without an expression profile; a script without a
+ * language is in the deployment's default language, which the caller gives (Groovy unless the system configuration
+ * says otherwise: 4.11's initial one says MEL). Compiling resolves the classes named in imports, {@code new}, declarations, casts and class
  * literals, so a class removed in the target line is found; a fully qualified name used as a value
  * ({@code com.example.Util.call()}) and missing methods are only found at run time. Classes of production that are
  * not on the test classpath (model-impl, GUI, connectors, custom jars) do not resolve on any line: compare the results
@@ -115,7 +116,7 @@ public final class ConfigScanner {
         public final String place;
         /** The evaluator elements, in document order. */
         public final List<String> evaluators = new ArrayList<>();
-        /** The scripts: language (null = Groovy) and code. */
+        /** The scripts: language (null: none, the default) and code. */
         public final List<String[]> scripts = new ArrayList<>();
         /** The canonical form of each evaluator element ({@link EvaluatorFingerprint}), in document order. */
         public final List<String> fingerprints = new ArrayList<>();
@@ -142,25 +143,28 @@ public final class ConfigScanner {
             return String.join(" | ", fingerprints);
         }
 
-        /** Whether some script is Groovy, i.e. {@link #compile()} has something to compile. */
-        public boolean hasGroovy() {
-            return scripts.stream().anyMatch(s -> isGroovy(s[0]));
+        /**
+         * Whether some script is Groovy, a script without a language in the default language (null: Groovy), i.e.
+         * {@link #compile} has something to compile.
+         */
+        public boolean hasGroovy(String defaultLanguage) {
+            return scripts.stream().anyMatch(s -> isGroovy(s[0], defaultLanguage));
         }
 
-        /** Languages of the scripts that are not compiled. */
-        public List<String> otherLanguages() {
-            return scripts.stream().map(s -> s[0]).filter(l -> !isGroovy(l)).distinct().collect(Collectors.toList());
+        /** Languages of the scripts that are not compiled, a script without a language in the default language. */
+        public List<String> otherLanguages(String defaultLanguage) {
+            return scripts.stream().filter(s -> !isGroovy(s[0], defaultLanguage))
+                    .map(s -> s[0] == null || s[0].isEmpty() ? defaultLanguage : s[0]).distinct()
+                    .collect(Collectors.toList());
         }
 
-        /** Compiles the Groovy scripts on this line; throws the compilation error of the first that fails. */
-        public void compile() throws Exception {
-            compile(ConfigScanner.class.getClassLoader());
-        }
-
-        /** As {@link #compile()}, with the classes of this loader (the line's and, e.g., a deployment's own jars). */
-        public void compile(ClassLoader classes) throws Exception {
+        /**
+         * Compiles the Groovy scripts on this line with the classes of this loader (the line's and, e.g., a
+         * deployment's own jars); throws the compilation error of the first that fails.
+         */
+        public void compile(ClassLoader classes, String defaultLanguage) throws Exception {
             for (String[] script : scripts) {
-                if (isGroovy(script[0])) {
+                if (isGroovy(script[0], defaultLanguage)) {
                     ConfigScanner.compile(script[1], classes);
                 }
             }
@@ -385,8 +389,14 @@ public final class ConfigScanner {
 
     // ---- compiling ----------------------------------------------------------------------------------------
 
-    public static boolean isGroovy(String language) {
-        return language == null || language.isEmpty() || GROOVY.equals(language);
+    /**
+     * Whether a script of this language runs as Groovy: one without a language in the default language, null being
+     * Groovy (midPoint's {@code ScriptFactory} without {@code expressions/defaultScriptLanguage}); URIs compared as
+     * midPoint does, ignoring case.
+     */
+    public static boolean isGroovy(String language, String defaultLanguage) {
+        String effective = language == null || language.isEmpty() ? defaultLanguage : language;
+        return effective == null || effective.isEmpty() || GROOVY.equalsIgnoreCase(effective);
     }
 
     /** midPoint's compilation without an expression profile; a fresh loader, as parseClass caches by file name. */

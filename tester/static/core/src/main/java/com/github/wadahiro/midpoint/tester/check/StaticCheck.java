@@ -123,8 +123,9 @@ public final class StaticCheck {
         skipped.clear();
         PrismContext prism = checks.contains(Check.SCHEMA) || checks.contains(Check.UPGRADE)
                 || checks.contains(Check.LINT) ? prismContext() : null;
+        DefaultScriptLanguage language = DefaultScriptLanguage.of(xmlFiles(), this::name);
         if (checks.contains(Check.COMPILE)) {
-            compile(places, findings);
+            compile(places, language.uri, findings);
         }
         if (checks.contains(Check.SCHEMA) || checks.contains(Check.UPGRADE)) {
             for (Path file : xmlFiles()) {
@@ -132,24 +133,24 @@ public final class StaticCheck {
             }
         }
         if (checks.contains(Check.LINT)) {
-            lint(StaticLine.evaluators(prism), files, places, findings);
+            lint(StaticLine.evaluators(prism), files, places, language.uri, findings);
         }
         int objects = xmlFiles().stream().mapToInt(f -> files.objects(name(f)).size()).sum();
         return new StaticReport(dir, StaticLine.LINE, checks, skipped, xmlFiles().size(), objects, places,
-                findings);
+                findings, language);
     }
 
     // ---- compilation ----------------------------------------------------------------------------------------
 
-    private void compile(List<ConfigFiles.Place> places, List<Finding> findings) {
+    private void compile(List<ConfigFiles.Place> places, String defaultLanguage, List<Finding> findings) {
         try (java.net.URLClassLoader classes = new java.net.URLClassLoader(urls(),
                 StaticCheck.class.getClassLoader())) {
             for (ConfigFiles.Place place : places) {
-                if (!place.entry.hasGroovy()) {
+                if (!place.entry.hasGroovy(defaultLanguage)) {
                     continue;
                 }
                 try {
-                    place.entry.compile(classes);
+                    place.entry.compile(classes, defaultLanguage);
                 } catch (Exception | LinkageError e) {
                     findings.add(new Finding(Check.COMPILE, Severity.ERROR, "groovy", place.identity, place.file,
                             place.line, compileMessage(e)));
@@ -360,7 +361,7 @@ public final class StaticCheck {
     }
 
     private static void lint(Set<String> evaluators, ConfigFiles files, List<ConfigFiles.Place> places,
-            List<Finding> findings) {
+            String defaultLanguage, List<Finding> findings) {
         for (ConfigFiles.Place place : places) {
             List<String> unknown = place.evaluators.stream().filter(e -> !evaluators.contains(e)).distinct()
                     .collect(Collectors.toList());
@@ -371,7 +372,7 @@ public final class StaticCheck {
             }
             List<String> clock = new ArrayList<>();
             for (String[] script : place.entry.scripts) {
-                if (ConfigScanner.isGroovy(script[0])) {
+                if (ConfigScanner.isGroovy(script[0], defaultLanguage)) {
                     jdkTime(script[1]).stream().filter(t -> !clock.contains(t)).forEach(clock::add);
                 }
             }

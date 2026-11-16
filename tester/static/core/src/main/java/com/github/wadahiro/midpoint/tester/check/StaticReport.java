@@ -26,10 +26,12 @@ public final class StaticReport {
     private final int objects;
     private final List<ConfigFiles.Place> places;
     private final List<Finding> findings;
+    private final DefaultScriptLanguage language;
 
     StaticReport(Path dir, String line, Set<Check> checks, Map<Check, String> skipped, int files, int objects,
-            List<ConfigFiles.Place> places, List<Finding> findings) {
+            List<ConfigFiles.Place> places, List<Finding> findings, DefaultScriptLanguage language) {
         this.dir = dir;
+        this.language = language;
         this.line = line;
         this.checks = Set.copyOf(checks);
         this.skipped = Map.copyOf(skipped);
@@ -37,6 +39,11 @@ public final class StaticReport {
         this.objects = objects;
         this.places = List.copyOf(places);
         this.findings = List.copyOf(findings);
+    }
+
+    /** The language of a script without {@code <language>} (its URI; null: Groovy) and where it comes from. */
+    public String defaultScriptLanguage() {
+        return language.uri;
     }
 
     public Path dir() {
@@ -114,11 +121,13 @@ public final class StaticReport {
     public String markdown() {
         StringBuilder md = new StringBuilder("# Static check of ").append(dir.getFileName()).append(" (midPoint ")
                 .append(line).append(")\n\n");
-        long groovy = places.stream().filter(p -> p.entry.hasGroovy()).count();
+        long groovy = places.stream().filter(p -> p.entry.hasGroovy(language.uri)).count();
         md.append(files).append(" files, ").append(objects).append(" objects, ").append(places.size())
                 .append(" expression places (").append(groovy).append(" with Groovy): ")
                 .append(count(null, Severity.ERROR)).append(" errors, ").append(count(null, Severity.WARNING))
                 .append(" warnings, ").append(count(null, Severity.NOTE)).append(" notes.\n\n");
+        md.append("A script without a language is ").append(language.name()).append(" (").append(language.source)
+                .append(").\n\n");
         md.append("Findings are identified structurally (owner object and element path, as the tester identifies "
                 + "evaluations); file and line are for display.\n\n");
         md.append("| Check | Errors | Warnings | Notes |\n|---|---:|---:|---:|\n");

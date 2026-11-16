@@ -26,6 +26,9 @@ public final class StaticLine {
 
     public static final String LINE = "4.8";
 
+    /** The initial system configuration's {@code expressions/defaultScriptLanguage}: none before 4.11 (Groovy). */
+    static final String INITIAL_DEFAULT_SCRIPT_LANGUAGE = null;
+
     private StaticLine() {
     }
 

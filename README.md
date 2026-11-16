@@ -1175,8 +1175,9 @@ own `000-system-configuration.xml` among the post-initial objects (it replaces t
 production); the tester's own tests do it with a bulk action that removes the three settings
 (`tester/core/src/test/resources/scenarios/groovy-4.11`). A script that names no language runs as MEL wherever the
 system configuration says so: give Groovy scripts their `<language>`. `mp.script(...)` is Groovy unless
-`language(...)` says otherwise (`language(null)`: the system configuration's default). The static checks still take a
-script without `<language>` for Groovy (`ConfigScanner.isGroovy`), whatever the deployment's default.
+`language(...)` says otherwise (`language(null)`: the system configuration's default). The static checks take a script
+without `<language>` in the deployment's default the same way: its own system configuration's
+`expressions/defaultScriptLanguage` (Groovy without one), else the line's initial one's; the report says which.
 
 ## Resets
 
@@ -2299,7 +2300,7 @@ gives evaluations of the same place.
 
 | Check | Finds | Severity |
 |---|---|---|
-| `COMPILE` | every Groovy place compiled on the line's classpath (model-impl, notifications, report, workflow, certification; no GUI, connector or custom jars, which `classpath(...)` adds): missing or removed classes, syntax errors. Missing methods are found only at run time | error |
+| `COMPILE` | every Groovy place (a script without `<language>` in the deployment's default language: [Scripting on 4.11](#scripting-on-411)) compiled on the line's classpath (model-impl, notifications, report, workflow, certification; no GUI, connector or custom jars, which `classpath(...)` adds): missing or removed classes, syntax errors. Missing methods are found only at run time | error |
 | `SCHEMA` | prism parsing of each file, strict and in compatibility mode | error / warning |
 | `UPGRADE` | ninja verify's `ObjectUpgradeValidator` per object, each item path located in the file | error for `CRITICAL`, warning for `NECESSARY`; skipped on 4.0, which has no validator |
 | `LINT` | evaluator elements the line does not know; mappings sharing a name in one object; Groovy that reads the JVM's clock rather than midPoint's `Clock` (`jdk-time`: `new Date()`, `Instant.now()`, `basic.fromNow`...: fine with the tester's `t.clock()`, which moves both, not with a clock override of midPoint alone); elements told apart by position only | error / warning / warning / note |

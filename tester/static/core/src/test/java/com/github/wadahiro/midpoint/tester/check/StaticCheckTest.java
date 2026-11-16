@@ -76,7 +76,9 @@ class StaticCheckTest {
         java.nio.file.Files.createDirectories(config);
         java.nio.file.Files.writeString(config.resolve("role.xml"), "<role oid='30000000-0000-0000-0000-00000000f001'"
                 + " xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'><name>Ext</name>"
-                + "<condition><expression><script><code>import com.example.ext.Helper\nHelper.hello() != null"
+                + "<condition><expression><script>"
+                + "<language>http://midpoint.evolveum.com/xml/ns/public/expression/language#Groovy</language>"
+                + "<code>import com.example.ext.Helper\nHelper.hello() != null"
                 + "</code></script></expression></condition></role>");
 
         assertThat(StaticCheck.of(config).checks(Check.COMPILE).run().compileErrors()).singleElement()
@@ -177,6 +179,24 @@ class StaticCheckTest {
     }
 
     @Test
+    void aScriptWithoutALanguageIsInTheDefaultLanguage() {
+        // no system configuration of the deployment's own: the line's initial one decides
+        StaticReport own = StaticCheck.of(FIXTURES.resolve("../static-default-language")).run();
+        if (MidPointLine.isBefore(LINE, "4.11")) {
+            assertThat(own.defaultScriptLanguage()).isNull();
+            assertThat(own.findings(Check.COMPILE)).extracting(Finding::where)
+                    .containsExactly("role:Default language/condition/expression");
+        } else {
+            // 4.11's initial system configuration: MEL, which the compile check leaves alone
+            assertThat(own.defaultScriptLanguage())
+                    .isEqualTo("http://midpoint.evolveum.com/xml/ns/public/expression/language#mel");
+            assertThat(own.findings(Check.COMPILE)).isEmpty();
+            assertThat(own.markdown()).contains("A script without a language is mel (midPoint " + LINE
+                    + "'s initial system configuration).");
+        }
+    }
+
+    @Test
     void evaluatorsOfTheLine() throws Exception {
         List<String> evaluators = List.of("value", "asIs", "const", "function", "proportional", "generate", "script",
                 "path", "associationTargetSearch", "assignmentTargetSearch", "referenceSearch",
@@ -202,7 +222,9 @@ class StaticCheckTest {
     void markdown() {
         String md = report.markdown();
         assertThat(md).startsWith("# Static check of static (midPoint " + LINE + ")\n\n"
-                + "8 files, 8 objects, 10 expression places (9 with Groovy): ");
+                + "9 files, 9 objects, 10 expression places (9 with Groovy): ");
+        assertThat(md).contains("A script without a language is Groovy (the system configuration of"
+                + " system-configuration.xml).");
         if (MidPointLine.isBefore(LINE, "4.4")) {
             assertThat(md).contains("| Upgrade validator (ninja verify) | skipped | | |\n")
                     .contains("Skipped: midPoint " + LINE + " has no upgrade validator");

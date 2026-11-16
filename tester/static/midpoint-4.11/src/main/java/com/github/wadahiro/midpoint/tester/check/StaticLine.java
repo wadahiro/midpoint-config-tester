@@ -27,6 +27,12 @@ public final class StaticLine {
 
     public static final String LINE = "4.11";
 
+    /**
+     * The initial system configuration's {@code expressions/defaultScriptLanguage}: MEL (000-system-configuration.xml
+     * of system-init), the language of a script without one unless the deployment has its own system configuration.
+     */
+    static final String INITIAL_DEFAULT_SCRIPT_LANGUAGE = "http://midpoint.evolveum.com/xml/ns/public/expression/language#mel";
+
     private StaticLine() {
     }
 

@@ -1,0 +1,12 @@
+<!-- A deployment without a system configuration of its own: a script without a language is in the initial system
+     configuration's default, Groovy before 4.11, MEL from 4.11. The script is not valid Groovy. -->
+<role oid="20000000-0000-0000-0000-00000000c0d1" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>Default language</name>
+    <condition>
+        <expression>
+            <script>
+                <code>size('abc') ==</code>
+            </script>
+        </expression>
+    </condition>
+</role>

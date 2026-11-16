@@ -1158,8 +1158,10 @@ gives a language.
 
 Gates: the default home page (`/home/default`) in the access matrix, `personalNumber` and `displayName` in
 `UserItems`, the initial names (new archetypes, marks, services), the static checks' evaluators
-(`complexAttributeSynchronization`, `javaMethodReference`, `null`) and prism's quoted item names. Open: the static
-checks take a script without a language for Groovy whatever the deployment's default (`ConfigScanner.isGroovy`).
+(`complexAttributeSynchronization`, `javaMethodReference`, `null`) and prism's quoted item names. The static checks
+take a script without a language in the deployment's default (`DefaultScriptLanguage`: the system configuration among
+the files, else the line's initial one, `StaticLine.INITIAL_DEFAULT_SCRIPT_LANGUAGE`): on 4.11 without a system
+configuration of its own, such a script is MEL and not compiled as Groovy.
 
 JDK 25, which midPoint 4.11 recommends, needs a Byte Buddy that reads its class files: `bytebuddy.version` is 1.17.8,
 midPoint 4.11's own (1.15.4 stopped at Java 24), on every line. The 4.11 line passes on 21 and 25; CI runs it on 25.

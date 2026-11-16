@@ -1,0 +1,5 @@
+<!-- The deployment's own system configuration, without expressions/defaultScriptLanguage: a script without a language
+     is Groovy on every line, 4.11 too (a deployment upgraded to 4.11) -->
+<systemConfiguration oid="00000000-0000-0000-0000-000000000001" xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>SystemConfiguration</name>
+</systemConfiguration>
