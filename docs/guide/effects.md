@@ -77,7 +77,8 @@ modifications of task and node objects, a shadow's synchronization timestamps, s
 metadata, attributes and reference attributes (midPoint's copy of the account, which 4.9 on refreshes as it reads; the account's own changes
 are the connector calls). A connector call is recorded as midPoint made it to the connector instance; its account is the naming
 attribute's value (`icfs:name`, an LDAP `dn`), else the identifiers; `of(account)` ignores case. The tester's own calls (an assertion that reads a
-user, a wait that reads a task, `t.source(...)` writing a source system) are not effects: change source systems before
+user, a wait that reads a task, `t.source(...)` writing a source system) and the tasks it creates to run something
+(a scanner, a report, `t.reconcile`: named `... (tester)`) are not effects: change source systems before
 the block. A time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
 (`t.clock().runDue()`). The block's exception propagates; check a failure inside it with `t.expectFailure`.
 

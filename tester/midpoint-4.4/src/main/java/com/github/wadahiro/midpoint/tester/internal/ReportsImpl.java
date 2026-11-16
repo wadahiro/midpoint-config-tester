@@ -54,7 +54,7 @@ final class ReportsImpl implements Reports {
     public Output export(String report, Map<String, Object> parameters) {
         ReportType bean = mp.existing(ReportType.class, report);
         Run run = mp.runAs(null, "export report " + bean.getName().getOrig(), (task, result) -> {
-            String name = "Export task for " + bean.getName().getOrig() + " (tester)";
+            String name = TesterTasks.name("Export task for " + bean.getName().getOrig());
             Task export = mp.harness.createTask(name);
             export.setName(name);
             mp.bean(ReportManager.class).runReport(bean.asPrismObject(), parameters(parameters), export, result);
@@ -112,7 +112,7 @@ final class ReportsImpl implements Reports {
         });
         Map<String, String> before = ReportImports.versions(mp);
         Run run = mp.runAs(username, "import report " + name, (task, result) -> {
-            String taskName = "Import task for " + name + " (tester)";
+            String taskName = TesterTasks.name("Import task for " + name);
             Task importTask = mp.harness.createTask(taskName);
             importTask.setName(taskName);
             if (username != null) {

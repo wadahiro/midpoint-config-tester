@@ -104,7 +104,7 @@ final class PostInitialImport {
     static Outcome run(Harness harness, LineDrivers drivers, File root) {
         Outcome outcome = new Outcome();
         PrismContext prismContext = harness.bean(PrismContext.class);
-        Task task = harness.createTask("post-initial import (tester)");
+        Task task = harness.createTask(TesterTasks.name("post-initial import"));
         task.setChannel(drivers.postInitialChannel());
         OperationResult mainResult = task.getResult();
         for (File file : files(root)) {

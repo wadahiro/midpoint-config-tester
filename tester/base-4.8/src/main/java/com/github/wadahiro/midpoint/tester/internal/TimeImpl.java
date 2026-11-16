@@ -61,7 +61,7 @@ final class TimeImpl implements Time {
     private Run submit(String name, WorkDefinitionsType work) {
         return mp.runAs(null, "run " + name, (task, result) -> {
             String oid = mp.bean(ModelInteractionService.class).submit(new ActivityDefinitionType().work(work),
-                    ActivitySubmissionOptions.create().withTaskTemplate(new TaskType().name(name + " (tester)")),
+                    ActivitySubmissionOptions.create().withTaskTemplate(new TaskType().name(TesterTasks.name(name))),
                     task, result);
             return new MidPointImpl.Outcome(oid, null);
         });

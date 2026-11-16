@@ -60,8 +60,8 @@ final class TimeImpl implements Time {
     private Run submit(String name, WorkDefinitionsType work) {
         return mp.runAs(null, "run " + name, (task, result) -> {
             // 4.4 has no ModelInteractionService.submit: a new task with the activity, switched to the background
-            Task scanner = mp.harness.createTask(name + " (tester)");
-            scanner.setName(name + " (tester)");
+            Task scanner = mp.harness.createTask(TesterTasks.name(name));
+            scanner.setName(TesterTasks.name(name));
             scanner.getUpdatedTaskObject().asObjectable().activity(new ActivityDefinitionType().work(work));
             scanner.makeSingle();
             mp.bean(TaskManager.class).switchToBackground(scanner, result);

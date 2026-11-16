@@ -65,7 +65,7 @@ final class ReportsImpl implements Reports {
                 work.reportParam(params);
             }
             TaskType template = new TaskType()
-                    .name("Export task for " + bean.getName().getOrig() + " (tester)")
+                    .name(TesterTasks.name("Export task for " + bean.getName().getOrig()))
                     .threadStopAction(ThreadStopActionType.CLOSE);
             String oid = mp.bean(ModelInteractionService.class).submit(
                     new ActivityDefinitionType().work(new WorkDefinitionsType().reportExport(work)),
@@ -121,7 +121,7 @@ final class ReportsImpl implements Reports {
                     .reportRef(ObjectTypeUtil.createObjectRef(bean))
                     .reportDataRef(new ObjectReferenceType().oid(dataOid).type(ReportDataType.COMPLEX_TYPE));
             TaskType template = new TaskType()
-                    .name("Import task for " + name + " (tester)")
+                    .name(TesterTasks.name("Import task for " + name))
                     .threadStopAction(ThreadStopActionType.CLOSE);
             String oid = mp.bean(ModelInteractionService.class).submit(
                     new ActivityDefinitionType().work(new WorkDefinitionsType().reportImport(work)),

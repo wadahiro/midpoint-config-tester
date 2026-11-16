@@ -25,7 +25,7 @@ final class ResourceTasks {
 
     static String xml(String operation, String resourceOid, String resourceName, String kind, String intent) {
         String oid = oid(operation, resourceOid, kind, intent);
-        String name = escape(operation + " " + resourceName + " (tester)");
+        String name = escape(TesterTasks.name(operation + " " + resourceName));
         String c = "http://midpoint.evolveum.com/xml/ns/public/common/common-3";
         if ("4.0".equals(LineSupport.LINE)) {
             String handler = "http://midpoint.evolveum.com/xml/ns/public/model/synchronization/task/"

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ShadowType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.configtester.sample.hr.HrAttrs;
 import com.github.wadahiro.midpoint.configtester.sample.hr.Resources;
@@ -163,6 +164,16 @@ class EffectsScenarioTest {
         reconciled[0].connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
         block.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
         block.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
+    }
+
+    @Test
+    void theTasksTheTesterCreatesAreNotEffects(MidPointConfigTester t) {
+        Effects scan = t.clock().runTriggerScanner();   // the tester adds "trigger scanner (tester)" to run it
+        scan.none();
+        assertThat(scan.repositoryCalls().writes().ofType(TaskType.class).count()).isPositive();   // still a cost
+
+        t.reconcile(Resources.HR);
+        t.reconcile(Resources.HR).none();   // the second overwrites the first's task, of the same OID
     }
 
     @Test

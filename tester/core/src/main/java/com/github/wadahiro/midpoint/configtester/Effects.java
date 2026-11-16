@@ -19,6 +19,7 @@ import com.github.wadahiro.midpoint.tester.AuditRecord;
 import com.github.wadahiro.midpoint.tester.LogEntry;
 import com.github.wadahiro.midpoint.tester.Mail;
 import com.github.wadahiro.midpoint.tester.internal.EffectsCapture;
+import com.github.wadahiro.midpoint.tester.internal.TesterTasks;
 
 /**
  * What midPoint did while a block of the test ran ({@link MidPointConfigTester#effectsOf(Runnable)}): the objects it
@@ -35,7 +36,8 @@ import com.github.wadahiro.midpoint.tester.internal.EffectsCapture;
  * without checks: the block changed nothing.</p>
  *
  * <p>Not among the changes: midPoint's housekeeping ({@code metadata} and {@code operationExecution} at any depth,
- * the modifications of task and node objects, a shadow's {@code synchronizationTimestamp},
+ * the modifications of task and node objects, the tasks the tester creates to run something (named
+ * {@code ... (tester)}), a shadow's {@code synchronizationTimestamp},
  * {@code fullSynchronizationTimestamp}, {@code synchronizationSituationDescription} and {@code cachingMetadata}). A
  * time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
  * ({@link TestClock#runDue()}); data a test adds to a source system belongs before the block.</p>
@@ -119,6 +121,9 @@ public final class Effects {
             }
             if (kind == ObjectChange.Kind.MODIFIED && (items.isEmpty() || RUNTIME_TYPES.contains(first.type))) {
                 continue;
+            }
+            if ("TaskType".equals(first.type) && TesterTasks.isTesterTask(name)) {
+                continue;   // the tester's own task, as the tester's own calls are not effects
             }
             out.add(new ObjectChange(first.type, first.oid, name, kind, items));
         }
@@ -267,7 +272,8 @@ public final class Effects {
     }
 
     static String notCountedNote() {
-        return "(not counted: metadata, operationExecution, task and node modifications, a shadow's synchronization"
-                + " timestamps, situation description and cached attributes, connector reads, logs below ERROR, audit records)";
+        return "(not counted: metadata, operationExecution, task and node modifications, the tester's own tasks, a"
+                + " shadow's synchronization timestamps, situation description and cached attributes, connector reads,"
+                + " logs below ERROR, audit records)";
     }
 }

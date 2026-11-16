@@ -56,8 +56,8 @@ final class TimeImpl implements Time {
     private Run submit(String name, String handlerUri) {
         return mp.runAs(null, "run " + name, (task, result) -> {
             // 4.0 has no activities: a new single-run task with the scanner's handler, switched to the background
-            Task scanner = mp.harness.createTask(name + " (tester)");
-            scanner.setName(name + " (tester)");
+            Task scanner = mp.harness.createTask(TesterTasks.name(name));
+            scanner.setName(TesterTasks.name(name));
             scanner.setHandlerUri(handlerUri);
             scanner.makeSingle();
             mp.bean(TaskManager.class).switchToBackground(scanner, result);

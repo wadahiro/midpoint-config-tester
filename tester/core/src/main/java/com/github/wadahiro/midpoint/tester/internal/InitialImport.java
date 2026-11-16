@@ -138,7 +138,7 @@ final class InitialImport {
         Outcome outcome = new Outcome();
         PrismContext prismContext = harness.bean(PrismContext.class);
         ModelService model = harness.bean(ModelService.class);
-        Task task = harness.createTask("initial import (tester)");
+        Task task = harness.createTask(TesterTasks.name("initial import"));
         task.setChannel(drivers.postInitialChannel());
         OperationResult mainResult = task.getResult();
         for (Resource file : files) {
