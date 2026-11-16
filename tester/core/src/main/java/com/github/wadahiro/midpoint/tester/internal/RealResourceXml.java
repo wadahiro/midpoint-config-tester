@@ -1,6 +1,7 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
 import static com.github.wadahiro.midpoint.tester.internal.Xml.NS_C;
+import static com.github.wadahiro.midpoint.tester.internal.Xml.NS_ICFC;
 import static com.github.wadahiro.midpoint.tester.internal.Xml.NS_RI;
 import static com.github.wadahiro.midpoint.tester.internal.Xml.child;
 import static com.github.wadahiro.midpoint.tester.internal.Xml.children;
@@ -217,6 +218,20 @@ final class RealResourceXml {
         return out.toString();
     }
 
+    /** The names of the resource's additional connectors. */
+    java.util.List<String> additionalConnectors() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Element additional : children(resource, "additionalConnector")) {
+            out.add(Xml.text(additional, "name"));
+        }
+        return out;
+    }
+
+    /** The mirror that stands in for an additional connector of a resource. */
+    static String scriptMirrorId(String resourceOid, String connectorName) {
+        return resourceOid + "#" + connectorName;
+    }
+
     /** The configuration property as deployed, or the default. */
     String property(String localName, String defaultValue) {
         String value = properties.get(localName);
@@ -228,8 +243,30 @@ final class RealResourceXml {
      * line's connector of a connector type.
      */
     String transform(Function<String, String> connectorOid, Map<String, String> overrides, Set<String> removed,
-            String bindPassword) {
+            String bindPassword, String scriptsConnectorOid) {
         String connector = connectorOid.apply(connectorType);
+        // an additional connector (an SSH connector that runs the provisioning scripts) goes to a mirror of its own
+        for (Element additional : children(resource, "additionalConnector")) {
+            String instanceId = scriptMirrorId(oid, Xml.text(additional, "name"));
+            for (String name : java.util.List.of("connectorRef", "connectorConfiguration")) {
+                Element old = child(additional, name);
+                if (old != null) {
+                    additional.removeChild(old);
+                }
+            }
+            Element ref = doc.createElementNS(NS_C, "connectorRef");
+            ref.setAttribute("oid", scriptsConnectorOid);
+            Element configuration = doc.createElementNS(NS_C, "connectorConfiguration");
+            Element properties = doc.createElementNS(NS_ICFC, "icfc:configurationProperties");
+            Element id = doc.createElementNS(MirrorResourceXml.NS_MIRROR_SCRIPTS, "mirror:instanceId");
+            id.setTextContent(instanceId);
+            properties.appendChild(id);
+            configuration.appendChild(properties);
+            Node after = child(additional, "name");
+            Node before = after != null ? Xml.nextElement(after) : Xml.firstElement(additional);
+            additional.insertBefore(ref, before);
+            additional.insertBefore(configuration, before);
+        }
         Element connectorRef = child(resource, "connectorRef");
         Element newRef = doc.createElementNS(NS_C, "connectorRef");
         newRef.setAttribute("oid", connector);

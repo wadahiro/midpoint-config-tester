@@ -5,8 +5,9 @@
 `t.effectsOf { ... }` runs a block and returns what midPoint did meanwhile, with the work the block waited for (a
 task's background work): `changes()`, the objects it added, modified or deleted in its repository, one change per
 object with the items changed; `connectorCalls()`, the calls it made to the connectors of its resources, writes
-(`add`, `modify`, `delete`, `executeScript`) and reads (`fetch`, `search`, `count`, `fetchChanges`...), mirror and
-real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repositoryCalls()`, the repository calls
+(`add`, `modify`, `delete`, `executeScript`: a resource's provisioning scripts, `scripts()`, see [Provisioning
+scripts](environment.md#provisioning-scripts-and-additional-connectors)) and reads (`fetch`, `search`, `count`,
+`fetchChanges`...), mirror and real connectors alike; `mails()`, `logs()` and `audit()` of the block; and `repositoryCalls()`, the repository calls
 below midPoint's cache, for looking into what a configuration costs. Selections narrow and check like `t.mails()`.
 
 Every verb that makes midPoint work returns the `Effects` of its call: a focus's `add`/`modify`/`delete`/`assign`/

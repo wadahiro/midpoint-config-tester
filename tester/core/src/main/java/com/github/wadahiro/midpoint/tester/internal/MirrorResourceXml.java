@@ -68,6 +68,9 @@ final class MirrorResourceXml {
 
     static final String NS_MIRROR = "http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/"
             + MirrorBundle.BUNDLE_NAME + "/" + MirrorBundle.CONNECTOR_TYPE;
+    /** The configuration namespace of the scripts-only mirror (an additional connector's stand-in). */
+    static final String NS_MIRROR_SCRIPTS = "http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/"
+            + MirrorBundle.BUNDLE_NAME + "/" + MirrorBundle.SCRIPTS_CONNECTOR_TYPE;
 
     private static final QName ICFS_NAME = new QName(NS_ICFS, "name");
 
@@ -308,6 +311,12 @@ final class MirrorResourceXml {
             if (old != null) {
                 resource.removeChild(old);
             }
+        }
+        // the additional connectors (an SSH connector that runs the provisioning scripts) go too: the mirror accepts
+        // the scripts itself, and midPoint routes them to it, the one connector left with the script capability
+        for (Element additional = child(resource, "additionalConnector"); additional != null;
+                additional = child(resource, "additionalConnector")) {
+            resource.removeChild(additional);
         }
         if (nativeCaps != null) {
             capabilities.removeChild(nativeCaps);

@@ -157,6 +157,9 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
     template names (or renames): `val org = t.addOrg { ... }` (`addUser`, `addRole`, `addService`), then `org` and
     `org.oid()` where a name goes, never the name it was added with
   - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims
+  - a resource's provisioning scripts (run through an SSH `additionalConnector`): accepted and recorded, never run;
+    `c.connectorCalls().to(r).scripts().single().hasArgument("user", "jdoe").codeContains("mkdir")`; a broken
+    connection: `t.target(r).scriptsFail()`
   - what a verb did, and nothing else: `effects.verifyAll(c -> { c.changes().of(n).single().only(...); ... })`
     (Kotest: `effects.verifyAll { changes()... }`, the lambda after the parentheses); nothing at all: `none()`
   - the configuration at rest, after a verb that provisions: `effects.changes().focuses().forEach { it.recompute().none() }`

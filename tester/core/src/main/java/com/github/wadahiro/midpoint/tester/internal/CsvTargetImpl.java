@@ -22,7 +22,20 @@ import com.github.wadahiro.midpoint.tester.CsvFile;
  * named by the name column ({@code nameAttribute}, else {@code uniqueAttribute}); the unique, name and password
  * columns are not attributes. The file is one object class: groups and other classes are not supported.
  */
-final class CsvTargetImpl implements ManagedTarget, CsvFile {
+final class CsvTargetImpl implements ManagedTarget, RealTarget, CsvFile {
+
+    /** The mirrors of the resource's additional connectors ({@link RealTarget}). */
+    private List<String> scriptMirrors = List.of();
+
+    @Override
+    public void scriptMirrors(List<String> instanceIds) {
+        this.scriptMirrors = List.copyOf(instanceIds);
+    }
+
+    @Override
+    public void scriptsFail(boolean fail) {
+        RealTarget.scriptsFail(resourceOid(), scriptMirrors, fail);
+    }
 
     private final String resourceOid;
     private final SimulatedActivation simulatedActivation;

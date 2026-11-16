@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -331,14 +332,52 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                 return result;
             } finally {
                 try {
-                    EffectsCapture.record(new ConnectorCall(resource, operation, objectClass(args), account(args),
-                            CONNECTOR_WRITES.contains(method.getName()) ? attributes(method.getName(), args)
-                                    : Collections.emptyList(),
-                            failed));
+                    Object script = "executeScript".equals(method.getName()) ? scriptOperation(args) : null;
+                    EffectsCapture.record(script != null ? scriptCall(script, failed)
+                            : new ConnectorCall(resource, operation, objectClass(args), account(args),
+                                    CONNECTOR_WRITES.contains(method.getName()) ? attributes(method.getName(), args)
+                                            : Collections.emptyList(),
+                                    failed));
                 } catch (RuntimeException e) {
                     System.err.println("Effects recorder failed: " + e);
                 }
             }
+        }
+
+        /** The provisioning script midPoint executes ({@code ExecuteProvisioningScriptOperation}, every line). */
+        private static Object scriptOperation(Object[] args) {
+            if (args != null) {
+                for (Object arg : args) {
+                    if (arg != null && arg.getClass().getName().endsWith("ExecuteProvisioningScriptOperation")) {
+                        return arg;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /** A script call: the argument names as the attributes written, the arguments' values as midPoint evaluated them. */
+        private ConnectorCall scriptCall(Object script, boolean failed) {
+            Map<String, List<String>> arguments = new LinkedHashMap<>();
+            Object list = getter(script, "getArgument");
+            if (list instanceof Collection) {
+                for (Object argument : (Collection<?>) list) {
+                    Object name = getter(argument, "getArgumentName");
+                    Object value = getter(argument, "getArgumentValue");
+                    List<String> values = new ArrayList<>();
+                    if (value instanceof Collection) {
+                        ((Collection<?>) value).forEach(v -> values.add(text(v)));
+                    } else if (value != null) {
+                        values.add(text(value));
+                    }
+                    arguments.put(String.valueOf(name), Collections.unmodifiableList(values));
+                }
+            }
+            String host = Boolean.TRUE.equals(getter(script, "isConnectorHost")) ? "connector"
+                    : Boolean.TRUE.equals(getter(script, "isResourceHost")) ? "resource" : null;
+            return new ConnectorCall(resource, "executeScript", null, null, new ArrayList<>(arguments.keySet()), failed,
+                    text(getter(script, "getLanguage")), text(getter(script, "getTextCode")), host,
+                    Collections.unmodifiableMap(arguments));
         }
 
         private static String objectClass(Object[] args) {

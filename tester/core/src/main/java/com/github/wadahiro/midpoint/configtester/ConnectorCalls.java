@@ -64,6 +64,20 @@ public final class ConnectorCalls {
         return operation("delete");
     }
 
+    /** The provisioning scripts midPoint ran on the resource (a resource's {@code <scripts>}). */
+    public ConnectorCalls scripts() {
+        return operation("executeScript");
+    }
+
+    /** The scripts with the argument of exactly these values ({@link ConnectorCall#hasArgument}). */
+    public ConnectorCalls withArgument(String name, Object... values) {
+        List<String> expected = new ArrayList<>();
+        for (Object v : values) {
+            expected.add(String.valueOf(v));
+        }
+        return select(c -> expected.equals(c.arguments().get(name)), " with " + name + " = " + expected);
+    }
+
     /** The calls that change the target system: add, modify, delete and scripts. */
     public ConnectorCalls writes() {
         return select(ConnectorCall::isWrite, " that write");

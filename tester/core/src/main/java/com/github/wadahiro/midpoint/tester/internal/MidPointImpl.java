@@ -321,13 +321,13 @@ final class MidPointImpl implements MidPoint {
             File tmp = csv.tmpFolder().toFile();
             tmp.mkdirs();
             xml = resource.transform(this::connectorOid, Map.of("filePath", csv.path().toString(),
-                    "tmpFolder", tmp.getPath()), java.util.Set.of(), null);
+                    "tmpFolder", tmp.getPath()), java.util.Set.of(), null, mirrorScriptsConnectorOid());
             target = csv;
         } else {
             LdapTargetImpl ldap = existing instanceof LdapTargetImpl ? (LdapTargetImpl) existing
                     : new LdapTargetImpl(resource, options.hasReferentialIntegrity());
             xml = resource.transform(this::connectorOid, ldap.overrides(), java.util.Set.of("servers"),
-                    LdapTargetImpl.BIND_PASSWORD);
+                    LdapTargetImpl.BIND_PASSWORD, mirrorScriptsConnectorOid());
             target = ldap;
         }
         if (existing != null && existing != target) {
@@ -336,6 +336,16 @@ final class MidPointImpl implements MidPoint {
         if (existing != target) {
             runtime.registerTarget(target);
         }
+        // the additional connectors' mirrors, which accept the provisioning scripts: reset and checkpointed as targets
+        List<String> scriptMirrors = new ArrayList<>();
+        for (String connector : resource.additionalConnectors()) {
+            String id = RealResourceXml.scriptMirrorId(resource.oid, connector);
+            if (runtime.findTarget(id) == null) {
+                runtime.registerTarget(MirrorTargetImpl.scriptsOnly(id));
+            }
+            scriptMirrors.add(id);
+        }
+        ((RealTarget) target).scriptMirrors(scriptMirrors);
         runtime.writeWorkFile("tester-resources/" + fileName, xml);
         return new Retargeted(resource.oid, xml, target);
     }
@@ -1592,6 +1602,10 @@ final class MidPointImpl implements MidPoint {
      */
     String mirrorConnectorOid() {
         return connectorOid(MirrorBundle.CONNECTOR_TYPE);
+    }
+
+    String mirrorScriptsConnectorOid() {
+        return connectorOid(MirrorBundle.SCRIPTS_CONNECTOR_TYPE);
     }
 
     /** The objects of the type as stored (repository, raw). */

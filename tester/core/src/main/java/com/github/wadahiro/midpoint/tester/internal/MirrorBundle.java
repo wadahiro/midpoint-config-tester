@@ -31,6 +31,9 @@ final class MirrorBundle {
     static final String BUNDLE_NAME = "com.github.wadahiro.midpoint.tester.mirror";
     static final String BUNDLE_VERSION = "1.0";
     static final String CONNECTOR_TYPE = MirrorConnector.class.getName();
+    /** The stand-in of an additional connector of a resource on its real connector: scripts only. */
+    static final String SCRIPTS_CONNECTOR_TYPE =
+            com.github.wadahiro.midpoint.tester.mirror.connector.MirrorScriptsConnector.class.getName();
 
     private static final String PACKAGE_PATH = MirrorConnector.class.getPackageName().replace('.', '/') + "/";
 

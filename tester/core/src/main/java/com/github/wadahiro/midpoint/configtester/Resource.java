@@ -156,6 +156,18 @@ public final class Resource {
         return system().objectNames(objectClass);
     }
 
+    /**
+     * Makes the provisioning scripts midPoint runs on the resource (its {@code <scripts>}) fail, as a communication
+     * error does (an SSH connection that breaks: the SSH connector fails only so, a command's exit status is not
+     * checked), so the test sees what the scripts' {@code criticality} makes of it; a reset or checkpoint undoes it.
+     * The scripts are never run: the mirror accepts them, and {@code connectorCalls().scripts()} has what midPoint
+     * asked for.
+     */
+    public Resource scriptsFail() {
+        system().scriptsFail(true);
+        return this;
+    }
+
     /** The PoC's view of the system (groups, other object classes, passwords). */
     public TargetSystem system() {
         try {

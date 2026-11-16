@@ -27,6 +27,15 @@ public interface TargetSystem {
 
     String resourceOid();
 
+    /**
+     * Makes the provisioning scripts midPoint runs on the resource fail, as a communication error (an SSH connection
+     * that breaks), or work again; a reset undoes it. The scripts run on the mirror: the resource's own, or the one
+     * standing in for its additional connectors.
+     */
+    default void scriptsFail(boolean fail) {
+        throw new UnsupportedOperationException("The scripts of " + resourceOid() + " run on no mirror");
+    }
+
     // ---- accounts --------------------------------------------------------------------------------------------
 
     void addAccount(String name, Map<String, ?> attributes);

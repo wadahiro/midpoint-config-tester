@@ -26,6 +26,8 @@ public final class MirrorResource {
     private boolean referentialIntegrity;
     /** Whether names, and references by name, match regardless of case. */
     private boolean caseInsensitiveNames;
+    /** Whether the scripts midPoint runs on the resource fail (as a communication error); undone by a reset. */
+    private boolean scriptsFail;
     /** ConnId object class name -> uid -> object. */
     private final Map<String, Map<String, MirrorObject>> objects = new LinkedHashMap<>();
     /** Live synchronization tokens of all mirrors: never reused, so a token from a restored database stays valid. */
@@ -39,14 +41,16 @@ public final class MirrorResource {
         final List<MirrorLink> references;
         final boolean referentialIntegrity;
         final boolean caseInsensitiveNames;
+        final boolean scriptsFail;
         final Map<String, Map<String, MirrorObject>> objects;
 
         Snapshot(Map<String, MirrorClass> classes, List<MirrorLink> references, boolean referentialIntegrity,
-                boolean caseInsensitiveNames, Map<String, Map<String, MirrorObject>> objects) {
+                boolean caseInsensitiveNames, boolean scriptsFail, Map<String, Map<String, MirrorObject>> objects) {
             this.classes = classes;
             this.references = references;
             this.referentialIntegrity = referentialIntegrity;
             this.caseInsensitiveNames = caseInsensitiveNames;
+            this.scriptsFail = scriptsFail;
             this.objects = objects;
         }
     }
@@ -68,6 +72,15 @@ public final class MirrorResource {
         this.references = List.copyOf(references);
         this.referentialIntegrity = referentialIntegrity;
         this.caseInsensitiveNames = caseInsensitiveNames;
+    }
+
+    /** Whether the scripts midPoint runs on the resource fail, as a communication error would. */
+    public synchronized boolean scriptsFail() {
+        return scriptsFail;
+    }
+
+    public synchronized void scriptsFail(boolean fail) {
+        this.scriptsFail = fail;
     }
 
     public synchronized boolean caseInsensitiveNames() {
@@ -278,7 +291,7 @@ public final class MirrorResource {
             copy.put(c, objectsCopy);
         });
         return new Snapshot(new LinkedHashMap<>(classes), references, referentialIntegrity, caseInsensitiveNames,
-                copy);
+                scriptsFail, copy);
     }
 
     /**
@@ -316,6 +329,7 @@ public final class MirrorResource {
     public synchronized void restore(Snapshot snapshot) {
         if (snapshot == null) {
             objects.values().forEach(Map::clear);
+            scriptsFail = false;
             return;
         }
         classes.clear();
@@ -323,6 +337,7 @@ public final class MirrorResource {
         references = snapshot.references;
         referentialIntegrity = snapshot.referentialIntegrity;
         caseInsensitiveNames = snapshot.caseInsensitiveNames;
+        scriptsFail = snapshot.scriptsFail;
         objects.clear();
         snapshot.objects.forEach((c, byUid) -> {
             Map<String, MirrorObject> restored = new LinkedHashMap<>();

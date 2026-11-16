@@ -3,6 +3,7 @@ package com.github.wadahiro.midpoint.tester.internal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.evolveum.midpoint.prism.path.ItemPath;
@@ -147,15 +148,29 @@ public final class EffectsCapture {
         public final String account;
         public final List<String> attributes;
         public final boolean failed;
+        /** The script of an {@code executeScript}: its language, code, host and arguments as evaluated; else null. */
+        public final String language;
+        public final String code;
+        public final String host;
+        public final Map<String, List<String>> arguments;
 
         ConnectorCall(String resource, String operation, String objectClass, String account, List<String> attributes,
                 boolean failed) {
+            this(resource, operation, objectClass, account, attributes, failed, null, null, null, Map.of());
+        }
+
+        ConnectorCall(String resource, String operation, String objectClass, String account, List<String> attributes,
+                boolean failed, String language, String code, String host, Map<String, List<String>> arguments) {
             this.resource = resource;
             this.operation = operation;
             this.objectClass = objectClass;
             this.account = account;
             this.attributes = attributes;
             this.failed = failed;
+            this.language = language;
+            this.code = code;
+            this.host = host;
+            this.arguments = arguments;
         }
     }
 }

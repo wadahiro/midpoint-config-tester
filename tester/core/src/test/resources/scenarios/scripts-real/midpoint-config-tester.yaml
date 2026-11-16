@@ -1,0 +1,16 @@
+# scenarios/scripts with LDAP on its real connector (ScriptsRealScenarioTest): the additional SSH connector goes to
+# a mirror of its own, which accepts the scripts.
+config:
+  dirs: [../hr/post-initial-objects, ../scripts/post-initial-objects]
+  exclude: [resources/021-resource-ldap.xml]
+  schema: ../../schema
+  properties:
+    ldapBase: dc=example,dc=com
+    mailDomain: example.com
+  overlays:
+    "4.0": { dirs: [../hr/overlays/4.0] }
+    "4.8": { dirs: [../hr/overlays/4.8] }
+targets:
+  HR:   { connector: csv }
+  LDAP: { connector: ldap, initialData: ../hr/initial-data/directory.ldif, referentialIntegrity: true }
+mail: { redirect: true }

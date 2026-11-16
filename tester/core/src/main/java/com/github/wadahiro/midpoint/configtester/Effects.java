@@ -84,7 +84,7 @@ public final class Effects {
         List<ConnectorCall> connectorCalls = new ArrayList<>();
         for (EffectsCapture.ConnectorCall call : capture.connectorCalls()) {
             connectorCalls.add(new ConnectorCall(call.resource, call.operation, call.objectClass, call.account,
-                    call.attributes, call.failed));
+                    call.attributes, call.failed, call.language, call.code, call.host, call.arguments));
         }
         return new Effects(changes(capture.repositoryCalls()), Collections.unmodifiableList(connectorCalls),
                 Collections.unmodifiableList(repositoryCalls), capture.mails(), capture.logs(), capture.audit(), tester);

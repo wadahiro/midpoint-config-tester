@@ -5,15 +5,17 @@
 - **Target systems are mirrors** unless kept on the real CSV or LDAP connector. The mirror connector reproduces the
   schema and capabilities of a resource (readable passwords as the real connector's configuration says), not the
   behaviour of its real connector or system: no LDAP schema checks, no password policies of the target system itself
-  (midPoint's own policies for the account apply), no connector scripts, no asynchronous provisioning or updates;
+  (midPoint's own policies for the account apply), provisioning scripts recorded and not run, no asynchronous
+  provisioning or updates;
   computed attributes, referential integrity and case insensitivity only as `ResourceOptions` say. Test
   what midPoint computes, not what the connector does. The real connectors are limited to CSV and LDAP (no Active
   Directory, no other connectors), the LDAP server is UnboundID's in-memory server with its standard schema (not
   OpenLDAP, 389 DS or AD: their schema, overlays such as `memberOf`, password policies and controls differ; its
   change log gives live synchronization no deletions and fails it on renames, see [Real connectors](environment.md#real-connectors)).
-- **One connector per resource.** The tester replaces (mirror) or redirects (real connector) the resource's own
-  connector only: an `additionalConnector` keeps its connector and configuration, those of the production system, so
-  what midPoint takes from it (e.g. its `references` capability, 4.9+) is not tested.
+- **Additional connectors stand in for their scripts only.** On a mirror a resource's `additionalConnector`s go, on a
+  real connector each goes to a mirror that accepts scripts and nothing else
+  ([Provisioning scripts and additional connectors](environment.md#provisioning-scripts-and-additional-connectors)):
+  what midPoint takes from them besides (e.g. a `references` capability, 4.9+) is not tested.
 - **PostgreSQL 18 in memory.** midPoint runs on pgmem, an in-memory PostgreSQL 18. Repository behaviour specific to other
   databases is not covered.
 - **No GUI and no REST.** Drivers call the services the GUI calls; GUI-only logic (forms, wizards, request access

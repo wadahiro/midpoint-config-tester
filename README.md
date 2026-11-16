@@ -37,7 +37,8 @@ evaluates them. By design it leaves out:
   opens is not run.
 - **The connectors and the target systems.** A resource runs on the mirror connector, made from its schema, so a test
   checks what midPoint sends and reads, not how a connector or a real system takes it (an LDAP server's schema checks,
-  a database's constraints, a connector's scripts).
+  a database's constraints). A resource's provisioning scripts, through an SSH additional connector say, are recorded
+  with their arguments, not run.
 - **The production environment.** midPoint runs inside the test on an in-memory PostgreSQL, with no cluster, no
   network and no other machine.
 

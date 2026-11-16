@@ -182,6 +182,39 @@ along the assignment path. Set it in the surefire configuration of the module th
 
 A deployment whose lines need different schemas points each line module at its own directory.
 
+### Provisioning scripts and additional connectors
+
+A resource's provisioning scripts (its `<scripts>`: a home directory made after an account is added, archived before
+one is deleted) usually run through an additional connector, an SSH connector to a file server. The tester runs no
+script and reaches no such server; it stands in for the connectors that would run them:
+
+- On a mirror, the resource's `additionalConnector`s go, and the mirror accepts the scripts itself.
+- On a real CSV or LDAP connector, each `additionalConnector` goes to a mirror of its own that accepts scripts and
+  nothing else, so midPoint still takes the schema and the accounts from the real connector.
+
+midPoint routes the scripts to that stand-in, and the effects of a verb have each script as a connector call of the
+resource (`executeScript`, a write): its language, its code as the resource has it, where it runs (`resource` or
+`connector`), and its arguments as midPoint evaluated them; its attributes are the argument names, so `only(...)`
+and an exhaustive `verifyAll` check them like an account's.
+
+```java
+Effects hired = t.task("Reconcile HR").run();
+hired.verifyAll(c -> {
+    c.connectorCalls().to("LDAP").adds().of(dn).single();
+    c.connectorCalls().to("LDAP").scripts().single()                    // after the add, as the resource says
+            .hasLanguage("bash").hasArgument("user", "e1001").codeContains("mkdir").only("user", "department");
+    // ...
+});
+hired.connectorCalls().to("LDAP").scripts().withArgument("user", "e1001").count();
+```
+
+A script's return value is not kept: midPoint only logs it. A script fails as its connector makes it fail: the SSH
+connector fails on a broken connection only (a command's exit status is logged, not checked), and midPoint then
+fails the operation or warns, as the script's `criticality` says (`fatal` by default). `t.target("LDAP").scriptsFail()`
+makes the resource's scripts fail so, until the test ends (a reset or checkpoint undoes it); the call is then
+`failed()`. What else an additional connector gives midPoint (a capability such as `references`, 4.9+) is not
+tested.
+
 ## Hooks, notifications and authorizations
 
 ### Extension beans

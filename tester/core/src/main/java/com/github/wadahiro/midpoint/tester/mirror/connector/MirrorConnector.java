@@ -11,6 +11,7 @@ import java.util.Set;
 import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.ConfigurationException;
+import org.identityconnectors.framework.common.exceptions.ConnectorIOException;
 import org.identityconnectors.framework.common.exceptions.InvalidAttributeValueException;
 import org.identityconnectors.framework.common.exceptions.UnknownUidException;
 import org.identityconnectors.framework.common.objects.Attribute;
@@ -28,6 +29,7 @@ import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.OperationalAttributeInfos;
 import org.identityconnectors.framework.common.objects.OperationalAttributes;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
+import org.identityconnectors.framework.common.objects.ScriptContext;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 import org.identityconnectors.framework.common.objects.SearchResult;
@@ -56,6 +58,8 @@ import org.identityconnectors.framework.spi.SyncTokenResultsHandler;
 import org.identityconnectors.framework.spi.operations.CreateOp;
 import org.identityconnectors.framework.spi.operations.DeleteOp;
 import org.identityconnectors.framework.spi.operations.SchemaOp;
+import org.identityconnectors.framework.spi.operations.ScriptOnConnectorOp;
+import org.identityconnectors.framework.spi.operations.ScriptOnResourceOp;
 import org.identityconnectors.framework.spi.operations.SearchOp;
 import org.identityconnectors.framework.spi.operations.SyncOp;
 import org.identityconnectors.framework.spi.operations.TestOp;
@@ -77,10 +81,16 @@ import com.github.wadahiro.midpoint.tester.mirror.MirrorStore;
  *
  * Live synchronization works as the CSV connector's: a token stands for the content at that moment, and a run reports
  * what differs from it ({@link MirrorResource#changesSince}), changes made by midPoint and by the test alike.
+ *
+ * Scripts (a resource's provisioning scripts, on the resource or on the connector) are accepted and not run: the
+ * mirror stands in for the connectors that would run them (an additional SSH connector), and the tester records what
+ * midPoint asked for. A script fails, as a communication error, when the test says so
+ * ({@link MirrorResource#scriptsFail(boolean)}).
  */
 @ConnectorClass(displayNameKey = "mirror.connector.display", configurationClass = MirrorConfiguration.class)
 public class MirrorConnector
-        implements Connector, SchemaOp, TestOp, CreateOp, UpdateDeltaOp, DeleteOp, SearchOp<Filter>, SyncOp {
+        implements Connector, SchemaOp, TestOp, CreateOp, UpdateDeltaOp, DeleteOp, SearchOp<Filter>, SyncOp,
+        ScriptOnResourceOp, ScriptOnConnectorOp {
 
     private MirrorConfiguration configuration;
     private MirrorResource resource;
@@ -107,6 +117,25 @@ public class MirrorConnector
     @Override
     public void test() {
         // nothing to connect to
+    }
+
+    @Override
+    public Object runScriptOnResource(ScriptContext request, OperationOptions options) {
+        return script(resource, request);
+    }
+
+    @Override
+    public Object runScriptOnConnector(ScriptContext request, OperationOptions options) {
+        return script(resource, request);
+    }
+
+    /** Not run; midPoint only logs what a provisioning script returns. */
+    static Object script(MirrorResource resource, ScriptContext request) {
+        if (resource.scriptsFail()) {
+            throw new ConnectorIOException("Script execution failed (the test made the scripts of " + resource.instanceId
+                    + " fail): " + request.getScriptLanguage() + " " + request.getScriptText());
+        }
+        return null;
     }
 
     @Override

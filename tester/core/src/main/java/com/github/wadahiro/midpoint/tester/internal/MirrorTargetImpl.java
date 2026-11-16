@@ -45,6 +45,22 @@ final class MirrorTargetImpl implements ManagedTarget {
         this.resource = resource;
     }
 
+    /**
+     * A mirror with no object classes that stands in for an additional connector of a resource on its real connector
+     * ({@code <oid>#<name>}, served by {@code MirrorScriptsConnector}): it accepts the provisioning scripts midPoint
+     * routes to it.
+     */
+    static MirrorTargetImpl scriptsOnly(String instanceId) {
+        MirrorTargetImpl target = new MirrorTargetImpl(MirrorStore.getOrCreate(instanceId));
+        target.resource.define(List.of(), List.of(), false, false);
+        return target;
+    }
+
+    @Override
+    public void scriptsFail(boolean fail) {
+        resource.scriptsFail(fail);
+    }
+
     static MirrorTargetImpl create(MirrorResourceXml definition) {
         MirrorTargetImpl target = new MirrorTargetImpl(MirrorStore.getOrCreate(definition.oid));
         target.update(definition);

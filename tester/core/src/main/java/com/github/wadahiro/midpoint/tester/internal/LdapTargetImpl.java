@@ -43,7 +43,20 @@ import com.unboundid.ldif.LDIFRecord;
  * identifier is {@code entryUUID}. An object added here gets its object class and its superior classes, and the
  * attributes of its RDN.
  */
-final class LdapTargetImpl implements ManagedTarget, LdapDirectory {
+final class LdapTargetImpl implements ManagedTarget, RealTarget, LdapDirectory {
+
+    /** The mirrors of the resource's additional connectors ({@link RealTarget}). */
+    private List<String> scriptMirrors = List.of();
+
+    @Override
+    public void scriptMirrors(List<String> instanceIds) {
+        this.scriptMirrors = List.copyOf(instanceIds);
+    }
+
+    @Override
+    public void scriptsFail(boolean fail) {
+        RealTarget.scriptsFail(resourceOid(), scriptMirrors, fail);
+    }
 
     static final String BIND_PASSWORD = "tester";
     private static final String DEFAULT_BIND_DN = "cn=tester";
