@@ -68,7 +68,7 @@ The POM: the parent of the line, the tester's Maven repository, and the time zon
 </parent>
 
 <groupId>com.example.idm</groupId>
-<artifactId>hr-ldap-config</artifactId>
+<artifactId>getting-started-config</artifactId>
 <version>1.0-SNAPSHOT</version>
 
 <properties>

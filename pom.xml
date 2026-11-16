@@ -237,8 +237,18 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
+                            <!-- the examples and the Kotest layer's tests (maven.deploy.skip, which this plugin does not
+                                 read) -->
                             <excludeArtifacts>
                                 <artifact>hr-ldap-config</artifact>
+                                <artifact>getting-started-config</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.0</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.4</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.8</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.9</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.10</artifact>
+                                <artifact>midpoint-config-tester-kotest-scenarios-4.11</artifact>
                             </excludeArtifacts>
                         </configuration>
                     </plugin>
