@@ -32,7 +32,7 @@ jobs:
             modules: tester/midpoint-4.4,tester/static/midpoint-4.4
           - line: '4.8'
             java: 21
-            modules: tester/midpoint-4.8,tester/static/midpoint-4.8,tester/kotest,examples/hr-ldap,examples/kotest-scenarios/midpoint-4.8
+            modules: tester/midpoint-4.8,tester/static/midpoint-4.8,tester/kotest,examples/hr-ldap,examples/getting-started,examples/kotest-scenarios/midpoint-4.8
           - line: '4.9'
             java: 21
             modules: tester/midpoint-4.9,tester/static/midpoint-4.9

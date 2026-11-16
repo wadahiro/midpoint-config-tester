@@ -1,7 +1,7 @@
 ---
 name: midpoint-config-tests
 license: EUPL-1.2
-description: Writes automated tests of a midPoint deployment's configuration with midpoint-config-tester (JUnit, a real midPoint in the test JVM, no GUI). Use when asked to test, automate the manual test cases of, or set up tests for a midPoint configuration directory (post-initial-objects, resources, roles, object templates, tasks, function libraries); when deciding which manual or E2E test cases belong in such tests; or when a config test module fails to load the deployment. Covers the module and manifest, loading a real deployment (stand-ins for resources, custom jars and beans, replaced initial objects, placeholders, support builds and forks of midPoint), triaging manual cases, minimal test data, the scenario and unit test APIs, debugging, and reporting what the tool lacks.
+description: Writes automated tests of a midPoint deployment's configuration with midpoint-config-tester (JUnit, a real midPoint in the test JVM, no GUI). Use when asked to test, automate the manual test cases of, or set up tests for a midPoint configuration directory (post-initial-objects, resources, roles, object templates, tasks, function libraries); when deciding which manual or E2E test cases belong in such tests; or when a config test module fails to load the configuration. Covers the module and manifest, loading a real deployment (stand-ins for resources, custom jars and beans, replaced initial objects, placeholders, support builds and forks of midPoint), triaging manual cases, minimal test data, the scenario and unit test APIs, debugging, and reporting what the tool lacks.
 ---
 
 # Testing a midPoint configuration with midpoint-config-tester
@@ -13,7 +13,7 @@ task, act as a user, request and approve, move the clock) and asserts what midPo
 reference for every call named here (https://github.com/wadahiro/midpoint-config-tester/blob/main/README.md, its pages in https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide); read them when you
 need details.
 
-Work in this order. Do not write the feature tests before the deployment loads.
+Work in this order. Do not write the feature tests before the configuration loads.
 
 ## 1. The module
 
@@ -104,7 +104,7 @@ Resources deployed without a stored `<schema>` (its `definition`; midPoint fetch
 - A real CSV connector's file gets a header of the columns the resource names; for the real file's own layout give
   its header line as `initialData: initial-data/<file>.csv`.
 
-## 3. Load the deployment first
+## 3. Load the configuration first
 
 Write `DeploymentTest` with one trivial assertion (a role exists) and iterate until it passes. The load reports every
 resource it cannot stand in for at once; then midPoint's import errors, one file at a time.
@@ -144,7 +144,7 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
   code formats, categories) and create what one test needs, fictitious, in the test.
 - **Packages**: `configtest` (the deployment itself), `scenario` (one class per feature or test-case group, javadoc
   naming the manual case IDs), `unit` (functions and scripts).
-- **Calls** (https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide/writing-tests.md and the pages it links):
+- **Calls** (https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide/writing-tests-junit.md and the pages it links):
   - sources and targets: `t.source(r).add(name, attrs)`, `.modify`, `.delete`; `t.reconcile(r)`; `t.target(r).account(n)`
   - tasks: `t.task(name).run()`; a task shipped suspended: `t.task(name).resume()`, then `t.task(name).run()` on its
     own line (a verb is a statement: never chain onto an `Effects`; in Kotlin `.run()` there is the standard
@@ -171,8 +171,8 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
   - the directories the deployment's tasks write in (its volume): manifest `files: { initial: { /dir: files/dir } }`
     (empty directories by a `.gitkeep`); a due task that cannot write fails `t.clock().runDue()`
   - a flow whose tests repeat the same first steps: a `@Nested @TestInstance(PER_CLASS)` class whose `@BeforeAll`
-    (a `MidPointConfigTester` parameter) is the prefix, run once; each of its tests starts from it (writing-tests.md, "Nested
-    classes"). In Kotlin, a Kotest spec (`MidPointConfigSpec`, https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide/kotest.md): a container
+    (a `MidPointConfigTester` parameter) is the prefix, run once; each of its tests starts from it (writing-tests-junit.md, "Nested
+    classes"). In Kotlin, a Kotest spec (`MidPointConfigSpec`, https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide/writing-tests-kotest.md): a container
     (`"started" - { prefix; "test" { } }`), `steps(...)` for tests that continue each other; never put work between a
     container's tests
   - a shell command (a report's post-report script) sees the mapped directory in its arguments; one it builds itself

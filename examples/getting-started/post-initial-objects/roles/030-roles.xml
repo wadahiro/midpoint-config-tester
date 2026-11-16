@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Department roles: an LDAP account. VPN Access: requested by a user, approved by alice -->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3">
+    <role oid="20000000-0000-0000-0000-00000000c001">
+        <name>Dept Sales</name>
+        <inducement>
+            <construction>
+                <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+                <kind>account</kind>
+                <intent>default</intent>
+            </construction>
+        </inducement>
+    </role>
+    <role oid="20000000-0000-0000-0000-00000000c002">
+        <name>Dept IT</name>
+        <inducement>
+            <construction>
+                <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+                <kind>account</kind>
+                <intent>default</intent>
+            </construction>
+        </inducement>
+    </role>
+    <role oid="20000000-0000-0000-0000-00000000c003">
+        <name>VPN Access</name>
+        <requestable>true</requestable>
+        <assignment>
+            <policyRule>
+                <name>approve-vpn-access</name>
+                <policyConstraints>
+                    <assignment>
+                        <operation>add</operation>
+                    </assignment>
+                </policyConstraints>
+                <policyActions>
+                    <approval>
+                        <approvalSchema>
+                            <stage>
+                                <number>1</number>
+                                <approverRef oid="20000000-0000-0000-0000-00000000d001" type="UserType"/>
+                            </stage>
+                        </approvalSchema>
+                    </approval>
+                </policyActions>
+            </policyRule>
+        </assignment>
+        <inducement>
+            <construction>
+                <resourceRef oid="20000000-0000-0000-0000-00000000a002" type="ResourceType"/>
+                <kind>account</kind>
+                <intent>default</intent>
+                <attribute>
+                    <ref>ri:businessCategory</ref>
+                    <outbound>
+                        <name>vpn</name>
+                        <expression><value>vpn</value></expression>
+                    </outbound>
+                </attribute>
+            </construction>
+        </inducement>
+    </role>
+</objects>

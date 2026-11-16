@@ -14,16 +14,16 @@ import org.junit.jupiter.api.Test;
 @MidPointConfigTest("classpath:scenarios/hr/midpoint-config-tester.yaml")
 class ChannelScenarioTest {
 
-    static final String GRPC = "http://midpoint.evolveum.com/xml/ns/public/model/channels-3#grpc";
+    static final String REST = "http://midpoint.evolveum.com/xml/ns/public/common/channels-3#rest";
 
     @Test
     void theCallsOfTheBlockRunInTheChannel(MidPointConfigTester t) {
         List<Object> before = channel(t);
         List<Object> inside = new ArrayList<>();
-        t.inChannel(GRPC, () -> inside.addAll(channel(t)));
+        t.inChannel(REST, () -> inside.addAll(channel(t)));
 
-        assertThat(inside).containsExactly(GRPC);
-        assertThat(before).doesNotContain(GRPC);
+        assertThat(inside).containsExactly(REST);
+        assertThat(before).doesNotContain(REST);
         assertThat(channel(t)).isEqualTo(before);
     }
 

@@ -8,7 +8,7 @@ package com.github.wadahiro.midpoint.tester;
  * {@link #owner} says otherwise) and the channel the model sees ({@link #channel}). Immutable.
  *
  * <pre>{@code
- * mp.callAs(Caller.user("jdoe").privileged().channel(GRPC_CHANNEL), () -> mp.addObjectXml(serviceXml));
+ * mp.callAs(Caller.user("jdoe").privileged().channel(REST_CHANNEL), () -> mp.addObjectXml(serviceXml));
  * mp.callAs(Caller.user("api-client").owner("jdoe"), () -> mp.bulkAction(script));
  * }</pre>
  */

@@ -220,8 +220,8 @@ public final class MidPointConfigTester {
 
     /**
      * Runs the driver calls of the block in the channel, as midPoint's model sees a change that came through it: a
-     * service that calls midPoint (gRPC, REST) or a GUI page. A hook or a script that looks at the channel then acts
-     * as in production. E.g. {@code t.inChannel("http://midpoint.evolveum.com/xml/ns/public/model/channels-3#grpc",
+     * service that calls midPoint (REST) or a GUI page. A hook or a script that looks at the channel then acts
+     * as in production. E.g. {@code t.inChannel("http://midpoint.evolveum.com/xml/ns/public/common/channels-3#rest",
      * () -> t.midpoint().modify(UserType.class, "jdoe", path, value))}.
      */
     public void inChannel(String channelUri, Runnable calls) {

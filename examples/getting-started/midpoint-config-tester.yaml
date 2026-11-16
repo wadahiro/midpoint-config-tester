@@ -1,0 +1,9 @@
+# The example of the README's "Getting started": HR (a CSV export) feeds users, the user template gives them the role
+# of their department from their start date on, the roles provision LDAP accounts, a user may request VPN Access,
+# which alice approves. Every resource runs on the tester's mirror connector.
+config:
+  dirs: [post-initial-objects]
+targets:
+  # the resource definitions have no stored <schema>: the attribute that names the accounts
+  HR:   { namingAttribute: { AccountObjectClass: empno } }
+  LDAP: { namingAttribute: { inetOrgPerson: dn } }

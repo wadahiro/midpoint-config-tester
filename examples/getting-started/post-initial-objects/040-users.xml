@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The approver of VPN Access, with midPoint's Approver role -->
+<user oid="20000000-0000-0000-0000-00000000d001"
+      xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <name>alice</name>
+    <fullName>Alice Approver</fullName>
+    <assignment>
+        <!-- midPoint's Approver role (initial object) -->
+        <targetRef oid="00000000-0000-0000-0000-00000000000a" type="RoleType"/>
+    </assignment>
+</user>

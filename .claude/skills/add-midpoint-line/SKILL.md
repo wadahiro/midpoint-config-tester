@@ -78,7 +78,7 @@ Then decide:
 | Only the patch version changes | Patch bump: change `midpointXY.version` in the root POM, refresh the SQL and baseline files of the release (step 3). Done after step 6. |
 | Renamed or moved methods that `base-4.8` calls | A line under `base-4.8`: a module whose POM sets `midpoint.version`, with its own `LineSupport` adapters (like 4.10). An inserted line copies the neighbour with fewer differences (4.9: 4.10's `LineSupport`, only `LINE` changes). |
 | A different mapping class, repository or service API (cases, certification, reports, scripting) | Its own line classes, in its own module under `base-4.0` (Java 11 lines) or a new base. When several lines share a shape, the shared classes go into `base-<first line>` (named after the first line it serves, like `base-4.8`), so the names stay true as more lines are added. |
-| The line ships two repositories (4.4: generic and native) | Use the one midPoint recommends for new deployments of that line and state the choice in the README. |
+| The line ships two repositories (4.4: generic and native) | Use the one midPoint recommends for new deployments of that line and state the choice in the user guide (`docs/guide/lines.md`). |
 
 Write the decision and the API differences down; they go into the anatomy at the end.
 
@@ -305,9 +305,10 @@ The static checks run without a runtime, one module per line under `tester/stati
 ## 9. Document
 
 - `docs/line-anatomy.md`: the new line's column in every table, a row for every new gate.
-- README: the supported lines table (midPoint, artifact, JDK, Groovy, repository), the line notes table (a row per gate
-  of step 6's grep, with the pinning test), the parents of Getting started, the build commands, every "4.8+" or line
-  list you find (`grep -n '4\.[0-9]' README.md`).
+- The user guide: `docs/guide/lines.md`, the supported lines table (midPoint, artifact, JDK, Groovy, repository) and
+  the line notes table (a row per gate of step 6's grep); the parents in `docs/guide/setup.md`; every "4.8+" or line
+  list you find (`grep -n '4\.[0-9]' README.md docs/guide/*.md`). The pinning test of each line note goes into
+  `docs/development.md` ("Line differences and the tests behind them"), the build commands there too.
 - `docs/redesign.md`: a section per line step (findings, pinned differences, cross-line results).
 
 ## Inserting a line between two supported ones
@@ -335,7 +336,7 @@ The static checks run without a runtime, one module per line under `tester/stati
   format may change), then rerun steps 6 and 7.
 - Commit so that every commit builds: the root POM property with the line module that uses it, the static module after
   both; tests and their accepted entries together. Finish with a build of every line, each with Maven on its
-  JDK (README, JDKs).
+  JDK (`docs/development.md`, JDKs).
 
 ## Pitfalls seen so far
 

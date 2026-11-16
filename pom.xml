@@ -52,8 +52,9 @@
         <module>tester/kotest</module>
         <!-- the parents of config repositories, one per line (midpoint-config-tester-parent-<line>) -->
         <module>parent</module>
-        <!-- an example config repository on the 4.8 parent, built and tested with the tester -->
+        <!-- example config repositories on the 4.8 parent, built and tested with the tester -->
         <module>examples/hr-ldap</module>
+        <module>examples/getting-started</module>
         <module>examples/kotest-scenarios</module>
     </modules>
 
