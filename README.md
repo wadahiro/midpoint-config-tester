@@ -32,7 +32,8 @@ A config repository holds its midPoint configuration (`post-initial-objects`, as
 manifest `midpoint-config-tester.yaml` and the tests, with a POM whose parent is the tester's parent of its midPoint
 line. [`examples/getting-started`](examples/getting-started) is such a repository, with the files shown here: HR (a
 CSV export) feeds users, the user template gives them the role of their department from their start date on, the
-roles provision LDAP accounts, and a user may request VPN Access, which alice approves.
+roles provision LDAP accounts, and a user may request VPN Access, which alice approves; mails tell her of the
+request and the requester of the decision.
 
 ```
 pom.xml                         the parent of the line and the repository's coordinates
@@ -168,6 +169,7 @@ class HrLifecycleTest {
         void request(MidPointConfigTester t) {
             hireJohn(t);
             t.actor("e1001").request().assign("VPN Access");
+            t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single();
         }
 
         @Test
@@ -177,6 +179,7 @@ class HrLifecycleTest {
                 c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("businessCategory");
                 c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
                 c.changes().ofType(TaskType.class).added().single();   // the task that executes the approved change
+                c.mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single();
             });
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved();
         }
@@ -187,6 +190,7 @@ class HrLifecycleTest {
                 c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
                 c.changes().of("e1001").none();                  // John as he was
                 c.connectorCalls().to("LDAP").writes().none();   // his LDAP account as it was
+                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
             });
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
             t.workItems().assignedTo("alice").none();
@@ -234,8 +238,9 @@ class HrLifecycleSpec : MidPointConfigSpec({
         "John requests VPN Access" - {
             t.actor("e1001").request().assign("VPN Access")
 
-            precondition("the request waits for alice") {
+            precondition("the request waits for alice, who got a mail") {
                 t.workItems().assignedTo("alice").single()
+                t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single()
                 t.user("e1001").hasNoAssignment("VPN Access")
             }
 
@@ -246,6 +251,7 @@ class HrLifecycleSpec : MidPointConfigSpec({
                         .only("businessCategory")
                     changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
                     changes().ofType(TaskType::class.java).added().single()   // the task that executes the approved change
+                    mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single()
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved()
             }
@@ -255,6 +261,7 @@ class HrLifecycleSpec : MidPointConfigSpec({
                     changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
                     changes().of("e1001").none()                        // John as he was
                     connectorCalls().to("LDAP").writes().none()         // his LDAP account as it was
+                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
                 t.workItems().assignedTo("alice").none()

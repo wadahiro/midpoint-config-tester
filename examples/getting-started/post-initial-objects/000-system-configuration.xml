@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-    The system configuration: users get the user template; a new user gets a welcome mail through the named mail
-    transport. The tester redirects the mail server to its own.
+    The system configuration: users get the user template; a new user gets a welcome mail, an approver a mail for each
+    request to decide, a requester a mail with the decision, all through the named mail transport. The tester
+    redirects the mail server to its own.
 -->
 <systemConfiguration oid="00000000-0000-0000-0000-000000000001"
         xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
@@ -27,6 +28,40 @@
                 </bodyExpression>
                 <transport>corp</transport>
             </simpleUserNotifier>
+        </handler>
+        <handler>
+            <category>workItemLifecycleEvent</category>
+            <operation>add</operation>
+            <simpleWorkflowNotifier>
+                <name>approval-needed</name>
+                <recipientExpression>
+                    <script><code>assignee?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>'Approval needed: ' + midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig</code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>requestee?.fullName?.orig + ' requests ' + midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig + '.'</code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
+        </handler>
+        <handler>
+            <category>workflowProcessEvent</category>
+            <operation>delete</operation>
+            <simpleWorkflowNotifier>
+                <name>request-decided</name>
+                <recipientExpression>
+                    <script><code>requester?.emailAddress</code></script>
+                </recipientExpression>
+                <subjectExpression>
+                    <script><code>(event.approved ? 'Request approved: ' : 'Request rejected: ') + midpoint.resolveReferenceIfExists(event.case.targetRef)?.name?.orig</code></script>
+                </subjectExpression>
+                <bodyExpression>
+                    <script><code>'Your request has been ' + (event.approved ? 'approved.' : 'rejected.')</code></script>
+                </bodyExpression>
+                <transport>corp</transport>
+            </simpleWorkflowNotifier>
         </handler>
     </notificationConfiguration>
     <messageTransportConfiguration>

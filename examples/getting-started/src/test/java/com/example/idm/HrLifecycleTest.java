@@ -45,6 +45,7 @@ class HrLifecycleTest {
         void request(MidPointConfigTester t) {
             hireJohn(t);
             t.actor("e1001").request().assign("VPN Access");
+            t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single();
         }
 
         @Test
@@ -54,6 +55,7 @@ class HrLifecycleTest {
                 c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("businessCategory");
                 c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
                 c.changes().ofType(TaskType.class).added().single();   // the task that executes the approved change
+                c.mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single();
             });
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved();
         }
@@ -64,6 +66,7 @@ class HrLifecycleTest {
                 c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
                 c.changes().of("e1001").none();                  // John as he was
                 c.connectorCalls().to("LDAP").writes().none();   // his LDAP account as it was
+                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
             });
             t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
             t.workItems().assignedTo("alice").none();

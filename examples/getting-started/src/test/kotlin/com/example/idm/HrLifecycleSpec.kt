@@ -37,8 +37,9 @@ class HrLifecycleSpec : MidPointConfigSpec({
         "John requests VPN Access" - {
             t.actor("e1001").request().assign("VPN Access")
 
-            precondition("the request waits for alice") {
+            precondition("the request waits for alice, who got a mail") {
                 t.workItems().assignedTo("alice").single()
+                t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single()
                 t.user("e1001").hasNoAssignment("VPN Access")
             }
 
@@ -49,6 +50,7 @@ class HrLifecycleSpec : MidPointConfigSpec({
                         .only("businessCategory")
                     changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
                     changes().ofType(TaskType::class.java).added().single()   // the task that executes the approved change
+                    mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single()
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved()
             }
@@ -58,6 +60,7 @@ class HrLifecycleSpec : MidPointConfigSpec({
                     changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
                     changes().of("e1001").none()                        // John as he was
                     connectorCalls().to("LDAP").writes().none()         // his LDAP account as it was
+                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
                 }
                 t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
                 t.workItems().assignedTo("alice").none()
