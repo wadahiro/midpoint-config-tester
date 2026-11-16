@@ -58,12 +58,18 @@ public class RecordingMappingImpl<V extends PrismValue, D extends ItemDefinition
             super.evaluate(task, parentResult);
         } catch (Throwable e) {
             error = e;
-            throw e;
+            // as thrown: 4.11 adds SubscriptionComplianceException, a class the lines before do not have
+            throw RecordingMappingImpl.<RuntimeException>rethrow(e);
         } finally {
             if (current != null) {
                 current.finished(token, this, error, System.nanoTime() - start);
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> E rethrow(Throwable e) throws E {
+        throw (E) e;
     }
 
     /** Where the mapping comes from (its config item's type differs between lines, the origin does not). */

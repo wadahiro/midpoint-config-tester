@@ -12,7 +12,6 @@ import org.springframework.test.context.TestContextManager;
 import com.evolveum.midpoint.model.test.AbstractModelIntegrationTest;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.query.ObjectQuery;
-import com.evolveum.midpoint.repo.api.CacheDispatcher;
 import com.evolveum.midpoint.repo.sqale.SqaleRepoContext;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.task.api.Task;
@@ -33,7 +32,6 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
 
     private static final String ADMINISTRATOR_OID = "00000000-0000-0000-0000-000000000002";
 
-    @Autowired private CacheDispatcher cacheDispatcher;
     @Autowired private SqaleRepoContext sqaleRepoContext;
 
     static Harness48 start() throws Exception {
@@ -140,7 +138,7 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
     @Override
     public void resetInternals() {
         LineSupport.clearRepositoryCaches(sqaleRepoContext);
-        cacheDispatcher.dispatchInvalidation(null, null, false, null);
+        LineSupport.invalidateCaches(this);
         // Quartz keeps its jobs in memory: drop those of tasks the reset removed, reschedule the restored ones (the
         // scheduler is held: TesterRuntime.reset puts the triggers back on the restored schedules, see TaskSchedules)
         long t = Timing.start();

@@ -41,6 +41,12 @@ final class Line48 {
             "/tester/baseline/531-archetype-task-trigger.xml"
     };
 
+    /** The script executors up to 4.10 ({@code ScriptExpressionFactory}, renamed in 4.11). */
+    static final ScriptHook48.Api SCRIPT_API = new ScriptHook48.Api(
+            "com.evolveum.midpoint.model.common.expression.script.ScriptExpressionFactory", "evaluatorMap",
+            "com.evolveum.midpoint.model.common.expression.script.ScriptEvaluator", "evaluate",
+            "com.evolveum.midpoint.model.common.expression.script.ScriptExpressionEvaluationContext");
+
     private Line48() {
     }
 
@@ -54,6 +60,11 @@ final class Line48 {
     }
 
     static String config(String jdbcUrl, String user, String extensionDir, String connectorDir) {
+        return config(jdbcUrl, user, extensionDir, connectorDir, "");
+    }
+
+    /** The configuration with more elements of {@code <midpoint>} (a line's own settings), each line indented. */
+    static String config(String jdbcUrl, String user, String extensionDir, String connectorDir, String more) {
         return "<configuration>\n"
                 + "  <midpoint>\n"
                 + "    <global><extensionDir>" + xml(extensionDir) + "</extensionDir></global>\n"
@@ -74,6 +85,7 @@ final class Line48 {
                 + "      <keyStorePassword>changeit</keyStorePassword>\n"
                 + "      <encryptionKeyAlias>default</encryptionKeyAlias>\n"
                 + "    </keystore>\n"
+                + more
                 + "  </midpoint>\n"
                 + "</configuration>\n";
     }

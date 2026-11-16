@@ -9,7 +9,6 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 
-import com.evolveum.midpoint.model.common.expression.script.ScriptExpressionFactory;
 import com.evolveum.midpoint.model.common.mapping.MappingFactory;
 import com.evolveum.midpoint.model.common.mapping.RecordingMappingImpl;
 import com.evolveum.midpoint.prism.PrismContext;
@@ -60,8 +59,7 @@ public class RecorderInstaller implements BeanFactoryPostProcessor, BeanFactoryA
         for (ExpressionFactory expressionFactory : beanFactory.getBeansOfType(ExpressionFactory.class).values()) {
             EvaluatorHook.install(expressionFactory, element -> serialize(prismContext, element));
         }
-        ScriptHook48.install(beanFactory.getBean(ScriptExpressionFactory.class),
-                element -> serialize(prismContext, element));
+        ScriptHook48.install(beanFactory, LineSupport.SCRIPT_API, element -> serialize(prismContext, element));
         Recorder48 recorder = new Recorder48();
         EvaluatorHook.listener(recorder);
         RecordingMappingImpl.listener(recorder);

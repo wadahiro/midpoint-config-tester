@@ -106,9 +106,8 @@ final class Drivers48 implements LineDrivers {
         Class<ObjectType> type = (Class<ObjectType>) (Class<?>) view.getTargetClass();
         // the compiled filter keeps its expressions (the GUI evaluates them for the logged-in user)
         com.evolveum.midpoint.prism.query.ObjectFilter filter = view.getFilter() == null ? null
-                : com.evolveum.midpoint.repo.common.expression.ExpressionUtil.evaluateFilterExpressions(view.getFilter(),
+                : LineSupport.evaluateFilterExpressions(view.getFilter(),
                         new com.evolveum.midpoint.schema.expression.VariablesMap(),
-                        com.evolveum.midpoint.schema.util.MiscSchemaUtil.getExpressionProfile(),
                         harness.bean(com.evolveum.midpoint.repo.common.expression.ExpressionFactory.class),
                         "collection filter", task, result);
         return new ArrayList<>(harness.bean(com.evolveum.midpoint.model.api.ModelService.class).searchObjects(type,
@@ -413,6 +412,7 @@ final class Drivers48 implements LineDrivers {
         ExpressionType expression = new ExpressionType();
         expression.getExpressionEvaluator()
                 .add(new JAXBElement<>(SchemaConstantsGenerated.C_SCRIPT, ScriptExpressionEvaluatorType.class, script));
+        LineSupport.trustFully(expression);
         PrismPropertyDefinition<Object> output = LineSupport.outputDefinition(ExpressionConstants.OUTPUT_ELEMENT_NAME,
                 returnType != null ? returnType : DOMUtil.XSD_STRING);
 
@@ -434,7 +434,7 @@ final class Drivers48 implements LineDrivers {
         }
 
         Expression<PrismPropertyValue<Object>, PrismPropertyDefinition<Object>> evaluated =
-                expressionFactory.makeExpression(expression, output, null, SCRIPT_DESCRIPTION, task, result);
+                LineSupport.makeExpression(expressionFactory, expression, output, SCRIPT_DESCRIPTION, task, result);
         ExpressionEvaluationContext context =
                 new ExpressionEvaluationContext(null, variablesMap, SCRIPT_DESCRIPTION, task);
         context.setExpressionFactory(expressionFactory);
@@ -463,6 +463,7 @@ final class Drivers48 implements LineDrivers {
         }
         ExecuteScriptType command = ScriptingBeansUtil.asExecuteScriptCommand(parsed);
         // as the bulk action page does
+        LineSupport.trustAsCurrentPrincipal(command);
         BulkActionExecutionResult executed = harness.bean(BulkActionsService.class).executeBulkAction(
                 ExecuteScriptConfigItem.of(command, ConfigurationItemOrigin.user()), VariablesMap.emptyMap(),
                 BulkActionExecutionOptions.create(), task, result);
@@ -520,6 +521,7 @@ final class Drivers48 implements LineDrivers {
     public String executePostInitialScript(Object bulkAction, Task task, OperationResult result) throws Exception {
         // PostInitialDataImport.executeScript
         ExecuteScriptType parsed = ScriptingBeansUtil.asExecuteScriptCommand(bulkAction);
+        LineSupport.trustFully(parsed);
         BulkActionExecutionResult executed = harness.bean(BulkActionsService.class).executeBulkAction(
                 ExecuteScriptConfigItem.of(parsed, ConfigurationItemOrigin.external(SchemaConstants.CHANNEL_INIT_URI)),
                 VariablesMap.emptyMap(), BulkActionExecutionOptions.create().withExecutionPhase(), task, result);

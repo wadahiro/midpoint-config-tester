@@ -11,15 +11,15 @@ import java.util.Map;
 import java.util.function.Function;
 import jakarta.xml.bind.JAXBElement;
 
+import org.springframework.beans.factory.BeanFactory;
+
 import com.evolveum.midpoint.model.api.context.ModelContext;
-import com.evolveum.midpoint.model.common.expression.script.ScriptEvaluator;
-import com.evolveum.midpoint.model.common.expression.script.ScriptExpressionEvaluationContext;
-import com.evolveum.midpoint.model.common.expression.script.ScriptExpressionFactory;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.PrismValue;
 import com.evolveum.midpoint.schema.SchemaConstantsGenerated;
 import com.evolveum.midpoint.schema.constants.ExpressionConstants;
 import com.evolveum.midpoint.schema.expression.TypedValue;
+import com.evolveum.midpoint.schema.expression.VariablesMap;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ScriptExpressionEvaluatorType;
 import com.github.wadahiro.midpoint.scan.EvaluatorFingerprint;
 import com.github.wadahiro.midpoint.tester.Evaluation;
@@ -28,66 +28,80 @@ import com.github.wadahiro.midpoint.tester.HookRun;
 /**
  * Records the scripts midPoint runs without an {@code ExpressionFactory} (so {@link EvaluatorHook} does not see them):
  * scripting model hooks, {@code execute-script} bulk actions, report scripts. They are created by the
- * {@code ScriptExpressionFactory} directly; its language evaluators are wrapped here, and a run that is not already
- * the script of a recorded {@code <script>} expression is recorded as an expression of its own (report scripts are
- * located by their form as configured, see {@code fingerprint}).
+ * script factory directly; its language executors (MEL's too, from 4.11) are wrapped here, and a run that is not
+ * already the script of a recorded {@code <script>} expression is recorded as an expression of its own (report
+ * scripts are located by their form as configured, see {@code fingerprint}).
  *
  * A hook's script run records the hook's name and, at the start, the Clockwork state and focus ({@link HookRun}).
  */
 final class ScriptHook48 {
 
+    /**
+     * Where a line keeps its script executors, by name (4.11 renamed the classes): the factory bean, its map of
+     * executors by language, their interface and its method that runs a script, and the context it takes, which has
+     * {@code getScriptBean()}, {@code getContextDescription()} and {@code getVariables()}.
+     */
+    record Api(String factory, String executors, String executor, String run, String context) {
+    }
+
     private ScriptHook48() {
     }
 
     @SuppressWarnings("unchecked")
-    static void install(ScriptExpressionFactory factory, Function<Object, String> serializer) {
+    static void install(BeanFactory beanFactory, Api api, Function<Object, String> serializer) {
         try {
-            Field field = ScriptExpressionFactory.class.getDeclaredField("evaluatorMap");
+            Class<?> factoryClass = Class.forName(api.factory());
+            Class<?> executorClass = Class.forName(api.executor());
+            Class<?> contextClass = Class.forName(api.context());
+            Context context = new Context(contextClass.getDeclaredMethod("getScriptBean"),
+                    contextClass.getMethod("getContextDescription"), contextClass.getMethod("getVariables"));
+            context.bean.setAccessible(true);
+            Field field = factoryClass.getDeclaredField(api.executors());
             field.setAccessible(true);
-            Map<String, ScriptEvaluator> evaluators = (Map<String, ScriptEvaluator>) field.get(factory);
-            for (Map.Entry<String, ScriptEvaluator> entry : evaluators.entrySet()) {
-                ScriptEvaluator evaluator = entry.getValue();
-                if (!Proxy.isProxyClass(evaluator.getClass())) {
-                    entry.setValue((ScriptEvaluator) Proxy.newProxyInstance(ScriptEvaluator.class.getClassLoader(),
-                            new Class<?>[] { ScriptEvaluator.class }, new Handler(evaluator, serializer)));
+            Map<String, Object> executors = (Map<String, Object>) field.get(beanFactory.getBean(factoryClass));
+            for (Map.Entry<String, Object> entry : executors.entrySet()) {
+                Object executor = entry.getValue();
+                if (!Proxy.isProxyClass(executor.getClass())) {
+                    entry.setValue(Proxy.newProxyInstance(executorClass.getClassLoader(), new Class<?>[] { executorClass },
+                            new Handler(executor, api.run(), contextClass, context, serializer)));
                 }
             }
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Cannot hook the script evaluators", e);
+            throw new IllegalStateException("Cannot hook the script executors", e);
         }
+    }
+
+    /** The accessors of a script run's context. */
+    private record Context(Method bean, Method description, Method variables) {
     }
 
     private static final class Handler implements InvocationHandler {
 
         private static final String NAMED_HOOK = "hook '";
         private static final String UNNAMED_HOOK = "scripting hook in system configuration";
-        private static final Field SCRIPT_BEAN;
 
-        static {
-            try {
-                SCRIPT_BEAN = ScriptExpressionEvaluationContext.class.getDeclaredField("scriptBean");
-                SCRIPT_BEAN.setAccessible(true);
-            } catch (NoSuchFieldException e) {
-                throw new IllegalStateException("Unexpected script evaluation context", e);
-            }
-        }
-
-        private final ScriptEvaluator evaluator;
+        private final Object executor;
+        private final String run;
+        private final Class<?> contextClass;
+        private final Context context;
         private final Function<Object, String> serializer;
 
-        Handler(ScriptEvaluator evaluator, Function<Object, String> serializer) {
-            this.evaluator = evaluator;
+        Handler(Object executor, String run, Class<?> contextClass, Context context,
+                Function<Object, String> serializer) {
+            this.executor = executor;
+            this.run = run;
+            this.contextClass = contextClass;
+            this.context = context;
             this.serializer = serializer;
         }
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if (!"evaluate".equals(method.getName()) || args == null || args.length != 1
-                    || !(args[0] instanceof ScriptExpressionEvaluationContext)) {
+            if (!run.equals(method.getName()) || args == null || args.length != 1 || !contextClass.isInstance(args[0])) {
                 return call(method, args);
             }
-            ScriptExpressionEvaluationContext context = (ScriptExpressionEvaluationContext) args[0];
-            Record record = isRecordedExpression(context) ? null : begin(context);
+            String description = (String) context.description.invoke(args[0]);
+            Record record = isRecordedExpression(description) ? null : begin(args[0], description);
             Object output = null;
             Throwable error = null;
             try {
@@ -103,7 +117,7 @@ final class ScriptHook48 {
 
         private Object call(Method method, Object[] args) throws Throwable {
             try {
-                return method.invoke(evaluator, args);
+                return method.invoke(executor, args);
             } catch (InvocationTargetException e) {
                 throw e.getCause();
             }
@@ -113,27 +127,28 @@ final class ScriptHook48 {
          * Whether this is the script of the {@code <script>} expression being recorded on this thread (its
          * description is the expression's, prefixed with {@code (old)}/{@code (new)} for a single-shot evaluation).
          */
-        private static boolean isRecordedExpression(ScriptExpressionEvaluationContext context) {
+        private static boolean isRecordedExpression(String description) {
             Record current = Recorder.current();
             return current != null && current.kind == Evaluation.Kind.EXPRESSION
                     && current.fingerprint != null && current.fingerprint.startsWith("script")
-                    && current.description != null && context.getContextDescription() != null
-                    && context.getContextDescription().endsWith(current.description);
+                    && current.description != null && description != null
+                    && description.endsWith(current.description);
         }
 
-        private Record begin(ScriptExpressionEvaluationContext context) {
+        private Record begin(Object run, String description) {
             Record record = Recorder.begin(Evaluation.Kind.EXPRESSION);
             if (record == null) {
                 return null;
             }
             try {
-                ScriptExpressionEvaluatorType bean = (ScriptExpressionEvaluatorType) SCRIPT_BEAN.get(context);
-                record.description = context.getContextDescription();
+                ScriptExpressionEvaluatorType bean = (ScriptExpressionEvaluatorType) context.bean.invoke(run);
+                record.description = description;
                 if (bean != null) {
                     record.fingerprint = fingerprint(bean);
                 }
-                if (context.getVariables() != null) {
-                    for (Map.Entry<String, TypedValue<?>> e : context.getVariables().entrySet()) {
+                VariablesMap variables = (VariablesMap) context.variables.invoke(run);
+                if (variables != null) {
+                    for (Map.Entry<String, TypedValue<?>> e : variables.entrySet()) {
                         if (e.getKey() != null) {
                             record.variables.put(e.getKey(), e.getValue() != null ? e.getValue().getValue() : null);
                         }
@@ -143,7 +158,7 @@ final class ScriptHook48 {
                 if (hook != null) {
                     record.hook = hookRun(record, hook.isEmpty() ? null : hook);
                 }
-            } catch (RuntimeException | IllegalAccessException e) {
+            } catch (RuntimeException | ReflectiveOperationException e) {
                 System.err.println("Evaluation recorder failed: " + e);
             }
             return record;

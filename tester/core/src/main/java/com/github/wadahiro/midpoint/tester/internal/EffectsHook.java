@@ -5,6 +5,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -13,6 +14,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.xml.namespace.QName;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor;
 import org.springframework.util.ClassUtils;
 
@@ -38,7 +43,8 @@ import com.github.wadahiro.midpoint.tester.internal.EffectsCapture.RepositoryCal
  * answer) and each {@code ConnectorFactory} bean are wrapped in a proxy; a factory's proxy wraps the connector
  * instances it creates, so mirror and real connectors are recorded alike, as midPoint called them. The proxies
  * implement every interface of the object they wrap and pass every call through; the methods are told apart by
- * name, so the hook is the same on every line.
+ * name, so the hook is the same on every line. A factory's proxy is of its class too (a subclass): 4.11 injects
+ * the ConnId factory by its class ({@code ConnectorInstallationServiceImpl}).
  *
  * <p>Calls of the tester itself (an assertion reading a user, a wait reading a task) are not recorded: the first
  * frame outside the proxies, the repository cache and Spring's AOP is then one of the tester's classes.</p>
@@ -76,14 +82,16 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
     }
 
     private static Object wrap(Object bean, String beanName) {
-        if (Proxy.isProxyClass(bean.getClass()) && Proxy.getInvocationHandler(bean) instanceof Handler) {
+        if (Proxy.isProxyClass(bean.getClass()) && Proxy.getInvocationHandler(bean) instanceof Handler
+                || bean instanceof Advised && Arrays.stream(((Advised) bean).getAdvisors())
+                        .anyMatch(advisor -> advisor.getAdvice() instanceof Interceptor)) {
             return bean;
         }
         if (REPOSITORY.equals(beanName) && bean instanceof RepositoryService) {
             return proxy(bean, new RepositoryHandler((RepositoryService) bean));
         }
         if (bean instanceof ConnectorFactory) {
-            return proxy(bean, new FactoryHandler(bean));
+            return classProxy(bean, new FactoryHandler(bean));
         }
         return bean;
     }
@@ -91,6 +99,28 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
     private static Object proxy(Object target, Handler handler) {
         Class<?>[] interfaces = ClassUtils.getAllInterfacesForClass(target.getClass(), target.getClass().getClassLoader());
         return Proxy.newProxyInstance(target.getClass().getClassLoader(), interfaces, handler);
+    }
+
+    /** A proxy of the target's class (a subclass made by Spring) that passes every call to the handler. */
+    private static Object classProxy(Object target, Handler handler) {
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.setProxyTargetClass(true);
+        factory.addAdvice(new Interceptor(handler));
+        return factory.getProxy(target.getClass().getClassLoader());
+    }
+
+    private static final class Interceptor implements MethodInterceptor {
+
+        private final Handler handler;
+
+        Interceptor(Handler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public Object invoke(MethodInvocation invocation) throws Throwable {
+            return handler.invoke(invocation.getThis(), invocation.getMethod(), invocation.getArguments());
+        }
     }
 
     private abstract static class Handler implements InvocationHandler {
