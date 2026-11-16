@@ -1,6 +1,9 @@
 ---
 name: add-midpoint-line
 description: Adds support for another midPoint release line (for example 4.11, an older one like 4.2, or one between two supported lines like 4.9 between 4.8 and 4.10) to the midPoint tester in tester/ of midpoint-config-tester. Use when asked to support, add or port a midPoint version, to bump a line to a new patch release, or when a new midPoint release breaks the build. Covers the API research with a probe script, choosing base-4.0 or base-4.8, the harness and LineSupport, the recorder hook and identity placement, the line drivers, SQL and baseline objects, the typed initial names, the parent POM of config repositories, fixtures variants, line-gated tests, the static-check module, and the documentation.
+metadata:
+  # for the developers of the tester: hidden from `npx skills add` (installable only with INSTALL_INTERNAL_SKILLS=1)
+  internal: true
 ---
 
 # Adding a midPoint line
