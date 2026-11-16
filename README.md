@@ -26,15 +26,28 @@ milliseconds. Every resource runs on an in-memory mirror of itself, whatever its
 in-memory server. A CSV or LDAP resource can run on its real connector instead, against files or an in-memory LDAP
 server.
 
+## What it tests, and what it does not
+
+It tests what midPoint does with your configuration: mappings, object templates, roles and their inducements, policy
+rules, approvals, certification, notifications, reports, tasks, scripts, authorizations, as the running midPoint
+evaluates them. By design it leaves out:
+
+- **The GUI.** No page is rendered or clicked. What a user may see and do is asked of midPoint's authorizations, as
+  the GUI asks them ([The GUI and authorizations](docs/guide/gui-and-authorizations.md)); what a page does after it
+  opens is not run.
+- **The connectors and the target systems.** A resource runs on the mirror connector, made from its schema, so a test
+  checks what midPoint sends and reads, not how a connector or a real system takes it (an LDAP server's schema checks,
+  a database's constraints, a connector's scripts).
+- **The production environment.** midPoint runs inside the test on an in-memory PostgreSQL, with no cluster, no
+  network and no other machine.
+
+The rest: [Limitations](docs/guide/reference.md#limitations).
+
 ## Getting started
 
 A config repository holds its midPoint configuration (`post-initial-objects`, as deployed to midPoint's home), a
 manifest `midpoint-config-tester.yaml` and the tests, with a POM whose parent is the tester's parent of its midPoint
-line. [`examples/getting-started`](examples/getting-started) is such a repository, with the files shown here: HR (a
-CSV export) feeds users, enabled from their start date to their end date (activation `validFrom` and `validTo`), the
-user template gives them the role of their department from their start date on, the roles provision LDAP accounts,
-and a user may request VPN Access, for good or until a date, which alice approves (undecided for 3 days, it is
-rejected); mails tell her of the request and the requester of the decision.
+line. [`examples/getting-started`](examples/getting-started) is such a repository:
 
 ```
 pom.xml                         the parent of the line and the repository's coordinates
@@ -77,6 +90,49 @@ that zone on every machine, so a start date begins at midnight on the server whe
 CI machine in UTC. On 4.11 `tester.safeScriptingLanguagesOnly` is required too ([Scripting on
 4.11](docs/guide/lines.md#scripting-on-411)).
 
+The manifest points the tester at the configuration:
+
+```yaml
+config:
+  dirs: [post-initial-objects]
+targets:
+  # the resource definitions have no stored <schema>: the attribute that names the accounts
+  HR:   { namingAttribute: { AccountObjectClass: empno } }
+  LDAP: { namingAttribute: { inetOrgPerson: dn } }
+```
+
+**No connector and no target system to set up.** Whatever connector a resource uses (LDAP, Active Directory, a
+database table, a REST or SCIM service, a connector of your own), the tester replaces it with its **mirror
+connector** as the configuration loads: an in-memory connector made from the resource's schema, which keeps what
+midPoint writes and answers what midPoint reads. Your resource definitions stay as you wrote them. A test fills a
+source as the real system would hold it (`t.source("HR").add(...)`) and reads what midPoint wrote to a target
+(`t.target("LDAP").account(...)`). A resource exported from midPoint carries its schema; one written by hand has
+none, so the manifest names the attribute that names its accounts (`targets` above). A CSV or LDAP resource can run on
+its real connector instead ([Real connectors](docs/guide/environment.md#real-connectors)).
+
+A first test (`src/test/java`): a row added to HR, the HR reconciliation run as deployed, then what midPoint made of
+it.
+
+```java
+@MidPointConfigTest
+class Step1JoinerTest {
+
+    @Test
+    void aJoinerGetsAUserAndAnLdapAccount(MidPointConfigTester t) {
+        t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
+                "startDate", "2020-04-01"));
+        t.task("Reconcile HR").run();
+
+        t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").hasAccountOn("LDAP");
+        t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasAttribute("ou", "Sales");
+        t.mails().to("e1001@example.com").withSubject("Welcome John Doe").single();
+    }
+}
+```
+
+<details>
+<summary>The same test with Kotest</summary>
+
 For tests in Kotlin, as Kotest specs, also add the tester's Kotest layer, Kotest (which brings Kotlin's standard
 library) and the Kotlin compiler plugin (the parent manages their versions and runs `*Spec` classes):
 
@@ -103,296 +159,43 @@ library) and the Kotlin compiler plugin (the parent manages their versions and r
 </build>
 ```
 
-The manifest points the tester at the configuration:
-
-```yaml
-config:
-  dirs: [post-initial-objects]
-targets:
-  # the resource definitions have no stored <schema>: the attribute that names the accounts
-  HR:   { namingAttribute: { AccountObjectClass: empno } }
-  LDAP: { namingAttribute: { inetOrgPerson: dn } }
-```
-
-**No connector and no target system to set up.** Whatever connector a resource uses (LDAP, Active Directory, a
-database table, a REST or SCIM service, a connector of your own), the tester replaces it with its **mirror
-connector** as the configuration loads, transparently: the resource definitions stay as you wrote them, and your
-files are never changed (the tester works on a copy).
-
-The mirror connector is an in-memory connector made from the resource's own schema: its object classes, attributes,
-multiplicities, identifiers and capabilities. It keeps what midPoint creates, modifies and deletes, answers midPoint's
-searches, reconciliations and live synchronization from what it keeps, and goes back to the loaded state before every
-test. A test fills it as the real system would hold the data (`t.source("HR").add(...)`) and reads what midPoint wrote
-to it (`t.target("LDAP").account(...)`). A resource exported from midPoint carries its schema; a resource definition
-written by hand has none, so the mirror takes the attributes its `schemaHandling` names, and the manifest says which
-one names the accounts (`targets` above). A resource can run on the real CSV or LDAP connector instead, with one line
-in the manifest ([Target systems and the environment](docs/guide/environment.md#real-connectors)).
-
-**Tests branch from a saved state.** When the setup that tests share has run (a nested class's `@BeforeAll`, the
-code of a Kotest container before its first test), the tester saves midPoint's state: its database, the target
-systems' content, the clock and the mails sent. Before each test it restores that state, in a few tens of
-milliseconds, so every test starts from the same point whatever the test before it did. John requests VPN Access
-once; one test has alice approve the request, the next has her reject it, a third moves the clock past the
-deadline, where midPoint rejects it: each from the same open request. The clock is the tests' too: `t.clock().advanceTo(start)`
-moves midPoint's clock and the JVM's to a start date, an end date or a deadline, and `runDue()` runs what is due by
-then (the validity and trigger scanners, the recurring tasks), in a test that takes a second.
-
-A test with JUnit (`src/test/java`). Every verb that makes midPoint work returns what midPoint did;
-`verifyAll(c -> ...)` checks that nothing changed beyond what the test claims.
-
-```java
-@MidPointConfigTest
-class HrLifecycleTest {
-
-    static final String JOHN = "uid=e1001,ou=people,dc=example,dc=com";
-
-    static void hireJohn(MidPointConfigTester t) {
-        t.source("HR").add("1001", Map.of("firstName", "John", "lastName", "Doe", "department", "Sales",
-                "startDate", "2020-04-01"));
-        t.task("Reconcile HR").run();
-    }
-
-    @Test
-    void joinerAndMover(MidPointConfigTester t) {
-        hireJohn(t);
-        t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").hasAccountOn("LDAP");
-
-        t.source("HR").modify("1001", "department", "IT");
-        t.task("Reconcile HR").run().verifyAll(c -> {   // these, and nothing else
-            c.changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef");
-            c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("ou");
-        });
-    }
-
-    @Test
-    void aFutureJoinerStartsOnHerStartDate(MidPointConfigTester t) {
-        LocalDate start = t.clock().today().plusDays(10);
-        t.source("HR").add("1003", Map.of("firstName", "Kate", "lastName", "Smith", "department", "IT",
-                "startDate", start.toString()));
-        t.task("Reconcile HR").run();
-        t.user("e1003").isDisabled().hasNoAssignment("Dept IT").hasNoAccountOn("LDAP");
-
-        t.clock().advanceTo(start).advance("PT1H").runDue();   // the scanners and the due tasks at the new time
-        t.user("e1003").isEnabled().hasAssignment("Dept IT").hasAccountOn("LDAP");
-    }
-
-    @Test
-    void aLeaverIsDisabledOnHisEndDate(MidPointConfigTester t) {
-        hireJohn(t);
-        LocalDate end = t.clock().today().plusDays(5);
-        t.source("HR").modify("1001", "endDate", end.toString());
-        t.task("Reconcile HR").run();
-        t.user("e1001").isEnabled();
-
-        t.clock().advanceTo(end).advance("PT1H").runDue();
-        t.user("e1001").isDisabled();
-        t.target("LDAP").account(JOHN).isDisabled();
-    }
-
-    @Test
-    void vpnAccessFor30DaysEndsOnItsDate(MidPointConfigTester t) {
-        hireJohn(t);
-        LocalDate end = t.clock().today().plusDays(30);
-        t.actor("e1001").request().assign("VPN Access", a -> a.validTo(end));   // the assignment's validTo
-        t.workItems().assignedTo("alice").single().approve(t.actor("alice"));
-        t.target("LDAP").account(JOHN).hasAttribute("businessCategory", "vpn");
-
-        t.clock().advanceTo(end).advance("PT1H").runDue();
-        t.target("LDAP").account(JOHN).hasNoAttribute("businessCategory");
-        t.user("e1001").hasAccountOn("LDAP");   // his department keeps the account
-    }
-
-    /** Both tests start from John's request: midPoint as the @BeforeAll left it, restored for each. */
-    @Nested
-    @TestInstance(Lifecycle.PER_CLASS)
-    class JohnHasRequestedVpnAccess {
-
-        @BeforeAll
-        void request(MidPointConfigTester t) {
-            hireJohn(t);
-            t.actor("e1001").request().assign("VPN Access");
-            t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single();
-        }
-
-        @Test
-        void aliceApproves(MidPointConfigTester t) {
-            t.workItems().assignedTo("alice").single().approve(t.actor("alice")).verifyAll(c -> {
-                c.changes().of("e1001").single().only("assignment", "roleMembershipRef");
-                c.connectorCalls().to("LDAP").modifies().of(JOHN).single().only("businessCategory");
-                c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
-                c.changes().ofType(TaskType.class).added().single();   // the task that executes the approved change
-                c.mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single();
-            });
-            t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved();
-        }
-
-        @Test
-        void aliceRejects(MidPointConfigTester t) {
-            t.workItems().assignedTo("alice").single().reject(t.actor("alice")).verifyAll(c -> {
-                c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
-                c.changes().of("e1001").none();                  // John as he was
-                c.connectorCalls().to("LDAP").writes().none();   // his LDAP account as it was
-                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
-            });
-            t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
-            t.workItems().assignedTo("alice").none();
-        }
-
-        @Test
-        void undecidedFor3DaysTheRequestIsRejected(MidPointConfigTester t) {
-            t.clock().advance("P2D").runTriggerScanner().none();   // still waiting
-            t.workItems().assignedTo("alice").single();
-
-            t.clock().advance("P1D").runTriggerScanner().verifyAll(c -> {
-                c.changes().ofType(CaseType.class).exactly(2);   // the request and its approval, closed
-                c.changes().of("e1001").none();
-                c.connectorCalls().to("LDAP").writes().none();
-                c.mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single();
-            });
-            t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected();
-        }
-    }
-}
-```
-
-The same with Kotest (`src/test/kotlin`). A container's code before its first test runs once and each of its tests
-starts from what it left, and Kotest adds what JUnit has no counterpart for:
-
-- **`precondition`**: the first test of a container checks the state its code made. When it fails, the container's
-  tests fail without running, each by its name, instead of each failing for a reason it does not test.
-- **Rows as tests**: `withData` makes one test per row, each from the container's state.
-- **`steps`**: tests that continue each other, in order, stopping at the first failure
-  ([Writing tests with Kotest](docs/guide/writing-tests-kotest.md)).
+A spec in `src/test/kotlin`:
 
 ```kotlin
 @MidPointConfigTest
-class HrLifecycleSpec : MidPointConfigSpec({
-    "John joins Sales" - {
+class Step1JoinerSpec : MidPointConfigSpec({
+    "a joiner gets a user and an LDAP account" {
         t.source("HR").add("1001", mapOf("firstName" to "John", "lastName" to "Doe", "department" to "Sales",
                 "startDate" to "2020-04-01"))
         t.task("Reconcile HR").run()
 
-        precondition("he is in Sales, with an account on LDAP") {
-            t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").hasAccountOn("LDAP")
-        }
-
-        "moving to IT changes his role and his LDAP account's ou, nothing else" {
-            t.source("HR").modify("1001", "department", "IT")
-            t.task("Reconcile HR").run().verifyAll {
-                changes().of("e1001").single().only("costCenter", "assignment", "roleMembershipRef")
-                connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single().only("ou")
-            }
-        }
-
-        withData(nameFn = { "moving to ${it.first}" }, "IT" to true, "Finance" to false) { (department, known) ->
-            t.source("HR").modify("1001", "department", department)
-            t.task("Reconcile HR").run()
-            if (known) t.user("e1001").hasAssignment("Dept $department").hasAccountOn("LDAP")
-            else t.user("e1001").hasNoAssignment("Dept Sales").hasNoAccountOn("LDAP")   // no role for Finance
-        }
-
-        "John has VPN Access for 30 days" - {
-            val end = t.clock().today().plusDays(30)
-            t.actor("e1001").request().assign("VPN Access") { it.validTo(end) }
-            t.workItems().assignedTo("alice").single().approve(t.actor("alice"))
-
-            precondition("his LDAP account has the VPN") {
-                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasAttribute("businessCategory", "vpn")
-            }
-
-            "on the 30th day the VPN goes from his LDAP account, which his department keeps" {
-                t.clock().advanceTo(end).advance("PT1H").runDue()
-                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasNoAttribute("businessCategory")
-                t.user("e1001").hasAccountOn("LDAP")
-            }
-        }
-
-        "John leaves in 5 days" - {
-            val end = t.clock().today().plusDays(5)
-            t.source("HR").modify("1001", "endDate", end.toString())
-            t.task("Reconcile HR").run()
-
-            precondition("until then he is enabled") { t.user("e1001").isEnabled() }
-
-            "on his end date, his user and his LDAP account are disabled" {
-                t.clock().advanceTo(end).advance("PT1H").runDue()   // the scanners and the due tasks at the new time
-                t.user("e1001").isDisabled()
-                t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").isDisabled()
-            }
-        }
-
-        "John requests VPN Access" - {
-            t.actor("e1001").request().assign("VPN Access")
-
-            precondition("the request waits for alice, who got a mail") {
-                t.workItems().assignedTo("alice").single()
-                t.mails().to("alice@example.com").withSubject("Approval needed: VPN Access").single()
-                t.user("e1001").hasNoAssignment("VPN Access")
-            }
-
-            "alice approves: his LDAP account gets the VPN" {
-                t.workItems().assignedTo("alice").single().approve(t.actor("alice")).verifyAll {
-                    changes().of("e1001").single().only("assignment", "roleMembershipRef")
-                    connectorCalls().to("LDAP").modifies().of("uid=e1001,ou=people,dc=example,dc=com").single()
-                        .only("businessCategory")
-                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
-                    changes().ofType(TaskType::class.java).added().single()   // the task that executes the approved change
-                    mails().to("e1001@example.com").withSubject("Request approved: VPN Access").single()
-                }
-                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isApproved()
-            }
-
-            "alice rejects: John and his LDAP account stay as they were" {
-                t.workItems().assignedTo("alice").single().reject(t.actor("alice")).verifyAll {
-                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
-                    changes().of("e1001").none()                        // John as he was
-                    connectorCalls().to("LDAP").writes().none()         // his LDAP account as it was
-                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
-                }
-                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
-                t.workItems().assignedTo("alice").none()
-            }
-
-            "2 days on, the request still waits" {
-                t.clock().advance("P2D").runTriggerScanner().none()
-                t.workItems().assignedTo("alice").single()
-            }
-
-            "undecided for 3 days, the request is rejected" {
-                t.clock().advance("P3D").runTriggerScanner().verifyAll {
-                    changes().ofType(CaseType::class.java).exactly(2)   // the request and its approval, closed
-                    changes().of("e1001").none()
-                    connectorCalls().to("LDAP").writes().none()
-                    mails().to("e1001@example.com").withSubject("Request rejected: VPN Access").single()
-                }
-                t.cases().forUser("e1001").forRole("VPN Access").single().isClosed().isRejected()
-            }
-        }
-    }
-
-    "Kate joins in 10 days" - {
-        val start = t.clock().today().plusDays(10)
-        t.source("HR").add("1003", mapOf("firstName" to "Kate", "lastName" to "Smith", "department" to "IT",
-                "startDate" to start.toString()))
-        t.task("Reconcile HR").run()
-
-        precondition("before her start date she has no role and no account") {
-            t.user("e1003").isDisabled().hasNoAssignment("Dept IT").hasNoAccountOn("LDAP")
-        }
-
-        "on her start date she gets her role and her LDAP account" {
-            t.clock().advanceTo(start).advance("PT1H").runDue()
-            t.user("e1003").isEnabled().hasAssignment("Dept IT").hasAccountOn("LDAP")
-        }
+        t.user("e1001").hasFullName("John Doe").hasAssignment("Dept Sales").hasAccountOn("LDAP")
+        t.target("LDAP").account("uid=e1001,ou=people,dc=example,dc=com").hasAttribute("ou", "Sales")
+        t.mails().to("e1001@example.com").withSubject("Welcome John Doe").single()
     }
 })
 ```
 
+</details>
+
 `mvn test` starts midPoint once per JVM, loads the configuration as midPoint's first start does, and runs every test from
 that state; the load report is `target/tester-deployment/<name>/load-report.txt`.
 
+### Next: the tutorial
+
+The tutorial goes on from this test in six steps, each a file of `examples/getting-started`: a mover, checked to
+change nothing else; start and end dates, by moving the clock; a role request that alice approves or rejects;
+its deadline; access for 30 days. From step 4 on, tests **branch from a saved state**: the tester saves midPoint's
+state once the shared setup has run (the database, the target systems, the clock, the mails) and restores it before
+each test in a few tens of milliseconds, so one test approves the request and the next rejects the same one.
+
+- [Tutorial with JUnit](docs/guide/tutorial-junit.md)
+- [Tutorial with Kotest](docs/guide/tutorial-kotest.md): the same steps, with `precondition` and rows as tests
+
 ## Documentation
 
+- [Tutorial with JUnit](docs/guide/tutorial-junit.md) and [with Kotest](docs/guide/tutorial-kotest.md): the
+  configuration of `examples/getting-started`, tested step by step.
 - [Setting up a config repository](docs/guide/setup.md): the POM, the parent, required properties, the manifest.
 - [Writing tests with JUnit](docs/guide/writing-tests-junit.md): the API and its rules, users, roles and orgs, tasks,
   values, `t.raw()`, nested classes.
