@@ -139,6 +139,12 @@ Classify each case before writing tests; most of a GUI-driven manual case is oft
 
 Prefer A/B over D wherever the manual case only observes midPoint logic through a screen. Manual workarounds for time
 (editing dates by hand) become `t.clock().advance(...)`.
+The clock moves midPoint's `Clock` and the JVM's time sources as scripts read them (`basic.fromNow`,
+`basic.currentDateTime()`, Groovy's `System.currentTimeMillis()`, `new Date()`, `java.time`): what midPoint's own
+time setting cannot move in a manual test. It does not move `System.currentTimeMillis()` called from Java (the
+audit's timestamps, custom Java libraries), `System.nanoTime()`, the database or other processes; recurring tasks run
+only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by the shifted clock). The table:
+`docs/guide/midpoint-features.md`, "What moves with `t.clock()`".
 
 ## 5. Write the tests
 

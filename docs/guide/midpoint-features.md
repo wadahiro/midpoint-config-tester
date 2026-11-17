@@ -152,14 +152,19 @@ write](files.md#files-scripts-read-and-write), attached or given with `-javaagen
 
 | Moves | Does not move |
 |---|---|
-| midPoint's `Clock`: the validity and trigger scanners, time constraints of mappings, `basic.currentDateTime()`, the timestamps midPoint writes (`disableTimestamp`, triggers, audit) | `System.nanoTime()` (monotonic: the tester's own waits use it, so a driver call after `advance("P30D")` does not time out) |
-| `new Date()`, `Calendar.getInstance()`, `new GregorianCalendar()` | `System.currentTimeMillis()` called from **Java** code (a native method of a class loaded before any agent: it cannot be redefined); midPoint's code uses its `Clock` instead, custom Java libraries may not |
+| midPoint's `Clock`: the validity and trigger scanners, time constraints of mappings, `basic.currentDateTime()`, the timestamps midPoint writes from it (`disableTimestamp`, `archiveTimestamp`, triggers, metadata) | `System.nanoTime()` (monotonic: the tester's own waits use it, so a driver call after `advance("P30D")` does not time out) |
+| `new Date()`, `Calendar.getInstance()`, `new GregorianCalendar()` | `System.currentTimeMillis()` called from **Java** code (a native method of a class loaded before any agent: it cannot be redefined). Custom Java libraries, and midPoint's own code where it does not use its `Clock`: the audit's timestamps (the audit service fills them from it, or from the lightweight identifier's, also real; on every line) and the lightweight identifiers of tasks and operations |
 | `java.time`'s system clock: `Instant.now()`, `LocalDate.now()`, `LocalDateTime.now()`, `ZonedDateTime.now()`, `Clock.systemUTC()`... | Quartz (it keeps the real time, see below) |
 | Groovy's `System.currentTimeMillis()` (`System`'s meta class: dynamic Groovy, not `@CompileStatic`) | the database (`now()` in PostgreSQL; midPoint writes its timestamps from its `Clock`), connectors' and other processes' time |
 | `basic.fromNow(...)` and `XmlTypeConverter.createXMLGregorianCalendar()` (prism's `System.currentTimeMillis()` calls, replaced) | |
 
 At start the tester checks every source on this JVM; if one is not shifted (or there is no agent), it says why, and
 only midPoint's `Clock` moves.
+
+So after `advance` an audit record carries the real time while the clock says the shifted one: compare audit
+timestamps with each other, or put the rows a test reads with the time it needs (a database the configuration
+reads). midPoint 4.0's lightweight identifiers fail when the real time moves back by a millisecond (an NTP
+adjustment of the host); the tester gives them the allowance of 4.4+ (a step back of up to 10 seconds).
 
 **Quartz keeps the real time.** midPoint's scheduler goes on firing on the real time, so from the first `advance`
 until the reset the tester holds the regular runs of loosely bound recurring tasks: a task with a short interval does
