@@ -9,8 +9,13 @@ What you can do with it:
 - **Check what the configuration does to people.** An HR record arrives, a user moves to another department, leaves:
   check the users, roles, accounts and groups midPoint made of it. A failed check lists the mappings that set the
   value.
-- **Walk through processes.** Request a role and approve or reject it, run a certification campaign, move the clock to
-  a start or end date: check the cases, work items, mails and reports.
+- **Walk through processes.** Request a role and approve or reject it, run a certification campaign: check the cases,
+  work items, mails and reports.
+- **Travel forward in time.** Move the clock 30 days ahead and run the tasks that fall due: archiving, cleanups,
+  validity dates, notifications before an end date. The clock moves for midPoint and for its scripts alike
+  (`basic.fromNow`, `new Date()`, `System.currentTimeMillis()` in Groovy), unlike midPoint's own clock offset. Every
+  test starts again from the same point, clock included
+  ([What moves with the clock](docs/guide/midpoint-features.md#activation-and-validity)).
 - **Check what a user is authorized to do.** Log in as a user and ask midPoint's authorizations what they find in a
   search, which pages and objects they may open and which items they may change. The GUI itself does not run.
 - **Catch breakage early.** Names generated from the configuration stop compiling when it loses them; static checks
