@@ -1,0 +1,15 @@
+<role xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+      oid="5a9e0c1e-3f1d-4c47-9a0c-000000000001">
+    <name>staged-dependent</name>
+    <inducement>
+        <targetRef type="RoleType">
+            <filter>
+                <q:equal>
+                    <q:path>name</q:path>
+                    <q:value>staged-base</q:value>
+                </q:equal>
+            </filter>
+        </targetRef>
+    </inducement>
+</role>

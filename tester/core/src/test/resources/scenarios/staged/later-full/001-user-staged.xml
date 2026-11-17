@@ -1,0 +1,7 @@
+<user xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      oid="5a9e0c1e-3f1d-4c47-9a0c-000000000101">
+    <name>staged-user</name>
+    <assignment>
+        <targetRef oid="5a9e0c1e-3f1d-4c47-9a0c-000000000900" type="RoleType"/>
+    </assignment>
+</user>

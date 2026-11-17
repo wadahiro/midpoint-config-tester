@@ -74,9 +74,26 @@ public final class Manifest {
         }
     }
 
+    /**
+     * A later stage of the configuration ({@code config.then}): its dirs, and how they are imported: as midPoint's
+     * post-initial import does (raw on 4.0), or with full processing, as the GUI import does by default (object
+     * templates, metaroles, provisioning), e.g. objects an operator imports by hand after the deployment.
+     */
+    public static final class Stage {
+        public final List<Path> dirs;
+        public final boolean fullProcessing;
+
+        Stage(List<Path> dirs, boolean fullProcessing) {
+            this.dirs = dirs;
+            this.fullProcessing = fullProcessing;
+        }
+    }
+
     public final Path file;
     public final Path dir;
     public final List<Path> configDirs;
+    /** The later stages ({@code config.then}), imported after the stages before it. */
+    public final List<Stage> laterStages;
     public final List<String> exclude;
     public final Map<String, String> properties;
     /** Texts of the files replaced as they are ({@code config.replace}), in the manifest's order. */
@@ -121,7 +138,7 @@ public final class Manifest {
         check(yaml, "", Set.of("config", "targets", "constants", "databases", "environment", "mail", "http", "network", "logs", "files",
                 "names", "timeZone"));
         Map<String, Object> config = map(yaml.get("config"), "config");
-        check(config, "config.", Set.of("dirs", "exclude", "properties", "replace", "overlays", "schema"));
+        check(config, "config.", Set.of("dirs", "then", "exclude", "properties", "replace", "overlays", "schema"));
         configDirs = paths(config.get("dirs"), "config.dirs");
         if (configDirs.isEmpty()) {
             throw invalid("config.dirs: at least one directory of post-initial objects is needed");
@@ -131,6 +148,34 @@ public final class Manifest {
                 throw invalid("config.dirs: " + d + " is not a directory");
             }
         }
+        List<Stage> later = new ArrayList<>();
+        Object then = config.get("then");
+        if (then != null && !(then instanceof List)) {
+            throw invalid("config.then: a list of stages ({ dirs: [...] })");
+        }
+        if (then != null) {
+            List<?> stages = (List<?>) then;
+            for (int i = 0; i < stages.size(); i++) {
+                String where = "config.then[" + i + "]";
+                Map<String, Object> stage = map(stages.get(i), where);
+                check(stage, where + ".", Set.of("dirs", "processing"));
+                List<Path> dirs = paths(stage.get("dirs"), where + ".dirs");
+                if (dirs.isEmpty()) {
+                    throw invalid(where + ".dirs: at least one directory");
+                }
+                for (Path d : dirs) {
+                    if (!Files.isDirectory(d)) {
+                        throw invalid(where + ".dirs: " + d + " is not a directory");
+                    }
+                }
+                Object processing = stage.getOrDefault("processing", "post-initial");
+                if (!"post-initial".equals(processing) && !"full".equals(processing)) {
+                    throw invalid(where + ".processing: post-initial or full, not " + processing);
+                }
+                later.add(new Stage(Collections.unmodifiableList(dirs), "full".equals(processing)));
+            }
+        }
+        laterStages = Collections.unmodifiableList(later);
         exclude = strings(config.get("exclude"), "config.exclude");
         Map<String, String> props = new LinkedHashMap<>();
         map(config.get("properties"), "config.properties").forEach((k, v) -> props.put(k, v == null ? "" : v.toString()));
@@ -285,19 +330,7 @@ public final class Manifest {
      * overlay removes a file the config dirs do not have.
      */
     public Map<String, Path> sources(String line) {
-        List<java.nio.file.PathMatcher> matchers = new ArrayList<>();
-        for (String glob : exclude) {
-            matchers.add(java.nio.file.FileSystems.getDefault().getPathMatcher("glob:" + glob));
-        }
-        Map<String, Path> sources = new java.util.TreeMap<>();
-        for (Path d : configDirs) {
-            for (Path f : walk(d)) {
-                Path relative = d.relativize(f);
-                if (matchers.stream().noneMatch(m -> m.matches(relative))) {
-                    sources.put(slashed(relative), f);
-                }
-            }
-        }
+        Map<String, Path> sources = layered(configDirs);
         Overlay overlay = line != null ? overlay(line) : null;
         if (overlay != null) {
             for (Path d : overlay.dirs) {
@@ -309,6 +342,36 @@ public final class Manifest {
                 if (sources.remove(removed) == null) {
                     throw invalid("config.overlays." + line + ".remove: no file " + removed
                             + " in the config directories");
+                }
+            }
+        }
+        return sources;
+    }
+
+    /**
+     * The files of each later stage ({@code config.then}) by relative path, in the stages' order: the stage's dirs
+     * layered with the excludes (no overlay).
+     */
+    public List<Map<String, Path>> laterSources() {
+        List<Map<String, Path>> stages = new ArrayList<>();
+        for (Stage stage : laterStages) {
+            stages.add(layered(stage.dirs));
+        }
+        return stages;
+    }
+
+    /** The files of the dirs by relative path, a later dir's file over an earlier one's, without the excluded ones. */
+    private Map<String, Path> layered(List<Path> dirs) {
+        List<java.nio.file.PathMatcher> matchers = new ArrayList<>();
+        for (String glob : exclude) {
+            matchers.add(java.nio.file.FileSystems.getDefault().getPathMatcher("glob:" + glob));
+        }
+        Map<String, Path> sources = new java.util.TreeMap<>();
+        for (Path d : dirs) {
+            for (Path f : walk(d)) {
+                Path relative = d.relativize(f);
+                if (matchers.stream().noneMatch(m -> m.matches(relative))) {
+                    sources.put(slashed(relative), f);
                 }
             }
         }

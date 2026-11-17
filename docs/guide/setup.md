@@ -91,6 +91,9 @@ The manifest `midpoint-config-tester.yaml` points the tester at the configuratio
 ```yaml
 config:
   dirs: [post-initial-objects]          # as deployed to midpoint.home/post-initial-objects
+  then:                                 # optional: imported after it, stage by stage (objects imported by hand later)
+    - dirs: [manual-import]
+      processing: full                  # as the GUI import does (templates, provisioning); default: as post-initial
   exclude: ["tasks/900-*.xml"]
   properties: { ldapBase: dc=example,dc=com }       # {{ldapBase}} in the files
   replace: { "@MAIL_HOST@": smtp.example.com }      # texts replaced as they are (as a deployment script's sed)
@@ -112,5 +115,11 @@ directories (overlays and properties applied, every resource moved to its stand-
 are never changed), runs **midPoint's post-initial import** on the copy (a file with the OID of an initial object,
 e.g. the system configuration, replaces it as a whole, as in production; so a deployment that replaces one of
 midPoint's initial objects in its build puts that file first, e.g. in an overlay) (its file order, full processing, bulk action files executed, the first
-failing file fails the load with midPoint's errors), waits for the background work and takes a snapshot. Every test
-starts from that snapshot.
+failing file fails the load with midPoint's errors), then imports each stage of `config.then` the same way, one after
+the other (its own copy, its own file order), waits for the background work and takes a snapshot. Every test starts
+from that snapshot. A stage is what the deployment imports after the post-initial import, e.g. objects an operator
+imports by hand once the configuration is in: an object template or a metarole of the first stage is then in place
+for them, as in production, whatever their file names; layering such a directory into `config.dirs` instead imports
+its files in one name order with the rest. A stage is imported as the post-initial import is (raw on 4.0: no object
+template, no provisioning) unless it says `processing: full`: then each of its files is imported as the GUI import
+does by default, with full processing, as an operator importing them by hand would.

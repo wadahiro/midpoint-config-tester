@@ -1,0 +1,14 @@
+# A deployment in three stages: objects/ as the post-initial import, later/ after it the same way, then later-full/
+# with full processing, as objects imported by hand after the deployment are. later/001-role-dependent.xml sorts
+# before objects/900-role-base.xml, and refers to that role by a filter: in one stage it would be imported first and
+# its reference left unresolved. later-full/001-user-staged.xml is assigned that role: with full processing midPoint
+# computes the user's role membership, which an import as the post-initial one (raw on 4.0) leaves out.
+config:
+  dirs: [objects]
+  then:
+    - dirs: [later]
+    - dirs: [later-full]
+      processing: full
+  overlays:
+    # 4.11: the system configuration of a deployment that scripts in Groovy, as upgraded (../groovy-4.11)
+    "4.11": { dirs: [../groovy-4.11] }

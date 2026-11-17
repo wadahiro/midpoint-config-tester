@@ -195,6 +195,13 @@ final class DeploymentCache {
             update(sha, "file " + file.getKey());
             sha.update(read(file.getValue()));
         }
+        List<Map<String, Path>> later = manifest.laterSources();
+        for (int i = 0; i < later.size(); i++) {
+            for (Map.Entry<String, Path> file : later.get(i).entrySet()) {
+                update(sha, "then " + i + " file " + file.getKey());
+                sha.update(read(file.getValue()));
+            }
+        }
         for (Manifest.Target target : manifest.targets.values()) {
             if (target.options.schema() != null) {
                 update(sha, "schema " + target.resource);

@@ -26,8 +26,8 @@ import org.w3c.dom.Node;
 /**
  * The names a deployment's configuration holds, on every line its manifest knows (the files every line gets, and each
  * line with an overlay), read as plain XML: no midPoint runtime, so the generator of typed names
- * ({@code NamesGenerator}, at build time) uses it. The files are those of {@link Manifest#sources(String)} with the
- * properties substituted, exactly as the load copies them.
+ * ({@code NamesGenerator}, at build time) uses it. The files are those of {@link Manifest#sources(String)} and
+ * {@link Manifest#laterSources()} with the properties substituted, exactly as the load copies them.
  *
  * <ul>
  *   <li>objects: roles, orgs, services, archetypes, users, resources, tasks, reports, certification definitions (a
@@ -121,7 +121,15 @@ public final class NamesModel {
     // ---- reading -------------------------------------------------------------------------------------------------
 
     private void readVariant(String variant) {
-        Map<String, Path> files = manifest.sources(EVERY_LINE.equals(variant) ? null : variant);
+        Map<String, Path> files = new LinkedHashMap<>(
+                manifest.sources(EVERY_LINE.equals(variant) ? null : variant));
+        // the later stages (config.then), by a key of their own: the same file name in a stage is another object
+        List<Map<String, Path>> later = manifest.laterSources();
+        for (int i = 0; i < later.size(); i++) {
+            for (Map.Entry<String, Path> file : later.get(i).entrySet()) {
+                files.put("then " + (i + 1) + ": " + file.getKey(), file.getValue());
+            }
+        }
         for (Map.Entry<String, Path> file : files.entrySet()) {
             if (!file.getKey().endsWith(".xml")) {
                 continue;

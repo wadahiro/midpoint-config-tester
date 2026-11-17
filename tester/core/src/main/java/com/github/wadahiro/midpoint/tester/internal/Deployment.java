@@ -386,28 +386,14 @@ public final class Deployment {
             throw new UncheckedIOException(e);
         }
         mapDirectories();
-        Map<String, Path> sources = sources();
-        prepare(sources, copy);
+        List<Map<String, Path>> stages = stages();
+        List<Path> copies = copies(copy, stages.size());
+        prepare(stages, copies);
 
+        for (int i = 0; i < stages.size(); i++) {
+            importStage(i, stages.get(i), copies.get(i));
+        }
         Harness harness = mp.harness;
-        org.quartz.Scheduler scheduler = harness.quartzScheduler();
-        PostInitialImport.Outcome outcome;
-        TaskSchedules.hold(scheduler);
-        try {
-            outcome = PostInitialImport.run(harness, mp.drivers(), copy.toFile());
-        } finally {
-            TaskSchedules.holdRegularRuns();
-            TaskSchedules.release(scheduler);
-            runtime.login(TesterRuntime.ADMINISTRATOR);
-        }
-        for (java.io.File file : outcome.done) {
-            importOrder.add(relative(copy, file.toPath()));
-        }
-        warnings.addAll(outcome.warnings);
-        if (outcome.failedFile != null) {
-            throw importFailure(copy, sources, outcome);
-        }
-        mp.awaitBackgroundWork("the post-initial import of " + manifest.file);
         for (Map.Entry<String, String> resource : resourceOids.entrySet()) {
             mp.query("test resource " + resource.getKey(), (task, result) -> {
                 harness.checkResource(resource.getValue(), task, result);
@@ -427,6 +413,89 @@ public final class Deployment {
         runtime.clearNotifications();
         state = runtime.snapshot(true);
         writeReport();
+    }
+
+    /**
+     * Imports a stage's prepared copy as midPoint's post-initial import does (the first stage, {@code config.dirs},
+     * and a later one of {@code config.then} by default), or file by file with full processing as the GUI import does
+     * (a later stage with {@code processing: full}: objects imported by hand after the deployment).
+     */
+    private void importStage(int stage, Map<String, Path> sources, Path copy) {
+        if (stage > 0 && manifest.laterStages.get(stage - 1).fullProcessing) {
+            importWithFullProcessing(stage, sources, copy);
+            return;
+        }
+        Harness harness = mp.harness;
+        org.quartz.Scheduler scheduler = harness.quartzScheduler();
+        PostInitialImport.Outcome outcome;
+        TaskSchedules.hold(scheduler);
+        try {
+            outcome = PostInitialImport.run(harness, mp.drivers(), copy.toFile());
+        } finally {
+            TaskSchedules.holdRegularRuns();
+            TaskSchedules.release(scheduler);
+            runtime.login(TesterRuntime.ADMINISTRATOR);
+        }
+        String prefix = stage == 0 ? "" : "then " + stage + ": ";
+        for (java.io.File file : outcome.done) {
+            importOrder.add(prefix + relative(copy, file.toPath()));
+        }
+        warnings.addAll(outcome.warnings);
+        if (outcome.failedFile != null) {
+            throw importFailure(copy, sources, outcome);
+        }
+        mp.awaitBackgroundWork(stage == 0 ? "the post-initial import of " + manifest.file
+                : "the import of config.then[" + (stage - 1) + "] of " + manifest.file);
+    }
+
+    /** A later stage imported with full processing, its files in name order, as the GUI import of each would. */
+    private void importWithFullProcessing(int stage, Map<String, Path> sources, Path copy) {
+        org.quartz.Scheduler scheduler = mp.harness.quartzScheduler();
+        TaskSchedules.hold(scheduler);
+        try {
+            for (Map.Entry<String, Path> file : sources.entrySet()) {
+                if (!file.getKey().endsWith(".xml")) {
+                    continue;
+                }
+                try {
+                    mp.importObject(copy.resolve(file.getKey()).toFile());
+                } catch (RuntimeException e) {
+                    throw new DeploymentLoadException("midPoint " + LineSupport.LINE + ": the import of config.then["
+                            + (stage - 1) + "] failed on " + file.getKey() + " (" + file.getValue() + "): "
+                            + e.getMessage(), e);
+                }
+                importOrder.add("then " + stage + ": " + file.getKey());
+            }
+        } finally {
+            TaskSchedules.holdRegularRuns();
+            TaskSchedules.release(scheduler);
+            runtime.login(TesterRuntime.ADMINISTRATOR);
+        }
+        mp.awaitBackgroundWork("the import of config.then[" + (stage - 1) + "] of " + manifest.file);
+    }
+
+    /** The files of every stage: {@code config.dirs} (with the line's overlay), then each of {@code config.then}. */
+    private List<Map<String, Path>> stages() {
+        List<Map<String, Path>> stages = new ArrayList<>();
+        stages.add(sources());
+        stages.addAll(manifest.laterSources());
+        return stages;
+    }
+
+    /** The prepared copy of each stage: {@code post-initial-objects}, then {@code then-1}, {@code then-2}... beside it. */
+    private static List<Path> copies(Path first, int stages) {
+        List<Path> copies = new ArrayList<>();
+        copies.add(first);
+        for (int i = 1; i < stages; i++) {
+            Path copy = first.resolveSibling("then-" + i);
+            try {
+                Files.createDirectories(copy);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            copies.add(copy);
+        }
+        return copies;
     }
 
     // ---- the cache --------------------------------------------------------------------------------------------
@@ -480,7 +549,8 @@ public final class Deployment {
         Files.createDirectories(copy);
         mapDirectories();
         loadingInitialData = false;
-        prepare(sources(), copy);
+        List<Map<String, Path>> stages = stages();
+        prepare(stages, copies(copy, stages.size()));
         if (!resourceOids.equals(meta.get("resourceOids"))) {
             throw new IOException("the resources are not the cached ones: " + resourceOids + " / "
                     + meta.get("resourceOids"));
@@ -569,10 +639,40 @@ public final class Deployment {
     }
 
     /** Writes the copy: properties, resources moved to the tester's target systems, mail redirected; then the initial data. */
-    private void prepare(Map<String, Path> sources, Path copy) {
+    private void prepare(List<Map<String, Path>> stages, List<Path> copies) {
         List<String> unknown = new ArrayList<>();
         List<String> problems = new ArrayList<>();
         Set<String> targetsUsed = new LinkedHashSet<>();
+        for (int stage = 0; stage < stages.size(); stage++) {
+            prepareFiles(stages.get(stage), copies.get(stage), unknown, problems, targetsUsed);
+        }
+        if (!unknown.isEmpty()) {
+            problems.add(manifest.file + ": properties not in config.properties: " + String.join(", ", unknown));
+        }
+        for (Manifest.Target target : manifest.targets.values()) {
+            if (!targetsUsed.contains(target.resource)) {
+                problems.add(manifest.file + ": targets." + target.resource
+                        + ": no resource of that name in the config directories (resources: " + resourceOids.keySet()
+                        + ")");
+            }
+        }
+        if (problems.size() == 1) {
+            throw new DeploymentLoadException(problems.get(0));
+        }
+        if (!problems.isEmpty()) {
+            throw new DeploymentLoadException(problems.size() + " problems with the deployment:\n- "
+                    + String.join("\n- ", problems));
+        }
+        for (Manifest.Target target : manifest.targets.values()) {
+            if (target.initialData != null && loadingInitialData) {
+                loadInitialData(target);
+            }
+        }
+    }
+
+    /** Writes a stage's files to its copy (see {@link #prepare}). */
+    private void prepareFiles(Map<String, Path> sources, Path copy, List<String> unknown, List<String> problems,
+            Set<String> targetsUsed) {
         for (Map.Entry<String, Path> entry : sources.entrySet()) {
             String relative = entry.getKey();
             Path source = entry.getValue();
@@ -604,28 +704,6 @@ public final class Deployment {
                 ConfigIndex.get().register(source, slashed(source), false);
             } catch (IOException e) {
                 throw new UncheckedIOException("Cannot prepare " + relative, e);
-            }
-        }
-        if (!unknown.isEmpty()) {
-            problems.add(manifest.file + ": properties not in config.properties: " + String.join(", ", unknown));
-        }
-        for (Manifest.Target target : manifest.targets.values()) {
-            if (!targetsUsed.contains(target.resource)) {
-                problems.add(manifest.file + ": targets." + target.resource
-                        + ": no resource of that name in the config directories (resources: " + resourceOids.keySet()
-                        + ")");
-            }
-        }
-        if (problems.size() == 1) {
-            throw new DeploymentLoadException(problems.get(0));
-        }
-        if (!problems.isEmpty()) {
-            throw new DeploymentLoadException(problems.size() + " problems with the deployment:\n- "
-                    + String.join("\n- ", problems));
-        }
-        for (Manifest.Target target : manifest.targets.values()) {
-            if (target.initialData != null && loadingInitialData) {
-                loadInitialData(target);
             }
         }
     }

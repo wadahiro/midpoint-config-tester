@@ -64,6 +64,26 @@ class ManifestTest {
     }
 
     @Test
+    void laterStagesOfTheConfiguration() throws IOException {
+        Files.createDirectories(dir.resolve("manual"));
+        Manifest m = read("config:\n  dirs: [objects]\n  then:\n    - dirs: [manual]\n    - dirs: [manual]\n"
+                + "      processing: full\n");
+
+        assertThat(m.laterStages).hasSize(2);
+        assertThat(m.laterStages.get(0).dirs).containsExactly(dir.resolve("manual").normalize());
+        assertThat(m.laterStages.get(0).fullProcessing).isFalse();
+        assertThat(m.laterStages.get(1).fullProcessing).isTrue();
+        assertThat(read("config:\n  dirs: [objects]\n").laterStages).isEmpty();
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\n  then:\n    - dirs: [manual]\n"
+                + "      processing: raw\n"))
+                .hasMessageContaining("config.then[0].processing: post-initial or full");
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\n  then: [manual]\n"))
+                .hasMessageContaining("config.then[0]");
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\n  then:\n    - dirs: [missing]\n"))
+                .hasMessageContaining("config.then[0].dirs: ");
+    }
+
+    @Test
     void anIdentifierTheTargetSystemHandsBackWhenItIsThere() throws IOException {
         Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
                 + "  Certs: { identifier: { attribute: certId, value: \"name\", existing: adopt } }\n");

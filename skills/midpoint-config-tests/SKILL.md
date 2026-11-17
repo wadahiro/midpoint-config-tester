@@ -63,6 +63,7 @@ preparation scripts for that.
 | Deployment does | Manifest |
 |---|---|
 | copies several directories into post-initial-objects | `config.dirs: [a, b]` (layered by relative path, imported by name order) |
+| imports a directory after the deployment (by hand, a later job) | `config.then: [{ dirs: [c] }]` (each stage after the ones before it, in its own name order); `processing: full` when it is imported as the GUI import does (templates, provisioning; the post-initial import of 4.0 is raw) |
 | `sed`s tokens (`@HOST@`) or toggles comment blocks per environment | `config.replace: { "@HOST@": test-value, "<!--X-->": "" }` (texts as they are) |
 | `{{name}}` properties | `config.properties` |
 | sets `<constants>` in config.xml (`<const>`, `midpoint.getConst`) | `constants: { name: test-value }` |
