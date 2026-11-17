@@ -1,9 +1,11 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
+import static net.bytebuddy.matcher.ElementMatchers.declaresField;
 import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.none;
+import static net.bytebuddy.matcher.ElementMatchers.not;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
 import java.lang.instrument.Instrumentation;
@@ -48,12 +50,20 @@ import com.github.wadahiro.midpoint.tester.agent.TimeShift;
  * {@code System.nanoTime()}. midPoint's own {@code Clock} reads {@code System.currentTimeMillis()}: it keeps its test
  * override, which {@link #sync} copies into the JDK shift, so both say the same time.
  *
+ * midPoint 4.0's lightweight identifiers (the ids of tasks and operations) fail when the real wall clock moves back
+ * by a millisecond (an NTP adjustment of the host): {@code LightweightIdentifierGeneratorImpl.generate()} throws "The
+ * time has moved back". 4.4+ allow a step back of up to 10 seconds ({@code BACKWARD_TIME_ALLOWANCE}); the generator
+ * of a line without the allowance gets it here ({@link IdentifierAdvice}), so that a test does not fail on the host's
+ * clock. It is not the test clock: the generator reads the real time, which the tester does not shift.
+ *
  * {@link #install} checks the result on this JVM ({@link #probe}); without it (no agent, or a JDK where a source is
  * not shifted) only midPoint's clock moves, as before.
  */
 final class TimeAgent {
 
     static final String XML_TYPE_CONVERTER = "com.evolveum.midpoint.prism.xml.XmlTypeConverter";
+
+    static final String IDENTIFIER_GENERATOR = "com.evolveum.midpoint.task.quartzimpl.LightweightIdentifierGeneratorImpl";
 
     private static String failure = "not installed";
     private static String groovyFailure;
@@ -121,6 +131,9 @@ final class TimeAgent {
                                     .isDeclaredBy(System.class)))
                             .replaceWith(shifted)
                             .on(isMethod().or(isConstructor()))))
+                    .type(named(IDENTIFIER_GENERATOR).and(not(declaresField(named("BACKWARD_TIME_ALLOWANCE")))))
+                    .transform((b, type, loader, module, domain) -> b.visit(Advice.to(IdentifierAdvice.class)
+                            .on(named("generate").and(takesArguments(0)))))
                     .installOn(instrumentation);
             if (!errors.isEmpty()) {
                 return failure = "Cannot instrument the JDK's time sources: " + errors.get(0);
@@ -256,6 +269,20 @@ final class TimeAgent {
     }
 
     // ---- inlined advice: may refer to TimeShift (bootstrap) only ---------------------------------------------
+
+    /**
+     * A step back of the real wall clock of up to 10 seconds, as 4.4+ allow it: the last timestamp is set back to now,
+     * so that the generator takes the time as the same and goes on with the sequence; a longer step still fails.
+     */
+    static final class IdentifierAdvice {
+        @Advice.OnMethodEnter
+        static void enter(@Advice.FieldValue(value = "lastTimestamp", readOnly = false) long lastTimestamp) {
+            long now = System.currentTimeMillis();
+            if (now < lastTimestamp && now >= lastTimestamp - 10_000L) {
+                lastTimestamp = now;
+            }
+        }
+    }
 
     static final class DateAdvice {
         @Advice.OnMethodExit
