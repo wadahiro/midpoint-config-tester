@@ -1,3 +1,25 @@
+# [0.9.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.8.0...v0.9.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* **effects:** the tasks the tester creates are not effects of the block ([a4be14b](https://github.com/wadahiro/midpoint-config-tester/commit/a4be14b2e0d445a126cfefaf050d3a3ddadc72c9))
+
+
+### Features
+
+* **assign:** an assignment with a validity: assign(role, a -> a.validTo(end)) ([3576544](https://github.com/wadahiro/midpoint-config-tester/commit/357654470b0bf7c5f191e538085e1368bc4cf3c4))
+* **effects)!: drop ignored(:** every effect a verification lets through is checked ([d5e6233](https://github.com/wadahiro/midpoint-config-tester/commit/d5e6233cbb94b2f915e5aba370d3e88a73a23461))
+* **effects:** verifyAll(c -> ...) verifies a verb's effects in one call from Java ([ea9f81c](https://github.com/wadahiro/midpoint-config-tester/commit/ea9f81c60c492f31999a8b8a21419d90ed22add2))
+* **real:** any connector against a system the test provides, restored through a RealSystem ([0118b2f](https://github.com/wadahiro/midpoint-config-tester/commit/0118b2f44bcc571dcf9431f325da08500addf0e9))
+* **scripts:** a resource's provisioning scripts and its additional connectors on the mirror ([5758e52](https://github.com/wadahiro/midpoint-config-tester/commit/5758e522c7d49d7dff985d9d715b95e6732726cd))
+
+
+### BREAKING CHANGES
+
+* **effects)!: drop ignored(:** Changes, ConnectorCalls, Mails, Logs and Audit lose ignored(); claim
+what it let through with exactly(n), single() or none().
+
 # [0.8.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.7.1...v0.8.0) (2026-11-16)
 
 
