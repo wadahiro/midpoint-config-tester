@@ -128,13 +128,19 @@ public final class MirrorResource {
                 + "; known: " + classes.keySet());
     }
 
-    /** Adds an object; returns its uid. Fails if the name is taken. */
+    /**
+     * Adds an object; returns its uid. Fails if the name is taken, or if the identifier is, unless the class adopts an
+     * existing one ({@link MirrorClass#uidAdoptsExisting}): then it adds nothing and returns that identifier.
+     */
     public synchronized String add(MirrorClass c, MirrorObject object) {
+        String issued = c.uidValue != null ? issuedUid(c, object) : null;
+        if (issued != null && c.uidAdoptsExisting && objects.get(c.connIdName).containsKey(issued)) {
+            return issued;
+        }
         if (findByName(c, object.name) != null) {
             throw new IllegalStateException("Object " + object.name + " already exists");
         }
-        object.uid = c.uidValue != null ? issuedUid(c, object)
-                : c.generatedUid() ? UUID.randomUUID().toString() : object.name;
+        object.uid = issued != null ? issued : c.generatedUid() ? UUID.randomUUID().toString() : object.name;
         if (objects.get(c.connIdName).containsKey(object.uid)) {
             throw new IllegalStateException("Object " + object.uid + " already exists");
         }

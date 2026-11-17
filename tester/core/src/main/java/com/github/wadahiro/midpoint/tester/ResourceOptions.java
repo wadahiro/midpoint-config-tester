@@ -47,15 +47,15 @@ public final class ResourceOptions {
     private final java.util.Map<String, String> classNaming;
     /** A file with the resource's stored schema (as exported from a midPoint connected to the real resource). */
     private final java.nio.file.Path schema;
-    /** A Groovy expression that makes the identifier of a created object (see {@link #identifier(String, String)}). */
-    private final String identifierValue;
+    /** The identifier a created object gets (see {@link #identifier(String, String, boolean)}), or null. */
+    private final IssuedIdentifier identifierValue;
     /** How the target system keeps the values of multi-valued attributes ({@link #multiValued}, {@link #store}...). */
     private final List<StoredValues> multiValued;
 
     private ResourceOptions(String namingAttribute, String identifier, List<Computed> computed,
             boolean referentialIntegrity, boolean caseInsensitiveNames, Real realConnector,
             List<String[]> attributes, java.util.Map<String, String> classNaming, java.nio.file.Path schema,
-            String identifierValue, List<StoredValues> multiValued) {
+            IssuedIdentifier identifierValue, List<StoredValues> multiValued) {
         this.namingAttribute = namingAttribute;
         this.identifier = identifier;
         this.computed = Collections.unmodifiableList(computed);
@@ -129,9 +129,31 @@ public final class ResourceOptions {
      * {@code "name + '/' + now.toEpochMilli()"}.
      */
     public ResourceOptions identifier(String attribute, String value) {
+        return identifier(attribute, value, false);
+    }
+
+    /**
+     * {@link #identifier(String, String)}; with {@code adoptExisting}, creating an object whose identifier (as the
+     * expression makes it) is already on the target system adds nothing and returns that object, instead of failing
+     * as an existing object: a target system whose create of an identifier it issued before only hands it back, like a
+     * certificate service given a certificate it already holds.
+     */
+    public ResourceOptions identifier(String attribute, String value, boolean adoptExisting) {
         checkIdentifier(attribute);
         return new ResourceOptions(namingAttribute, attribute, computed, referentialIntegrity,
-                caseInsensitiveNames, realConnector, attributes, classNaming, schema, value, multiValued);
+                caseInsensitiveNames, realConnector, attributes, classNaming, schema,
+                new IssuedIdentifier(value, adoptExisting), multiValued);
+    }
+
+    /** The expression of {@link #identifier(String, String, boolean)}, and whether a create adopts an existing one. */
+    private static final class IssuedIdentifier {
+        final String expression;
+        final boolean adoptExisting;
+
+        IssuedIdentifier(String expression, boolean adoptExisting) {
+            this.expression = expression;
+            this.adoptExisting = adoptExisting;
+        }
     }
 
     private static void checkIdentifier(String attribute) {
@@ -147,7 +169,12 @@ public final class ResourceOptions {
 
     /** The expression of {@link #identifier(String, String)}, or null. */
     public String identifierValue() {
-        return identifierValue;
+        return identifierValue != null ? identifierValue.expression : null;
+    }
+
+    /** Whether creating an object whose identifier is there adopts it ({@link #identifier(String, String, boolean)}). */
+    public boolean identifierAdoptsExisting() {
+        return identifierValue != null && identifierValue.adoptExisting;
     }
 
     /**

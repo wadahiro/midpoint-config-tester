@@ -261,7 +261,7 @@ final class MirrorResourceXml {
         if (options.identifierValue() != null) {
             List<MirrorClass> issuing = new ArrayList<>();
             for (MirrorClass c : classes) {
-                issuing.add(c.withUidValue(options.identifierValue()));
+                issuing.add(c.withUidValue(options.identifierValue(), options.identifierAdoptsExisting()));
             }
             classes = issuing;
         }

@@ -371,11 +371,16 @@ public final class Manifest {
         Object identifier = spec.get("identifier");
         if (identifier instanceof Map) {
             Map<String, Object> id = map(identifier, where + ".identifier");
-            check(id, where + ".identifier.", Set.of("attribute", "value"));
+            check(id, where + ".identifier.", Set.of("attribute", "value", "existing"));
             if (id.get("attribute") == null || id.get("value") == null) {
                 throw new IllegalArgumentException(where + ".identifier: attribute and value (a Groovy expression)");
             }
-            options = options.identifier(id.get("attribute").toString(), id.get("value").toString());
+            Object existing = id.getOrDefault("existing", "reject");
+            if (!"reject".equals(existing) && !"adopt".equals(existing)) {
+                throw new IllegalArgumentException(where + ".identifier.existing: reject or adopt, not " + existing);
+            }
+            options = options.identifier(id.get("attribute").toString(), id.get("value").toString(),
+                    "adopt".equals(existing));
         } else if (identifier != null) {
             options = options.identifier(identifier.toString());
         }

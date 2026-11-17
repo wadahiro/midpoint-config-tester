@@ -60,6 +60,18 @@ class ManifestTest {
         assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n"
                 + "  Certs: { identifier: { attribute: certId } }\n"))
                 .hasMessageContaining("targets.Certs.identifier: attribute and value");
+        assertThat(m.targets.get("Certs").options.identifierAdoptsExisting()).isFalse();
+    }
+
+    @Test
+    void anIdentifierTheTargetSystemHandsBackWhenItIsThere() throws IOException {
+        Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
+                + "  Certs: { identifier: { attribute: certId, value: \"name\", existing: adopt } }\n");
+
+        assertThat(m.targets.get("Certs").options.identifierAdoptsExisting()).isTrue();
+        assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n"
+                + "  Certs: { identifier: { attribute: certId, value: \"name\", existing: keep } }\n"))
+                .hasMessageContaining("targets.Certs.identifier.existing: reject or adopt");
     }
 
     @Test

@@ -100,7 +100,8 @@ Resources deployed without a stored `<schema>` (its `definition`; midPoint fetch
   Prefer the export when there are several such attributes: it has them all as in production.
 - A target system that issues the identifier on create (an order or ticket number, read back by an inbound):
   `identifier: { attribute: ticketId, value: "<Groovy of name, attributes, now>" }`, the value the real connector
-  returns; read the connector's create for its format.
+  returns; read the connector's create for its format. When its create of an identifier it issued before only hands
+  it back (no new object, no failure), add `existing: adopt`.
 - A real CSV connector's file gets a header of the columns the resource names; for the real file's own layout give
   its header line as `initialData: initial-data/<file>.csv`.
 

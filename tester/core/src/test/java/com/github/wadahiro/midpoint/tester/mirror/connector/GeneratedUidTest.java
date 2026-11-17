@@ -1,11 +1,13 @@
 package com.github.wadahiro.midpoint.tester.mirror.connector;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.objects.AttributeDeltaBuilder;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.Name;
@@ -46,6 +48,31 @@ class GeneratedUidTest {
         MirrorConnector connector = connector("issued-uid", c -> c.withGeneratedUid().withUidValue("'id-' + name"));
 
         assertThat(connector.create(ACCOUNT, Set.of(new Name("jdoe")), null).getUidValue()).isEqualTo("id-jdoe");
+    }
+
+    /** A target system that hands back an identifier it issued before, as the expression makes it from the name. */
+    @Test
+    void anExistingIdentifierIsHandedBackWhenTheClassAdoptsIt() {
+        MirrorConnector connector = connector("adopted-uid",
+                c -> c.withGeneratedUid().withUidValue("'id-' + name.toLowerCase()", true));
+        MirrorResource resource = MirrorStore.getOrCreate("adopted-uid");
+        MirrorClass account = resource.byConnIdName(ObjectClass.ACCOUNT_NAME);
+
+        Uid first = connector.create(ACCOUNT, Set.of(new Name("jdoe")), null);
+        Uid again = connector.create(ACCOUNT, Set.of(new Name("JDOE")), null);
+
+        assertThat(again).isEqualTo(first);
+        assertThat(resource.list(account)).extracting(o -> o.name).containsExactly("jdoe");
+    }
+
+    @Test
+    void anExistingIdentifierFailsOtherwise() {
+        MirrorConnector connector = connector("rejected-uid",
+                c -> c.withGeneratedUid().withUidValue("'id-' + name.toLowerCase()"));
+        connector.create(ACCOUNT, Set.of(new Name("jdoe")), null);
+
+        assertThatThrownBy(() -> connector.create(ACCOUNT, Set.of(new Name("JDOE")), null))
+                .isInstanceOf(AlreadyExistsException.class);
     }
 
     /** An identifier with the naming attribute's native name (a user's username for both) is the name. */

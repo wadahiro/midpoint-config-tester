@@ -31,6 +31,11 @@ public final class MirrorClass {
     /** A Groovy expression that makes the identifier of a created object, or null (see {@link #withUidValue}). */
     public final String uidValue;
     /**
+     * Whether creating an object whose {@link #uidValue} identifier is already there returns that object (the target
+     * system takes the identifier as one it issued before), instead of failing as an existing object.
+     */
+    public final boolean uidAdoptsExisting;
+    /**
      * Whether the target system issues the identifier, though it has no native name ({@link #uidAttribute} null:
      * midPoint shows ConnId's {@code __UID__} as {@code icfs:uid}, apart from the name); see {@link #withGeneratedUid}.
      */
@@ -60,15 +65,16 @@ public final class MirrorClass {
             PasswordReading passwordReading, boolean passwordReturnedByDefault,
             Map<String, MirrorAttribute> attributes, Map<String, MirrorLink> computed) {
         this(midPointName, connIdName, namingAttribute, uidAttribute, activation, password, validFrom, validTo,
-                passwordReading, passwordReturnedByDefault, attributes, computed, null, false);
+                passwordReading, passwordReturnedByDefault, attributes, computed, null, false, false);
     }
 
     private MirrorClass(String midPointName, String connIdName, String namingAttribute, String uidAttribute,
             boolean activation, boolean password, boolean validFrom, boolean validTo,
             PasswordReading passwordReading, boolean passwordReturnedByDefault,
             Map<String, MirrorAttribute> attributes, Map<String, MirrorLink> computed, String uidValue,
-            boolean generatedConnIdUid) {
+            boolean uidAdoptsExisting, boolean generatedConnIdUid) {
         this.uidValue = uidValue;
+        this.uidAdoptsExisting = uidAdoptsExisting;
         this.generatedConnIdUid = generatedConnIdUid;
         this.passwordReading = password ? passwordReading : PasswordReading.UNREADABLE;
         this.passwordReturnedByDefault = password && passwordReading != PasswordReading.UNREADABLE
@@ -93,7 +99,7 @@ public final class MirrorClass {
         newComputed.put(attribute, link);
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
                 validFrom, validTo, passwordReading, passwordReturnedByDefault, newAttributes, newComputed, uidValue,
-                generatedConnIdUid);
+                uidAdoptsExisting, generatedConnIdUid);
     }
 
     /** This class with one more attribute, multi-valued, read only (the target system's, not computed here). */
@@ -102,7 +108,7 @@ public final class MirrorClass {
         newAttributes.putIfAbsent(attribute, new MirrorAttribute(attribute, String.class, true, true, false, false));
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
                 validFrom, validTo, passwordReading, passwordReturnedByDefault, newAttributes, computed, uidValue,
-                generatedConnIdUid);
+                uidAdoptsExisting, generatedConnIdUid);
     }
 
     /**
@@ -132,20 +138,21 @@ public final class MirrorClass {
         newAttributes.put(attribute, change.apply(a));
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
                 validFrom, validTo, passwordReading, passwordReturnedByDefault, newAttributes, computed, uidValue,
-                generatedConnIdUid);
+                uidAdoptsExisting, generatedConnIdUid);
     }
 
     /** This class with the validity dates of the activation capability (or without them). */
     public MirrorClass withValidity(boolean validFrom, boolean validTo) {
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
                 validFrom, validTo, passwordReading, passwordReturnedByDefault, attributes, computed, uidValue,
-                generatedConnIdUid);
+                uidAdoptsExisting, generatedConnIdUid);
     }
 
     /** This class with the password read back as the real connector does it (see {@link PasswordReading}). */
     public MirrorClass withPasswordReading(PasswordReading reading, boolean returnedByDefault) {
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
-                validFrom, validTo, reading, returnedByDefault, attributes, computed, uidValue, generatedConnIdUid);
+                validFrom, validTo, reading, returnedByDefault, attributes, computed, uidValue,
+                uidAdoptsExisting, generatedConnIdUid);
     }
 
     /**
@@ -153,12 +160,20 @@ public final class MirrorClass {
      * expression of {@code name}, {@code attributes} and {@code now}, as the target system would issue it.
      */
     public MirrorClass withUidValue(String expression) {
+        return withUidValue(expression, false);
+    }
+
+    /**
+     * {@link #withUidValue(String)}; with {@code adoptExisting}, creating an object whose identifier is already there
+     * returns that object ({@link #uidAdoptsExisting}).
+     */
+    public MirrorClass withUidValue(String expression, boolean adoptExisting) {
         if (!generatedUid()) {
             throw new IllegalArgumentException("A generated identifier needs an identifier attribute: " + midPointName);
         }
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
                 validFrom, validTo, passwordReading, passwordReturnedByDefault, attributes, computed, expression,
-                generatedConnIdUid);
+                adoptExisting, generatedConnIdUid);
     }
 
     /**
@@ -178,7 +193,8 @@ public final class MirrorClass {
      */
     public MirrorClass withGeneratedUid() {
         return new MirrorClass(midPointName, connIdName, namingAttribute, uidAttribute, activation, password,
-                validFrom, validTo, passwordReading, passwordReturnedByDefault, attributes, computed, uidValue, true);
+                validFrom, validTo, passwordReading, passwordReturnedByDefault, attributes, computed, uidValue,
+                uidAdoptsExisting, true);
     }
 
     /**

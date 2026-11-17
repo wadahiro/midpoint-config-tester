@@ -92,7 +92,11 @@ displayName }`). An identifier the target system issues on create (an order or t
 number) is made by a Groovy expression of the created object's `name`, its other `attributes` (name -> list of
 values) and `now` (the tester's clock, an `Instant`): `ResourceOptions.identifier("ticketId", expression)`
 (manifest: `identifier: { attribute: ticketId, value: "name + '/' + now.toEpochMilli()" }`); without the expression a
-generated identifier is a random UUID. A connector that gives ConnId's `__UID__` no native name (a stored schema
+generated identifier is a random UUID. Creating an object whose identifier, as the expression makes it, is already
+there fails as an existing object; a target system that only hands back an identifier it issued before (a
+certificate service given the identifier of a certificate it holds) takes `existing: adopt` (`identifier: {
+attribute: certId, value: "…", existing: adopt }`, `ResourceOptions.identifier(attribute, expression, true)`): the
+create adds nothing and returns that object. A connector that gives ConnId's `__UID__` no native name (a stored schema
 shows it as `icfs:uid` beside `icfs:name`) may still issue it apart from the name, which the schema does not say:
 `identifier: icfs:uid` (or with a `value`) makes the mirror issue it, so a rename keeps it; without it the
 identifier is the name. The resources the tester cannot stand in for are reported together, with the
