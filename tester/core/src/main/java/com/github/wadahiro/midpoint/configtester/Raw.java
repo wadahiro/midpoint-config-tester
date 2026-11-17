@@ -158,7 +158,8 @@ public final class Raw {
                         .asItemDeltas();
             }));
             List<String> now = values(path);
-            if (!Values.sameValues(Values.texts(typed), now)) {
+            if (!written(typed, realValues(existing().asPrismObject(), path))
+                    && !Values.sameValues(Values.texts(typed), now)) {
                 throw unlike("set " + path + " of " + name + " to " + Values.texts(typed), now);
             }
             return this;
@@ -513,6 +514,64 @@ public final class Raw {
     // ---- items ------------------------------------------------------------------------------------------------
 
     /** The real values at the path, through every value of a multi-valued container on the way, as {@link User}. */
+    /**
+     * Whether the repository has the structured values written, one stored value of a compiled structure for each: with
+     * the items written (the repository may give a value an id and items of its own, as 4.0 a lookup table row its
+     * lastChangeTimestamp).
+     */
+    private static boolean written(Object[] typed, List<Object> stored) {
+        if (typed.length == 0 || typed.length != stored.size()) {
+            return false;
+        }
+        List<PrismContainerValue<?>> rest = new ArrayList<>();
+        for (Object value : stored) {
+            // a value of a structure the schema compiles (a row); others (an extension's) are compared as text
+            if (!(value instanceof com.evolveum.midpoint.prism.Containerable)) {
+                return false;
+            }
+            rest.add(((com.evolveum.midpoint.prism.Containerable) value).asPrismContainerValue());
+        }
+        for (Object value : typed) {
+            PrismContainerValue<?> wanted = containerValue(value);
+            if (wanted == null || !rest.removeIf(new java.util.function.Predicate<PrismContainerValue<?>>() {
+                private boolean done;
+
+                @Override
+                public boolean test(PrismContainerValue<?> have) {
+                    if (done || !hasItems(have, wanted)) {
+                        return false;
+                    }
+                    done = true;
+                    return true;
+                }
+            })) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static PrismContainerValue<?> containerValue(Object value) {
+        if (value instanceof PrismContainerValue) {
+            return (PrismContainerValue<?>) value;
+        }
+        if (value instanceof com.evolveum.midpoint.prism.Containerable) {
+            return ((com.evolveum.midpoint.prism.Containerable) value).asPrismContainerValue();
+        }
+        return null;
+    }
+
+    private static boolean hasItems(PrismContainerValue<?> have, PrismContainerValue<?> wanted) {
+        for (Item<?, ?> item : wanted.getItems()) {
+            Item<?, ?> stored = have.findItem(ItemPath.create(item.getElementName()));
+            if (stored == null || !new java.util.HashSet<Object>(stored.getRealValues())
+                    .equals(new java.util.HashSet<Object>(item.getRealValues()))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static List<Object> realValues(PrismObject<?> object, String path) {
         List<PrismContainerValue<?>> containers = new ArrayList<>();
         containers.add(object.getValue());

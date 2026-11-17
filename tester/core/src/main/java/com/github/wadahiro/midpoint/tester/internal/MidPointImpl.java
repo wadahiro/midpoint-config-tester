@@ -1082,10 +1082,16 @@ final class MidPointImpl implements MidPoint {
     public <O extends ObjectType> O find(Class<O> type, String nameOrOid) {
         return query("find " + nameOrOid, (task, result) -> {
             RepositoryService repository = harness.bean(RepositoryService.class);
+            // a lookup table's rows are an incomplete item: the repository returns them only when asked to
+            Collection<com.evolveum.midpoint.schema.SelectorOptions<com.evolveum.midpoint.schema.GetOperationOptions>>
+                    options = com.evolveum.midpoint.xml.ns._public.common.common_3.LookupTableType.class.equals(type)
+                    ? com.evolveum.midpoint.schema.SelectorOptions.createCollection(
+                            com.evolveum.midpoint.schema.GetOperationOptions.createRetrieve())
+                    : null;
             if (OID.matcher(nameOrOid).matches()) {
                 try {
                     // a result of its own: not found is an answer here, not an error
-                    return repository.getObject(type, nameOrOid, null, new OperationResult("find")).asObjectable();
+                    return repository.getObject(type, nameOrOid, options, new OperationResult("find")).asObjectable();
                 } catch (ObjectNotFoundException e) {
                     return null;
                 }
@@ -1096,13 +1102,17 @@ final class MidPointImpl implements MidPoint {
             List<PrismObject<O>> found = repository.searchObjects(type, query, null, result);
             if (found.isEmpty() && OID_SHAPED.matcher(nameOrOid).matches()) {
                 try {
-                    return repository.getObject(type, nameOrOid, null, new OperationResult("find")).asObjectable();
+                    return repository.getObject(type, nameOrOid, options, new OperationResult("find")).asObjectable();
                 } catch (ObjectNotFoundException | IllegalArgumentException e) {
                     // not found, or not an OID the repository takes (4.4+: a UUID)
                     return null;
                 }
             }
-            return found.isEmpty() ? null : found.get(0).asObjectable();
+            if (found.isEmpty()) {
+                return null;
+            }
+            return options == null ? found.get(0).asObjectable()
+                    : repository.getObject(type, found.get(0).getOid(), options, result).asObjectable();
         });
     }
 
