@@ -311,6 +311,26 @@ public final class MidPointConfigTester {
     }
 
     /**
+     * The channel of a user's own operation in the GUI ({@code SchemaConstants.CHANNEL_USER_URI}): the operations of an
+     * {@link Actor} (a request, a work item, a certification decision, a change or a deletion) run in it, as midPoint's
+     * model sees them when the user does them in the GUI.
+     */
+    public static final String GUI_CHANNEL = "http://midpoint.evolveum.com/xml/ns/public/gui/channels-3#user";
+
+    /** {@link #effectsOf} in {@link #GUI_CHANNEL}, unless {@link #inChannel} set another channel for the block. */
+    Effects effectsInGui(Runnable block) {
+        if (com.github.wadahiro.midpoint.tester.internal.TaskChannel.current() != null) {
+            return effectsOf(block);
+        }
+        String before = com.github.wadahiro.midpoint.tester.internal.TaskChannel.use(GUI_CHANNEL);
+        try {
+            return effectsOf(block);
+        } finally {
+            com.github.wadahiro.midpoint.tester.internal.TaskChannel.use(before);
+        }
+    }
+
+    /**
      * What the configuration's scripts logged in this test ({@code log.info}, {@code log.error}...: INFO and up), and
      * the loggers of the manifest's {@code logs.capture}.
      */

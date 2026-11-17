@@ -78,7 +78,7 @@ public final class WorkItem {
     }
 
     public Effects approve(Actor approver, String comment) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().complete(item, approver.name(), true, comment));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().complete(item, approver.name(), true, comment));
     }
 
     public Effects reject(Actor approver) {
@@ -86,7 +86,7 @@ public final class WorkItem {
     }
 
     public Effects reject(Actor approver, String comment) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().complete(item, approver.name(), false, comment));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().complete(item, approver.name(), false, comment));
     }
 
     /**
@@ -95,7 +95,7 @@ public final class WorkItem {
      * it again to see the new ones.
      */
     public Effects delegate(Actor delegator, String... users) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().delegate(item, delegator.name(), users));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().delegate(item, delegator.name(), users));
     }
 
     /** {@link #delegate(Actor, String...)} by the generated users. */
@@ -118,17 +118,17 @@ public final class WorkItem {
 
     /** Forwards the item to these users (by name), as the forwarder: they replace its assignees (the GUI's "Forward"). */
     public Effects forward(Actor forwarder, String... users) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().forward(item, forwarder.name(), users));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().forward(item, forwarder.name(), users));
     }
 
     /** The user claims the item offered to a group they are a member of, and becomes its assignee. */
     public Effects claim(Actor user) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().claim(item, user.name()));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().claim(item, user.name()));
     }
 
     /** The user releases the item they claimed, back to the group. */
     public Effects release(Actor user) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().release(item, user.name()));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().release(item, user.name()));
     }
 
     // ---- assertions -------------------------------------------------------------------------------------------

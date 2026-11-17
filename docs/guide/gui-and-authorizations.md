@@ -53,7 +53,39 @@ assertThat(form.canRead("emailAddress")).isTrue();
 - The execution phase is not asked on its own: a request or a change through the API goes through both
   phases, as in the GUI.
 
-The GUI's configuration (`adminGuiConfiguration`) is asked the same way: `guiProfile()` is the user's GUI profile as
+## Changes and deletions as a user
+
+A user's own change or deletion in the GUI goes through the model with the user logged in, request and execution
+phase; the actor does it the same way:
+
+```java
+// as the user saves a form: what they may not change, or a policy rule's violation, fails the call
+t.actor(Users.HELPDESK).modify(t.user(Users.JACK), m -> m.set("telephoneNumber", "+1 555 0100"));
+t.expectFailure(() -> t.actor(Users.HELPDESK).modify(t.user(Users.JACK), m -> m.set("costCenter", "Sales")));
+// as the user deletes from a list
+t.actor(Users.IT_MANAGER).delete(t.user(Users.ANN));
+```
+
+- `modify` takes the same `Modification` as `Focus.modify` (without its reconcile option); both return `Effects`.
+- The operations of an actor (a request, a work item's decision, delegation, forwarding, claim and release, a
+  certification decision, a change, a deletion) run in the GUI's channel, `MidPointConfigTester.GUI_CHANNEL`
+  (`gui/channels-3#user`), as the GUI's own task for an operation has it: a mapping or a hook that looks at the channel
+  acts as for the user's click. `t.inChannel(...)` around the call keeps its channel instead.
+- An operation runs synchronously in a lightweight task of its own, as the GUI's does (`createSimpleTask`: not stored,
+  owned by the logged-in user); only that task gets the channel. The tasks midPoint starts from it are midPoint's,
+  as in production (the 4.0, 4.4 and 4.8 sources):
+  - a task runs with the authorizations of its owner: the task manager logs the owner in before it runs it
+    (`JobExecutor`);
+  - the execution of an approved request (`CaseOperationExecutionTaskHandler`) runs in the request's channel (the GUI's,
+    for an actor's request) and is owned by the requester, or by the owner the system configuration's
+    `workflowConfiguration` names;
+  - a background task runs in the channel stored in it (on 4.4+ the handler's default when none is); the GUI's "execute
+    in background" stores the GUI's channel; reconciliation, import, live sync and asynchronous update switch to their
+    own channel while they run.
+- A server task the test runs (`t.task(...).run()`) runs as the task defines, not as an actor: to test what a user
+  starts in the background, run the task they would start, owned by them.
+
+: `guiProfile()` is the user's GUI profile as
 midPoint compiled it at login:
 
 ```java

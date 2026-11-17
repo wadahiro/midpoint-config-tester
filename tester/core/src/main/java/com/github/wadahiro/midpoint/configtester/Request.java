@@ -79,7 +79,7 @@ public final class Request {
     }
 
     private Effects submit(ObjectDelta<? extends ObjectType> delta) {
-        return tester.effectsOf(() -> tester.deployment().api().approvals().request(actor.name(), delta));
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().request(actor.name(), delta));
     }
 
     @Override

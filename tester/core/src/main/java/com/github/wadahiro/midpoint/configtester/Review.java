@@ -61,7 +61,7 @@ public final class Review {
      * {@code noResponse}.
      */
     public Effects decide(Actor reviewer, String response, String comment) {
-        return tester.effectsOf(
+        return tester.effectsInGui(
                 () -> tester.deployment().api().certification().decide(item, reviewer.name(), response, comment));
     }
 

@@ -8,6 +8,7 @@ import java.util.Set;
 import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.prism.PrismObjectDefinition;
+import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.security.api.AuthorizationConstants;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AuthorizationType;
@@ -51,6 +52,31 @@ public final class Actor {
     /** The user's name. */
     public String name() {
         return name;
+    }
+
+    /**
+     * Changes the focus as the actor, as they save its form in the GUI ({@link Modification}): through the model with
+     * the actor logged in, request and execution phase, in {@link MidPointConfigTester#GUI_CHANNEL}. midPoint refusing
+     * it (no authorization, a policy rule's violation) fails the call: {@link MidPointConfigTester#expectFailure}.
+     * {@code t.actor("jdoe").modify(t.user("jdoe"), m -> m.set("activation/validTo", end))}.
+     */
+    public Effects modify(Focus<?> focus, java.util.function.Consumer<Modification> change) {
+        Modification modification = new Modification(focus);
+        change.accept(modification);
+        ObjectDelta<? extends ObjectType> delta = modification.delta();
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().request(name, delta));
+    }
+
+    /**
+     * Deletes the focus as the actor, as they delete it from a list in the GUI: through the model with the actor
+     * logged in, in {@link MidPointConfigTester#GUI_CHANNEL}; its projections go as the resources say. midPoint
+     * refusing it fails the call: {@link MidPointConfigTester#expectFailure}.
+     */
+    public Effects delete(Focus<?> focus) {
+        String oid = focus.oid();
+        ObjectDelta<? extends ObjectType> delta = tester.deployment().api().prismContext().deltaFactory().object()
+                .createDeleteDelta(focus.type, oid);
+        return tester.effectsInGui(() -> tester.deployment().api().approvals().request(name, delta));
     }
 
     /** A request for the actor themself, as in the GUI's "Request access". */

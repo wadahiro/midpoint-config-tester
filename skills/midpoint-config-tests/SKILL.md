@@ -187,6 +187,15 @@ Prefer A/B over D wherever the manual case only observes midPoint logic through 
     does not. midPoint only logs a failed post-report script (WARN), so assert the file it should have written
   - a change from a service's channel (a hook that checks it): `t.inChannel(channelUri, () -> ...)`
   - an object collection's list as a user sees it (a "my requests" page): `t.actor(user).collection(name)`
+  - a user's own change or deletion in the GUI (a self-service form, deleting from a list):
+    `t.actor(user).modify(t.user(x)) { it.set(path, value) }`, `t.actor(user).delete(t.user(x))`. An actor's
+    operations run synchronously in a lightweight task of the operation, as the GUI's, in the GUI's channel
+    (`MidPointConfigTester.GUI_CHANNEL`) and owned by the actor. The tasks midPoint starts from one are midPoint's, as
+    in production: a task runs with its owner's authorizations; an approved request's execution runs in the request's
+    channel, owned by the requester; a background task in the channel stored in it (reconciliation, import and live
+    sync switch to their own). A server task the test runs (`t.task(name).run()`) runs as the task defines, not as an
+    actor; to test what a user starts in the background, run the task they would start, owned by them
+    (`docs/guide/gui-and-authorizations.md`)
   - calls a service makes on a user's behalf (a self-service application over midPoint's REST API; keep the
     service's own protocol in the project): `t.callAs(Caller.user(u).privileged().owner(u).channel(uri), () -> ...)`
   - a custom endpoint of the deployment (a server the tester cannot host): `t.midpoint().createBean(ServiceClass.class)`

@@ -4,10 +4,12 @@ import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.model.api.ModelExecuteOptions;
 import com.evolveum.midpoint.prism.PrismContext;
+import com.evolveum.midpoint.prism.delta.ObjectDelta;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.CredentialsType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.FocusType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.PasswordType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.configtester.names.AssignableRef;
@@ -151,6 +153,11 @@ public final class Modification {
     }
 
     // ---- for the focus ----------------------------------------------------------------------------------------
+
+    /** The delta of the change (without the reconcile option), for an {@link Actor} to submit as themself. */
+    ObjectDelta<? extends ObjectType> delta() {
+        return change.delta();
+    }
 
     void execute() {
         if (reconcile) {
