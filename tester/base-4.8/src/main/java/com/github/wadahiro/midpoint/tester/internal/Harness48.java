@@ -138,7 +138,13 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
     @Override
     public void resetInternals() {
         LineSupport.clearRepositoryCaches(sqaleRepoContext);
-        LineSupport.invalidateCaches(this);
+        // the resource and connector rows are those the provisioning caches hold: every other cache is cleared
+        if (ProvisioningCaches.keepAtReset()
+                && ProvisioningCaches.invalidateAllButProvisioning(LineSupport.cacheRegistry(this))) {
+            Timing.count("reset.internals.provisioningCachesKept");
+        } else {
+            LineSupport.invalidateCaches(this);
+        }
         // Quartz keeps its jobs in memory: drop those of tasks the reset removed, reschedule the restored ones (the
         // scheduler is held: TesterRuntime.reset puts the triggers back on the restored schedules, see TaskSchedules)
         if (TaskSchedules.inLineAtReset()) {

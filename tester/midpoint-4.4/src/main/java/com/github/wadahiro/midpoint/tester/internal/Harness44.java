@@ -160,7 +160,13 @@ public class Harness44 extends AbstractModelIntegrationTest implements Harness {
     @Override
     public void resetInternals() {
         sqaleRepoContext.clearCaches();
-        cacheDispatcher.dispatchInvalidation(null, null, false, null);
+        // the resource and connector rows are those the provisioning caches hold: every other cache is cleared
+        if (ProvisioningCaches.keepAtReset() && ProvisioningCaches.invalidateAllButProvisioning(
+                bean(com.evolveum.midpoint.repo.api.CacheRegistry.class), "caches")) {
+            Timing.count("reset.internals.provisioningCachesKept");
+        } else {
+            cacheDispatcher.dispatchInvalidation(null, null, false, null);
+        }
         // Quartz keeps its jobs in memory: drop those of tasks the reset removed, reschedule the restored ones (the
         // scheduler is held: TesterRuntime.reset puts the triggers back on the restored schedules, see TaskSchedules)
         if (TaskSchedules.inLineAtReset()) {

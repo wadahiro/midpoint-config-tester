@@ -119,6 +119,11 @@ public final class LineSupport {
     }
 
     /** Every midPoint cache invalidated, on this node only ({@code CacheDispatcher}). */
+    /** The registry of midPoint's caches, whose list {@code ProvisioningCaches.invalidateAllButProvisioning} reads. */
+    static Object cacheRegistry(Harness48 harness) {
+        return harness.bean(com.evolveum.midpoint.repo.api.CacheRegistry.class);
+    }
+
     static void invalidateCaches(Harness48 harness) {
         harness.bean(CacheDispatcher.class).dispatchInvalidation(null, null, false, null);
     }
