@@ -324,6 +324,7 @@ public final class TesterRuntime {
                 FileArea.get().capture(), regularRunsHeld);
         // the live database: Quartz matches it, a reset back to it with no change of the tasks needs no synchronization
         TaskSchedules.nowInLineWith(state);
+        ProvisioningCaches.nowInLineWith(state);
         Timing.end("snapshot.files", p);
         Timing.end("snapshot.total", t);
         return state;
@@ -358,6 +359,7 @@ public final class TesterRuntime {
             // Quartz still matches the state when no task row and no job or trigger changed since it did: the
             // synchronization of the tasks and the re-arming of their triggers would change nothing (TaskSchedules)
             boolean inLine = TaskSchedules.resetStarts(state);
+            ProvisioningCaches.resetStarts(state);
             t = Timing.start();
             pg.reset(state.snapshot);
             Timing.end("reset.pg", t);
@@ -389,6 +391,7 @@ public final class TesterRuntime {
             Timing.end("reset.filesAndTargets", t);
             // before the release: a task that starts after it is a change again
             TaskSchedules.nowInLineWith(state);
+            ProvisioningCaches.nowInLineWith(state);
         } finally {
             t = Timing.start();
             TaskSchedules.release(scheduler);
@@ -429,6 +432,8 @@ public final class TesterRuntime {
             // another database: Quartz is brought in line with it in full
             TaskSchedules.resetStarts(null);
             TaskSchedules.nowInLineWith(null);
+            ProvisioningCaches.resetStarts(null);
+            ProvisioningCaches.nowInLineWith(null);
             harness.resetInternals();
             login(ADMINISTRATOR);
             inWindow.run();

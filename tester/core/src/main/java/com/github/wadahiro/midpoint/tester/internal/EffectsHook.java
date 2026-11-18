@@ -166,9 +166,15 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             String name = method.getName();
             boolean write = REPOSITORY_WRITES.contains(name);
             boolean read = REPOSITORY_READS.contains(name);
-            if (write && isTask(args)) {
-                // Quartz's jobs follow the task rows: the next reset brings them in line again
-                TaskSchedules.tasksChanged();
+            if (write) {
+                String written = writtenType(args);
+                if ("TaskType".equals(written)) {
+                    // Quartz's jobs follow the task rows: the next reset brings them in line again
+                    TaskSchedules.tasksChanged();
+                } else if ("ResourceType".equals(written) || "ConnectorType".equals(written)) {
+                    // the provisioning caches hold what these rows say: the next reset clears them
+                    ProvisioningCaches.changed();
+                }
             }
             if (!(write || read) || !EffectsCapture.capturing() || calledByTester()) {
                 return call(method, args);
@@ -219,14 +225,14 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             }
         }
 
-        /** Whether the write's object is a task (by its type argument, or the object added). */
-        private static boolean isTask(Object[] args) {
+        /** The simple name of the written object's type (by its type argument, or the object added), or null. */
+        private static String writtenType(Object[] args) {
             Class<?> type = argument(args, Class.class);
             if (type == null) {
                 PrismObject<?> object = argument(args, PrismObject.class);
                 type = object != null ? object.getCompileTimeClass() : null;
             }
-            return type != null && "TaskType".equals(type.getSimpleName());
+            return type != null ? type.getSimpleName() : null;
         }
 
         private static void record(String method, Class<?> type, String oid, String name,
