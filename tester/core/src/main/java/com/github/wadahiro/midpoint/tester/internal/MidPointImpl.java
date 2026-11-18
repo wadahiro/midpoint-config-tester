@@ -824,14 +824,20 @@ final class MidPointImpl implements MidPoint {
                         + runNow.getStatus() + " " + firstMessage(runNow) + suspendedHint(oid));
             }
             long deadline = System.nanoTime() + TesterRuntime.TASK_WAIT_MILLIS * 1_000_000L;
-            while (Recorder.taskRuns(oid) == runs) {
+            long t = Timing.start();
+            while (true) {
+                // read before the look: a run that starts in between is a change, the wait then returns at once
+                long seen = BackgroundWork.changes();
+                if (Recorder.taskRuns(oid) != runs) {
+                    break;
+                }
                 if (System.nanoTime() - deadline >= 0) {
                     throw new AssertionError("Task " + nameOf(TaskType.class, oid) + " did not start in "
                             + TesterRuntime.TASK_WAIT_MILLIS / 1000 + " s");
                 }
-                Thread.sleep(20);
-                Timing.count("driver.runNow.startSleep20");
+                BackgroundWork.awaitChange(seen, 20);
             }
+            Timing.end("driver.runNow.awaitStart", t);
         } finally {
             TaskSchedules.endRegularRunPermit(oid);
         }

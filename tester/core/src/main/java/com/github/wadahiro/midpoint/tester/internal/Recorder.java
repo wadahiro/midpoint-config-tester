@@ -172,10 +172,24 @@ public final class Recorder {
         TASK_THREADS.incrementAndGet();
         BACKGROUND_STARTS.incrementAndGet();
         TASK.set(new String[] { name, oid, channel });
+        TASK_THREAD_START.set(Timing.start());
+        BackgroundWork.changed();
     }
 
+    /** When this task thread started ({@link Timing#start()}), for the time of each task in the timing report. */
+    private static final ThreadLocal<Long> TASK_THREAD_START = new ThreadLocal<>();
+
+    /** When a task's thread or a tightly bound task's run last ended ({@link System#nanoTime()}), 0 before. */
+    public static volatile long lastTaskEnd;
+
     public static void taskThreadFinished() {
+        lastTaskEnd = System.nanoTime();
         String[] task = TASK.get();
+        Long started = TASK_THREAD_START.get();
+        if (started != null) {
+            TASK_THREAD_START.remove();
+            Timing.end("task.thread " + (task != null && task[0] != null ? task[0] : "?"), started);
+        }
         if (task != null) {
             TASK.remove();
             if (task[1] != null) {
@@ -184,6 +198,7 @@ public final class Recorder {
             }
             TASK_THREADS.decrementAndGet();
         }
+        BackgroundWork.changed();
     }
 
     /** As {@link #taskRunStarted(String, long)}, of a task bound {@code tightly} or not. */
@@ -200,10 +215,12 @@ public final class Recorder {
      * ({@link #busyTaskThreads}).
      */
     public static void taskRunFinished(String oid, boolean tightly) {
+        lastTaskEnd = System.nanoTime();
         if (oid != null && tightly) {
             TIGHT_THREADS.add(oid);
             TIGHT_IDLE.add(oid);
         }
+        BackgroundWork.changed();
     }
 
     /**
@@ -220,6 +237,7 @@ public final class Recorder {
             }
             TASK_RUNS.computeIfAbsent(oid, k -> new AtomicInteger()).incrementAndGet();
         }
+        BackgroundWork.changed();
     }
 
     /**

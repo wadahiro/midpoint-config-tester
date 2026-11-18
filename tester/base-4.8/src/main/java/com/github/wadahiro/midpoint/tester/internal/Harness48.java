@@ -152,24 +152,7 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
 
     @Override
     public List<String> awaitBackgroundWork(long timeoutMillis) {
-        long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
-        List<String> pending;
-        while (true) {
-            long t = Timing.start();
-            pending = pendingWork();
-            Timing.end("await.pendingWork (task search)", t);
-            if (pending.isEmpty() || System.nanoTime() - deadline >= 0) {
-                return pending;
-            }
-            try {
-                long s = Timing.start();
-                Thread.sleep(20);
-                Timing.end("await.harnessSleep20", s);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return pending;
-            }
-        }
+        return BackgroundWork.await(this::pendingWork, timeoutMillis);
     }
 
     @Override

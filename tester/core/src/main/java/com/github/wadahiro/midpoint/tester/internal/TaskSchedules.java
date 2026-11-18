@@ -111,6 +111,7 @@ final class TaskSchedules {
         }
         Scheduler scheduler = harness.quartzScheduler();
         while (true) {
+            long seen = BackgroundWork.changes();
             int jobs;
             try {
                 java.util.Set<String> idle = Recorder.idleTightlyBoundTasks();
@@ -128,8 +129,9 @@ final class TaskSchedules {
             }
             try {
                 long t = Timing.start();
-                Thread.sleep(20);
-                Timing.end("await.quartzJobSleep20", t);
+                // a job that ends is a change (the job listener of installHold)
+                BackgroundWork.awaitChange(seen, 20);
+                Timing.end("await.quartzJob", t);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return List.of(jobs + " Quartz job(s) executing");
@@ -187,6 +189,19 @@ final class TaskSchedules {
                     if (!rearming) {
                         RESTARTS.put(key, new Restart(clock.getAsLong(), true));
                     }
+                }
+            });
+            // a job's end is a change of the background work: midPoint's job executor writes the task's final state
+            // before its execute returns, after the task listener told its thread ended
+            scheduler.getListenerManager().addJobListener(new org.quartz.listeners.JobListenerSupport() {
+                @Override
+                public String getName() {
+                    return HOLD_LISTENER + " (job ends)";
+                }
+
+                @Override
+                public void jobWasExecuted(JobExecutionContext context, org.quartz.JobExecutionException exception) {
+                    BackgroundWork.changed();
                 }
             });
             scheduler.getListenerManager().addTriggerListener(new TriggerListenerSupport() {
