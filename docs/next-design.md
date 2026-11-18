@@ -845,6 +845,34 @@ the evaluations of the test by mapping (name and owner): count, median, the tota
 compilation and the first search of LDAP), sorted by the total after the first. The projector evaluates a mapping 3
 times per user and operation on 4.0 and 2 times on 4.4 and 4.8 in the HR sample.
 
+## JVM startup: AOT cache and CRaC, measured and not adopted
+
+The JVM's start (Spring's context, midPoint's `initSystem`, the line's initial import) is once per test JVM; with the
+deployment cache it is the largest fixed cost left. Two ways to cache a started JVM were looked at for the 4.11 line
+(JDK 25):
+
+- **AOT cache (Project Leyden, JEP 483/514/515)**: a training run writes the classes as loaded and linked (and method
+  profiles) to a cache, later runs map it. It does not keep the heap: Spring and midPoint start again.
+  - Measured (10-core Apple laptop, 4.11 on Temurin 25.0.5, `HrLifecycleScenarioTest`, 14 tests, mean of 3 runs each,
+    alternating): startup 5.95 s without, 4.63 s with the cache (Spring and `initSystem` 4.64 / 3.42 s); the JVM 16.4 /
+    14.6 s. About 1.5-2 s per JVM, whatever the length of the suite.
+  - Not usable from Surefire as it is: JDK 25 refuses to create the cache with a non-empty directory on the class path
+    (`Error: non-empty directory '.../test-classes/'`), and Surefire passes `target/classes` and `target/test-classes`
+    as directories. The measurement put both into jars and started JUnit's launcher directly, with a copy of the test
+    pointing at its manifest by file path (a `classpath:` manifest must be a file).
+  - Temurin 25.0.5 crashed writing the cache (`SIGSEGV` in `MethodTrainingData::cleanup`, JEP 515's method profiles);
+    `-XX:+UnlockDiagnosticVMOptions -XX:-AOTRecordTraining` (no method profiles) avoided it.
+  - The cache is 196 MB and is valid for one class path only: every change of a dependency or of the classes needs a
+    new training run.
+  - Not adopted: about 2 s per JVM against launching the tests outside Surefire, a diagnostic flag and a cache to
+    rebuild. Worth another look when the JDK accepts directories on the class path and the crash is fixed.
+- **CRaC** (checkpoint and restore of the whole process): not in OpenJDK (Azul Zulu and BellSoft Liberica builds),
+  restores only on Linux (CRIU; macOS and Windows only simulate it), and needs every file and socket closed at the
+  checkpoint: the JDBC connections to pgmem (a process of its own, whose state would have to match), Quartz's threads,
+  the LDAP and SMTP stand-ins. midPoint has no CRaC resources for them. Not tried.
+
+Parallel test JVMs, measured earlier, do not help either ([Parallel test JVMs](#parallel-test-jvms--dtesterforksn)).
+
 ---
 
 ## API rules before 1.0 as built
