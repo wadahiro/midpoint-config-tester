@@ -168,6 +168,8 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             boolean read = REPOSITORY_READS.contains(name);
             if (write) {
                 String written = writtenType(args);
+                // the administrator's login at the reset follows the user and the security rows: reused only unchanged
+                LoginCache.written(written, writtenOid(args));
                 if ("TaskType".equals(written)) {
                     // Quartz's jobs follow the task rows: the next reset brings them in line again
                     TaskSchedules.tasksChanged();
@@ -223,6 +225,16 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                     return result;
                 }
             }
+        }
+
+        /** The OID of the written object (the argument of a modify or delete, the object added), or null. */
+        private static String writtenOid(Object[] args) {
+            String oid = argument(args, String.class);
+            if (oid == null) {
+                PrismObject<?> object = argument(args, PrismObject.class);
+                oid = object != null ? object.getOid() : null;
+            }
+            return oid;
         }
 
         /** The simple name of the written object's type (by its type argument, or the object added), or null. */

@@ -398,7 +398,13 @@ public final class TesterRuntime {
             Timing.end("reset.release", t);
         }
         t = Timing.start();
-        login(ADMINISTRATOR);
+        // the same login as at the last reset to this state when nothing it was built from changed (LoginCache)
+        if (LoginCache.reuse(state, ADMINISTRATOR, harness.bean(com.evolveum.midpoint.repo.api.RepositoryService.class))) {
+            Timing.count("reset.loginReused");
+        } else {
+            login(ADMINISTRATOR);
+            LoginCache.remember(state, ADMINISTRATOR);
+        }
         Timing.end("reset.login", t);
         Timing.end("reset.total", total);
     }
@@ -434,6 +440,7 @@ public final class TesterRuntime {
             TaskSchedules.nowInLineWith(null);
             ProvisioningCaches.resetStarts(null);
             ProvisioningCaches.nowInLineWith(null);
+            LoginCache.forget();
             harness.resetInternals();
             login(ADMINISTRATOR);
             inWindow.run();
