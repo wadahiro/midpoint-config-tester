@@ -202,6 +202,10 @@ final class DeploymentCache {
                 sha.update(read(file.getValue()));
             }
         }
+        for (Path ddl : manifest.repositoryDdl) {
+            update(sha, "repository ddl " + slashed(manifest.dir.relativize(ddl)));
+            sha.update(read(ddl));
+        }
         for (Manifest.Target target : manifest.targets.values()) {
             if (target.options.schema() != null) {
                 update(sha, "schema " + target.resource);

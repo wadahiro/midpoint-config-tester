@@ -388,6 +388,8 @@ public final class Deployment {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        // the deployment's own DDL before anything is imported: the import may depend on it
+        runtime.runRepositoryDdl(manifest.repositoryDdl);
         mapDirectories();
         List<Map<String, Path>> stages = stages();
         List<Path> copies = copies(copy, stages.size());
@@ -547,6 +549,8 @@ public final class Deployment {
             throw new IOException("the entry is of midPoint " + meta.get("line"));
         }
         runtime.resetToBaseline();
+        // the dump holds the data, not the schema: the deployment's own tables must exist before it is copied in
+        runtime.runRepositoryDdl(manifest.repositoryDdl);
         Path copy = workDir.resolve("post-initial-objects");
         deleteTree(workDir);
         Files.createDirectories(copy);

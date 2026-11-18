@@ -108,6 +108,11 @@ public final class Manifest {
     public final Map<String, String> constants;
     /** Stand-in databases ({@code databases.<name>.init}: SQL files, relative to the manifest). */
     public final Map<String, List<Path>> databases;
+    /**
+     * The deployment's own DDL on midPoint's repository ({@code repository.ddl}: SQL files, relative to the manifest),
+     * run in order after the line's schema, before the post-initial import: indexes, constraints, tables of its own.
+     */
+    public final List<Path> repositoryDdl;
     /** Environment variables of the scripts ({@code environment}; {@code ${database.<name>.url}} and {@code .user}). */
     public final Map<String, String> environment;
     /** Loggers captured besides the scripts' ({@code logs.capture}: a custom library's package, for {@code s.logs()}). */
@@ -135,7 +140,7 @@ public final class Manifest {
             throw invalid("tasks: removed, delete it (the recurring tasks are always held: they run only when a test"
                     + " runs them)");
         }
-        check(yaml, "", Set.of("config", "targets", "constants", "databases", "environment", "mail", "http", "network", "logs", "files",
+        check(yaml, "", Set.of("config", "targets", "constants", "databases", "repository", "environment", "mail", "http", "network", "logs", "files",
                 "names", "timeZone"));
         Map<String, Object> config = map(yaml.get("config"), "config");
         check(config, "config.", Set.of("dirs", "then", "exclude", "properties", "replace", "overlays", "schema"));
@@ -232,6 +237,18 @@ public final class Manifest {
             dbs.put(name, init);
         });
         databases = Collections.unmodifiableMap(dbs);
+
+        Map<String, Object> repository = map(yaml.get("repository"), "repository");
+        check(repository, "repository.", Set.of("ddl"));
+        List<Path> ddl = new ArrayList<>();
+        for (String script : strings(repository.get("ddl"), "repository.ddl")) {
+            Path path = dir.resolve(script).normalize();
+            if (!Files.isRegularFile(path)) {
+                throw invalid("repository.ddl: no file " + path);
+            }
+            ddl.add(path);
+        }
+        repositoryDdl = Collections.unmodifiableList(ddl);
         Map<String, String> env = new LinkedHashMap<>();
         map(yaml.get("environment"), "environment").forEach((name, value) -> {
             if (value == null || value instanceof Map || value instanceof List) {

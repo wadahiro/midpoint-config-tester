@@ -444,6 +444,21 @@ public final class TesterRuntime {
         login(ADMINISTRATOR);
     }
 
+    /**
+     * Runs the deployment's DDL ({@code repository.ddl}) on midPoint's database: a snapshot taken after it, and every
+     * reset to one, has it; a reset to the baseline or the initialized state (taken before) drops it again.
+     */
+    void runRepositoryDdl(List<java.nio.file.Path> files) {
+        if (files.isEmpty()) {
+            return;
+        }
+        long t = Timing.start();
+        SqlScript.runFiles(pg.jdbcUrl(), pg.user(), files);
+        // not activity midPoint sees: the next reset to the baseline must not be left out
+        atBaseline = null;
+        Timing.end("deployment.repositoryDdl", t);
+    }
+
     String repositoryJdbcUrl() {
         return pg.jdbcUrl();
     }

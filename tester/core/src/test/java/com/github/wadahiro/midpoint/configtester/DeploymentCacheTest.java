@@ -123,6 +123,62 @@ class DeploymentCacheTest {
         }
     }
 
+    @Test
+    void theDeploymentsOwnDdlIsInTheFreshLoadTheResetsAndTheRestore() throws Exception {
+        Path manifest = copyOfTheSample();
+        Path ddl = manifest.getParent().resolve("repository/extra.sql");
+        Files.createDirectories(ddl.getParent());
+        Files.writeString(ddl, "CREATE TABLE tester_extra (code VARCHAR(10) NOT NULL);\n"
+                + "CREATE UNIQUE INDEX tester_extra_code ON tester_extra (code);\n"
+                + "INSERT INTO tester_extra VALUES ('seed');\n", StandardCharsets.UTF_8);
+        Files.writeString(manifest, read(manifest) + "repository:\n  ddl: [repository/extra.sql]\n",
+                StandardCharsets.UTF_8);
+
+        Deployment fresh = Deployment.reload(manifest);
+        assertThat(fresh.restoredFromCache()).isNull();
+        fresh.reset();
+        assertThat(extraCodes(fresh)).containsExactly("seed");
+        // the unique index holds, as in production
+        execute(fresh, "INSERT INTO tester_extra VALUES ('added')");
+        assertThat(org.assertj.core.api.Assertions.catchThrowable(
+                () -> execute(fresh, "INSERT INTO tester_extra VALUES ('added')")))
+                .isInstanceOf(java.sql.SQLException.class);
+        // a reset drops what a test wrote into the deployment's own table
+        fresh.reset();
+        assertThat(extraCodes(fresh)).containsExactly("seed");
+
+        Deployment restored = Deployment.reload(manifest);
+        assertThat(restored.restoredFromCache()).isEqualTo(fresh.cacheEntry());
+        restored.reset();
+        assertThat(extraCodes(restored)).containsExactly("seed");
+
+        // the DDL is part of the cache key
+        Files.writeString(ddl, read(ddl).replace("'seed'", "'seed2'"), StandardCharsets.UTF_8);
+        Deployment changed = Deployment.reload(manifest);
+        assertThat(changed.restoredFromCache()).isNull();
+        changed.reset();
+        assertThat(extraCodes(changed)).containsExactly("seed2");
+    }
+
+    private static List<String> extraCodes(Deployment deployment) throws java.sql.SQLException {
+        List<String> out = new ArrayList<>();
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection(deployment.repositoryJdbcUrl(),
+                deployment.repositoryUser(), "");
+                java.sql.ResultSet rs = c.createStatement().executeQuery("SELECT code FROM tester_extra ORDER BY 1")) {
+            while (rs.next()) {
+                out.add(rs.getString(1));
+            }
+        }
+        return out;
+    }
+
+    private static void execute(Deployment deployment, String sql) throws java.sql.SQLException {
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection(deployment.repositoryJdbcUrl(),
+                deployment.repositoryUser(), "")) {
+            c.createStatement().execute(sql);
+        }
+    }
+
     /** Hires John and reads what midPoint made of it. */
     private static List<String> joinerOutcome(Deployment deployment) {
         deployment.reset();
