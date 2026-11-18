@@ -139,6 +139,7 @@ public final class TesterRuntime {
 
     private TesterRuntime() throws Exception {
         long start = System.currentTimeMillis();
+        Timing.beforeTester();
         // before midPoint: its database connections, Quartz and the logging take the zone when they start
         zone();
         workDir = workDirOfThisJvm();

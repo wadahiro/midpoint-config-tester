@@ -64,14 +64,15 @@
 | `tester.network.allow` | none | hosts the JVM may still reach, comma-separated, besides the manifest's (see [No other machine](environment.md#no-other-machine)) |
 | `scenario.whyOnFailure` | `true` | `false`: a failed assertion does not list the mappings behind the value |
 | `tester.taskTimeout` | `60` | seconds a driver call waits for background tasks |
-| `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` (see [Cache of the loaded configuration and parallel test JVMs](writing-tests-junit.md#cache-of-the-loaded-configuration-and-parallel-test-jvms)) |
+| `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` and `timing.json`, compared with the previous run (see [Cache of the loaded configuration and parallel test JVMs](writing-tests-junit.md#cache-of-the-loaded-configuration-and-parallel-test-jvms)) |
+| `tester.timing.baseline` | none | a `timing.json` to compare with instead of the previous run's (a report kept from a reference run) |
 | `tester.log` | `target/tester.log` | the log file, when the project has no logback configuration of its own |
 | `pgmem.binary` (or `PGMEM_BINARY`) | from `pgmem-native` | the pgmem binary |
 | `static.dir`, `static.schemaDir` | none | static checks of your configuration (static module) |
 
 | Output | Written by |
 |---|---|
-| `<workDir>/tester/timing.md` | `-Dtester.timing=true`, after the last test class |
+| `<workDir>/tester/timing.md`, `timing.json` | `-Dtester.timing=true`, after the last test class (the previous run's `timing.json` is kept as `timing-previous.json`) |
 | `<tester.workDir>/tester-cache/<deployment>/<key>/` | the cache of loaded configurations |
 | `<tester.workDir>/fork-<n>/...` | everything of `<workDir>` per fork with `tester.forks` above 1 |
 | `target/generated-test-sources/midpoint-names/` | the typed names (`NamesGenerator`) |

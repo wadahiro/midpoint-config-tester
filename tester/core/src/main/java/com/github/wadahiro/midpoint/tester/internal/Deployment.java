@@ -273,8 +273,10 @@ public final class Deployment {
             }
             Deployment deployment = loadFresh(manifest, runtime, key, start);
             long t = System.currentTimeMillis();
+            long timing = Timing.start();
             try {
                 cache.save(deployment::writeCache);
+                Timing.end("deployment.cacheWrite", timing);
                 deployment.cacheEntry = cache.entry;
                 System.out.println("Tester: deployment cached in " + cache.entry + " ("
                         + (System.currentTimeMillis() - t) + " ms)");
@@ -302,6 +304,7 @@ public final class Deployment {
             throw new DeploymentLoadException("Cannot load " + key + " on midPoint " + LineSupport.LINE + ": "
                     + e.getMessage(), e);
         }
+        Timing.add("deployment.loadFresh", (System.currentTimeMillis() - start) * 1_000_000L);
         System.out.println("Tester: deployment " + key + " loaded on midPoint " + LineSupport.LINE + " in "
                 + (System.currentTimeMillis() - start) + " ms (" + deployment.importOrder.size() + " files)");
         return deployment;

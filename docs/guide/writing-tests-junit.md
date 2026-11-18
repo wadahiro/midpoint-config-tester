@@ -313,8 +313,13 @@ where tests wait on the real time or on a machine with many cores; measure first
 without it sets `<forkCount>`, `<reuseForks>true` and `-Dtester.forks=N -Dtester.fork=${surefire.forkNumber}` in the
 `argLine`.
 
-`-Dtester.timing=true` writes `<workDir>/tester/timing.md` (and prints it) after the last class: count, total, mean and
-maximum of the tester's phases (startup, resets, snapshots, driver calls and their waits, `@BeforeAll`).
+`-Dtester.timing=true` writes `<workDir>/tester/timing.md` (and prints it) and `timing.json` after the last class:
+count, total, mean and maximum of each phase. The phases: the JVM before the tester (`startup.beforeTester`), the
+tester's startup (`startup.*`, midPoint's Spring context in `startup.harness`), the deployment's fresh load or restore
+(`deployment.loadFresh`, `deployment.cacheWrite`, `cache.restore.*`), resets and snapshots, driver calls and their
+waits, each test's own time after its reset (`test.body`) and the whole JVM (`jvm.total`). Each phase is set beside the
+previous run's (its `timing.json`, kept as `timing-previous.json`), or beside a reference run's with
+`-Dtester.timing.baseline=<timing.json>`, so a change to the tester or to the deployment shows where the time went.
 
 A failed assertion says what was expected, what is there and the mappings that set the value in the test;
 `t.user("e1001").why("fullName").print()` and `t.target("LDAP").account(dn).why("cn")` show them on demand (mapping,

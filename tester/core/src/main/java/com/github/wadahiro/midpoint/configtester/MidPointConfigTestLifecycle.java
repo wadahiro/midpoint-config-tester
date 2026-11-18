@@ -2,6 +2,7 @@ package com.github.wadahiro.midpoint.configtester;
 
 import com.github.wadahiro.midpoint.tester.internal.Checkpoint;
 import com.github.wadahiro.midpoint.tester.internal.Deployment;
+import com.github.wadahiro.midpoint.tester.internal.Timing;
 
 /**
  * The lifecycle of a test over a deployment, as {@link MidPointConfigTestExtension} runs it for JUnit: for another
@@ -26,6 +27,7 @@ public final class MidPointConfigTestLifecycle {
         MidPointConfigTester tester = new MidPointConfigTester(deployment);
         bind(tester);
         Representations.use();
+        Timing.testBegins();
         return tester;
     }
 
@@ -39,6 +41,7 @@ public final class MidPointConfigTestLifecycle {
 
     /** After the test: fails if midPoint tried to reach another machine during it. */
     public static void end() {
+        Timing.testEnds();
         MidPointConfigTester.setCurrent(null);
         Representations.reset();
         Deployment.checkNetwork("in this test");
