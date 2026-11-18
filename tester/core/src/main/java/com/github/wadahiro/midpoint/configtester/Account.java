@@ -149,8 +149,8 @@ public final class Account extends TargetObject {
         Map<String, List<Object>> account = existing();
         List<Deployment.Association> associations = tester.deployment().associations(resource.name());
         if (associations.isEmpty()) {
-            throw new AssertionError("Resource " + resource.name() + " has no association in its account object types:"
-                    + " memberships cannot be read");
+            throw new AssertionError("Resource " + resource.name() + " has no association in its account object types"
+                    + " (nor, 4.9 and later, a simulated reference type): memberships cannot be read");
         }
         TargetSystem system = resource.system();
         Map<String, List<Object>> groupAttributes = system.group(group);
@@ -242,8 +242,13 @@ public final class Account extends TargetObject {
                 sb.append(name).append(' ').append(association.associationAttribute).append(": ")
                         .append(Values.texts(existing().get(association.associationAttribute)));
             }
-            sb.append(", looked for ").append(association.valueAttribute).append(' ')
-                    .append(referents(association, existing(), group));
+            List<String> referents = referents(association, existing(), group);
+            sb.append(", looked for ").append(association.valueAttribute).append(' ').append(referents);
+            if (referents.isEmpty()) {
+                sb.append(" (none: midPoint finds no value, so no membership; if the target system issues ")
+                        .append(association.valueAttribute).append(" as the class's identifier, e.g. SCIM's userId,")
+                        .append(" give it: identifier: { <class>: ").append(association.valueAttribute).append(" })");
+            }
         }
         return sb.toString();
     }

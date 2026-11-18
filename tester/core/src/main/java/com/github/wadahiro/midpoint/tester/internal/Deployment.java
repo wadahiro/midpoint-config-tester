@@ -66,7 +66,10 @@ public final class Deployment {
     /** Loaded deployments (or the failure of their load) by manifest path. */
     private static final Map<Path, Object> LOADED = new HashMap<>();
 
-    /** An association of an account object type of a resource, as its {@code schemaHandling} declares it. */
+    /**
+     * An association of an account object type of a resource, as its {@code schemaHandling} declares it, or a
+     * simulated reference type (4.9 and later, {@code capabilities/configured/references}).
+     */
     public static final class Association {
         /** {@code objectToSubject} (the group holds the members) or {@code subjectToObject}. */
         public final String direction;
@@ -834,6 +837,10 @@ public final class Deployment {
                             Xml.qname(value).getLocalPart()));
                 }
             }
+        }
+        // 4.9 and later: the associationTypes' simulated references
+        for (ReferenceTypes.ReferenceType r : ReferenceTypes.of(resource)) {
+            out.add(new Association(r.direction(), r.holderAttribute.getLocalPart(), r.valueAttribute.getLocalPart()));
         }
         return Collections.unmodifiableList(out);
     }

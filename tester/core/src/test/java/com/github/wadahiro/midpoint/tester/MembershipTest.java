@@ -2,6 +2,7 @@ package com.github.wadahiro.midpoint.tester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.util.Locale;
@@ -225,14 +226,45 @@ class MembershipTest {
         assertThat(scim.groupValues("staff", "members.User.value")).isEmpty();
     }
 
-    /** Without the class's identifier, the association's userId is no attribute the mirror has: loading says so. */
+    /**
+     * 4.9 and later: the same memberships through an associationType on a simulated reference type
+     * ({@code capabilities/configured/references}) in place of the object type's association.
+     */
     @Test
-    void anAssociationByAnIdentifierNotGivenFailsOnLoading(MidPointConfigTester t) {
+    void scimMembersThroughReferenceTypes(MidPointConfigTester t) {
         MidPoint mp = t.midpoint();
-        assertThatThrownBy(() -> mp.importResource(Fixtures.of(mp, SCIM_ISSUED), ResourceOptions.defaults()
-                .namingAttribute("User", "userName").namingAttribute("Group", "displayName")))
-                .hasMessageContaining("refers to User by")
-                .hasMessageContaining("identifier: { User: userId }");
+        assumeTrue(Lines.atLeast(mp, "4.9"), "association types are of 4.9 and later");
+        TargetSystem scim = mp.importResource(new File(DIR, "resource-scim-references.xml"),
+                scimIssued().referentialIntegrity());
+        scim.addGroup("staff", Map.of());
+        mp.importObject(new File(DIR, "role-scim-references-staff.xml"));
+        mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name><fullName>John Doe</fullName></user>");
+
+        mp.assign(UserType.class, "jdoe", "10000000-0000-0000-0000-00000000c006");
+
+        assertThat(scim.groupValues("staff", "members.User.value")).containsExactly(scim.accountIdentifier("jdoe"));
+        assertThat(t.target("SCIM references").group("staff").members()).containsExactly("jdoe");
+        assertThat(t.target("SCIM references").account("jdoe").groups()).containsExactly("staff");
+
+        scim.deleteAccount("jdoe");
+        assertThat(scim.groupValues("staff", "members.User.value")).isEmpty();
+    }
+
+    /**
+     * Without the class's identifier, userId is an attribute of the mirror's users that midPoint does not set: the
+     * account has no value, so no membership, and the failure says what to give.
+     */
+    @Test
+    void anAssociationByAnIdentifierNotGivenIsExplained(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        TargetSystem scim = mp.importResource(Fixtures.of(mp, SCIM_ISSUED), ResourceOptions.defaults()
+                .namingAttribute("User", "userName").namingAttribute("Group", "displayName"));
+        scim.addGroup("staff", Map.of());
+        scim.addAccount("jdoe", Map.of());
+
+        assertThatThrownBy(() -> t.target("SCIM issued").account("jdoe").memberOf("staff"))
+                .hasMessageContaining("looked for userId []")
+                .hasMessageContaining("identifier: { <class>: userId }");
     }
 
     @Test

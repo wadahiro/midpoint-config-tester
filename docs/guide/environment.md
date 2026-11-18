@@ -104,9 +104,9 @@ groups: `userId`, `groupId`), take one each: `ResourceOptions.classIdentifier("U
 `identifier: { User: userId, Group: groupId }`); the mirror issues a random UUID for each. This is what a SCIM
 connector does (it gives `__UID__` the native name `userId`; midPoint keeps it as the shadow's `ri:userId`), so it is the
 way to write such a resource without a stored schema; keep a stored schema only for what it says beyond that (a
-read-only `groups`, types, multi-valued attributes). Without the identifier, an association whose `valueAttribute`
-the mirror has no value of (neither the naming attribute, nor the identifier, nor an attribute `schemaHandling` maps)
-fails loading, as midPoint would fail the assignment ("No value attribute ... in shadow"). Give such a resource
+read-only `groups`, types, multi-valued attributes). Without the identifier, `userId` is an ordinary attribute of the mirror's users that
+midPoint never sets: midPoint fails the assignment ("No value attribute ... in shadow") and reads no membership, and
+a failed `memberOf` says to give the identifier. Give such a resource
 `referentialIntegrity()` (manifest: `referentialIntegrity: true`) too: a SCIM service removes a deleted user from its
 groups. Matching rules need not be given: midPoint compares the association's values by the association's own
 `<matchingRule>`, not by the attributes' types. On 4.0, do not name the identifier `id` (4.0 cannot read back a shadow
@@ -116,7 +116,10 @@ Memberships are read as midPoint reads them: `group(name).members()`, `hasMember
 the association's references with the `valueAttribute` of each account (of each group, for `subjectToObject`): the
 account's identifier when the attribute is the class's identifier (or `icfs:uid`), its name when it is the naming
 attribute (or `icfs:name`), else the attribute's values; an account with none is no member. A failed `memberOf`
-shows what it looked for. The resources the tester cannot stand in for are reported together, with the
+shows what it looked for. On 4.9 and later, an `associationType` works the same: the tester reads its simulated
+reference type (`capabilities/configured/references/type`: the subject's and the object's
+`primaryBindingAttributeRef`, by `direction`) as it reads a legacy `association` (`associationAttribute`,
+`valueAttribute`), for the mirror's attributes and referential integrity as for the memberships. The resources the tester cannot stand in for are reported together, with the
 manifest's other mistakes, in one load failure. `TargetSystem` has the same calls for accounts, groups (the
 first non-account object type) and any object class by name (`addObject(objectClass, ...)`, `identifier(...)` for
 references by `__UID__`). Changes made there are seen by midPoint when it next reads the object, and by the next

@@ -223,6 +223,23 @@ final class MirrorResourceXml {
             }
         }
 
+        // 4.9 and later: the associationTypes' simulated references, between the object types' classes
+        List<String> typeClasses = new ArrayList<>();
+        objectTypes.forEach(t -> {
+            if (t.objectClass != null) {
+                typeClasses.add(t.objectClass);
+            }
+        });
+        for (ReferenceTypes.ReferenceType r : ReferenceTypes.of(resource)) {
+            for (String holder : r.holderClasses) {
+                for (String value : r.valueClasses) {
+                    if (typeClasses.contains(holder) && typeClasses.contains(value)) {
+                        associations.add(new Association(holder, r.holderAttribute, value, r.valueAttribute));
+                    }
+                }
+            }
+        }
+
         // a stored schema is its definition: a <schema> with only generationConstraints has none
         Element schema = child(resource, "schema");
         if (schema != null && child(schema, "definition") == null) {
@@ -512,7 +529,6 @@ final class MirrorResourceXml {
         for (Association a : associations) {
             // the association attribute is always multi-valued
             derived.get(a.holderClass).add(a.holderAttribute, true);
-            requireValueAttribute(a, derived.get(a.valueClass), options);
             derived.get(a.valueClass).add(a.valueAttribute, false);
         }
 
@@ -698,31 +714,6 @@ final class MirrorResourceXml {
             }
         }
         return out;
-    }
-
-    /**
-     * The association's value attribute is one the mirror has a value of: an attribute schemaHandling maps, the
-     * class's naming attribute or its identifier. Else midPoint finds no value of it on the accounts (or groups): an
-     * assignment fails ("No value attribute ... in shadow") and a read leaves the membership out, without saying why.
-     */
-    private static void requireValueAttribute(Association a, Derived value, ResourceOptions options) {
-        String local = a.valueAttribute.getLocalPart();
-        if (value.refs.contains(a.valueAttribute) || NS_ICFS.equals(a.valueAttribute.getNamespaceURI())
-                || local.equals(options.identifierOf(a.valueClass))
-                || local.equals(options.namingAttributeOf(a.valueClass))) {
-            return;
-        }
-        for (String[] extra : options.attributes()) {
-            if (extra[0].equals(a.valueClass) && extra[1].equals(local)) {
-                return;
-            }
-        }
-        throw new IllegalArgumentException("the association " + a.holderClass + "." + a.holderAttribute.getLocalPart()
-                + " refers to " + a.valueClass + " by " + a.valueAttribute + ", which schemaHandling does not map and"
-                + " which is neither the class's naming attribute nor its identifier. If the target system issues it"
-                + " (e.g. SCIM's userId), give the class's identifier: identifier: { " + a.valueClass + ": " + local
-                + " } in the manifest (ResourceOptions.classIdentifier(\"" + a.valueClass + "\", \"" + local
-                + "\")); else map the attribute in schemaHandling");
     }
 
     /** The association as a link between mirror classes; its values must be names or identifiers. */
