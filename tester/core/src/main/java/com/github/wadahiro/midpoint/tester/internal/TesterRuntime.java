@@ -322,6 +322,8 @@ public final class TesterRuntime {
         p = Timing.start();
         State state = new State(snapshot, new LinkedHashMap<>(targets), contents, ConfigIndex.get().capture(),
                 FileArea.get().capture(), regularRunsHeld);
+        // the live database: Quartz matches it, a reset back to it with no change of the tasks needs no synchronization
+        TaskSchedules.nowInLineWith(state);
         Timing.end("snapshot.files", p);
         Timing.end("snapshot.total", t);
         return state;
@@ -353,6 +355,9 @@ public final class TesterRuntime {
             t = Timing.start();
             awaitJobs();
             Timing.end("reset.awaitJobs", t);
+            // Quartz still matches the state when no task row and no job or trigger changed since it did: the
+            // synchronization of the tasks and the re-arming of their triggers would change nothing (TaskSchedules)
+            boolean inLine = TaskSchedules.resetStarts(state);
             t = Timing.start();
             pg.reset(state.snapshot);
             Timing.end("reset.pg", t);
@@ -360,7 +365,11 @@ public final class TesterRuntime {
             harness.resetInternals();
             Timing.end("reset.internals", t);
             t = Timing.start();
-            TaskSchedules.rearm(scheduler, api::lastRunStart);
+            if (inLine) {
+                Timing.count("reset.rearmSkipped");
+            } else {
+                TaskSchedules.rearm(scheduler, api::lastRunStart);
+            }
             Timing.end("reset.rearm", t);
             t = Timing.start();
             // the clock is back to the real time: Quartz's schedule again from the release on, unless the state holds
@@ -378,6 +387,8 @@ public final class TesterRuntime {
             targets.putAll(state.targets);
             targets.values().forEach(target -> target.restore(state.contents.get(target)));
             Timing.end("reset.filesAndTargets", t);
+            // before the release: a task that starts after it is a change again
+            TaskSchedules.nowInLineWith(state);
         } finally {
             t = Timing.start();
             TaskSchedules.release(scheduler);
@@ -415,6 +426,9 @@ public final class TesterRuntime {
             PgDump.restore(pg.jdbcUrl(), pg.user(), dump);
             Timing.end("cache.restore.pg", t);
             api.replaceStored(com.evolveum.midpoint.xml.ns._public.common.common_3.NodeType.class, nodes);
+            // another database: Quartz is brought in line with it in full
+            TaskSchedules.resetStarts(null);
+            TaskSchedules.nowInLineWith(null);
             harness.resetInternals();
             login(ADMINISTRATOR);
             inWindow.run();

@@ -141,9 +141,13 @@ public class Harness48 extends AbstractModelIntegrationTest implements Harness {
         LineSupport.invalidateCaches(this);
         // Quartz keeps its jobs in memory: drop those of tasks the reset removed, reschedule the restored ones (the
         // scheduler is held: TesterRuntime.reset puts the triggers back on the restored schedules, see TaskSchedules)
-        long t = Timing.start();
-        taskManager.synchronizeTasks(new OperationResult("synchronize tasks"));
-        Timing.end("reset.internals.synchronizeTasks", t);
+        if (TaskSchedules.inLineAtReset()) {
+            Timing.count("reset.internals.synchronizeTasksSkipped");
+        } else {
+            long t = Timing.start();
+            taskManager.synchronizeTasks(new OperationResult("synchronize tasks"));
+            Timing.end("reset.internals.synchronizeTasks", t);
+        }
         clock.resetOverride();
         TimeAgent.sync(clock);
     }

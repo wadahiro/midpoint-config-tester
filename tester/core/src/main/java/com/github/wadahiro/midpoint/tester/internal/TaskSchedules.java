@@ -71,6 +71,16 @@ final class TaskSchedules {
     /** Whether {@link #rearm} reschedules the triggers now: no restart of theirs. */
     private static volatile boolean rearming;
 
+    /**
+     * Whether anything Quartz's jobs depend on changed since they were last known to match a state of the database
+     * ({@link #inLineWith}): a task row written, a job or trigger scheduled, changed, paused, resumed, removed or fired.
+     */
+    private static volatile boolean tasksChanged = true;
+    /** The state (a snapshot) Quartz's jobs match while nothing changed ({@link #nowInLineWith}), or null. */
+    private static volatile Object inLineWith;
+    /** Whether the reset in progress restores the state Quartz still matches: no synchronization, no re-arming. */
+    private static volatile boolean inLineAtReset;
+
     /** When a trigger was restarted ({@link #RESTARTS}), and whether it was resumed rather than scheduled anew. */
     private static final class Restart {
         final long at;
@@ -175,8 +185,70 @@ final class TaskSchedules {
     static void installHold(Scheduler scheduler, LongSupplier clock) {
         try {
             scheduler.getListenerManager().addSchedulerListener(new SchedulerListenerSupport() {
+                // any change of the jobs or triggers: the next reset brings Quartz in line again (tasksChanged)
+                @Override
+                public void jobUnscheduled(TriggerKey key) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void triggerFinalized(Trigger trigger) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void triggerPaused(TriggerKey key) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void triggersPaused(String group) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void triggersResumed(String group) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobAdded(org.quartz.JobDetail job) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobDeleted(JobKey key) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobPaused(JobKey key) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobsPaused(String group) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobResumed(JobKey key) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void jobsResumed(String group) {
+                    tasksChanged();
+                }
+
+                @Override
+                public void schedulingDataCleared() {
+                    tasksChanged();
+                }
+
                 @Override
                 public void jobScheduled(Trigger trigger) {
+                    tasksChanged();
                     long now = clock.getAsLong();
                     SCHEDULED_AT.put(trigger.getKey(), now);
                     if (!rearming && isRegular(trigger)) {
@@ -186,6 +258,7 @@ final class TaskSchedules {
 
                 @Override
                 public void triggerResumed(TriggerKey key) {
+                    tasksChanged();
                     if (!rearming) {
                         RESTARTS.put(key, new Restart(clock.getAsLong(), true));
                     }
@@ -208,6 +281,12 @@ final class TaskSchedules {
                 @Override
                 public String getName() {
                     return HOLD_LISTENER;
+                }
+
+                @Override
+                public void triggerFired(Trigger trigger, JobExecutionContext context) {
+                    // a firing moves the trigger on, also one the veto below holds
+                    tasksChanged();
                 }
 
                 @Override
@@ -244,6 +323,35 @@ final class TaskSchedules {
         SCHEDULED_AT.putAll(times.scheduledAt);
         RESTARTS.clear();
         RESTARTS.putAll(times.restarts);
+    }
+
+    /** A task row was written or Quartz changed: the next reset brings Quartz in line again. */
+    static void tasksChanged() {
+        tasksChanged = true;
+    }
+
+    /**
+     * Quartz's jobs match the database, which is {@code state} now (a snapshot of the live database, or the end of a
+     * reset to it): a reset back to it with nothing changed meanwhile needs no synchronization. Null: not known.
+     */
+    static void nowInLineWith(Object state) {
+        inLineWith = state;
+        tasksChanged = false;
+    }
+
+    /**
+     * At the start of a reset to {@code state}: whether Quartz already matches it (nothing changed since it matched
+     * that state), so midPoint's synchronization of the tasks and the re-arming of the triggers can be left out
+     * ({@link #inLineAtReset()}).
+     */
+    static boolean resetStarts(Object state) {
+        inLineAtReset = state != null && state == inLineWith && !tasksChanged;
+        return inLineAtReset;
+    }
+
+    /** Whether the reset in progress restores the state Quartz still matches ({@link #resetStarts}). */
+    static boolean inLineAtReset() {
+        return inLineAtReset;
     }
 
     /** Whether the regular runs are held now ({@link #holdRegularRuns}). */

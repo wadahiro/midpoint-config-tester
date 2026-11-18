@@ -166,6 +166,10 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
             String name = method.getName();
             boolean write = REPOSITORY_WRITES.contains(name);
             boolean read = REPOSITORY_READS.contains(name);
+            if (write && isTask(args)) {
+                // Quartz's jobs follow the task rows: the next reset brings them in line again
+                TaskSchedules.tasksChanged();
+            }
             if (!(write || read) || !EffectsCapture.capturing() || calledByTester()) {
                 return call(method, args);
             }
@@ -213,6 +217,16 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                     return result;
                 }
             }
+        }
+
+        /** Whether the write's object is a task (by its type argument, or the object added). */
+        private static boolean isTask(Object[] args) {
+            Class<?> type = argument(args, Class.class);
+            if (type == null) {
+                PrismObject<?> object = argument(args, PrismObject.class);
+                type = object != null ? object.getCompileTimeClass() : null;
+            }
+            return type != null && "TaskType".equals(type.getSimpleName());
         }
 
         private static void record(String method, Class<?> type, String oid, String name,
