@@ -304,22 +304,8 @@ process's environment for other names); Java code reads the process's environmen
 
 ## Customized DDL of midPoint's repository
 
-A deployment whose production database has DDL of its own on midPoint's repository (an index, a unique constraint,
-a table, a function or a trigger) names the SQL files in the manifest. The tester runs them in order on midPoint's
-database after the line's schema and before the post-initial import:
-
-```yaml
-repository:
-  ddl: [repository/indexes.sql, repository/audit-extra.sql]
-```
-
-A unique index matters most: without it a test accepts a duplicate that production rejects. An ordinary index changes
-no result. Each test starts from the state after the DDL (a table of the deployment's own included: what a test writes
-to it is dropped at the reset). The files are part of the key of the [deployment cache](writing-tests-junit.md#cache-of-the-loaded-configuration-and-parallel-test-jvms), so a changed file loads the
-deployment afresh; a restore from the cache runs them before it copies the data back, as the cache keeps the data of
-the tables, not their definitions.
-
-The repository is PostgreSQL compiled to WebAssembly (pgmem): an extension midPoint itself does not use may be missing.
+A deployment with DDL of its own on midPoint's repository (indexes, constraints, tables) names the SQL files in the
+manifest (`repository.ddl`): see [Customized DDL of the repository](customized-deployments.md#customized-ddl-of-the-repository).
 
 ## Classes of the GUI
 

@@ -22,7 +22,13 @@
 - **No GUI and no REST.** Drivers call the services the GUI calls; GUI-only logic (forms, wizards, request access
   shopping cart) is not run. What the GUI shows a user is asked of the services it calls
   ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, forms, the user's GUI profile (views, features, menu links); not
-  what a page does after it opens, the rest of the menus, or the REST authorizations.
+  what a page does after it opens, the rest of the menus, or the REST authorizations. The web application is not
+  started: its filters (`web.xml`), the security configuration of the web layer, the GUI's localization and the servers
+  of plugins (gRPC, custom REST endpoints) are not run.
+- **The server's configuration is the tester's.** midPoint's `config.xml` has the settings the tester needs, the line's
+  required ones (`tester.timeZone`, `tester.safeScriptingLanguagesOnly` on 4.11) and the manifest's
+  [constants](environment.md#midpoints-constants); the rest of a production `config.xml` (repository, node and
+  clustering settings, keystore) is not read.
 - **An assignment's authorization is decided, not executed** (`canAssign`, the matrix's assign rows): as the
   clockwork decides the request and the execution of the change as written. The changes the projector adds to it
   (`roleMembershipRef`, metadata) are not checked, nor the rule for an assignment with a policy rule: an execution
@@ -42,7 +48,7 @@
   directories on Linux or macOS.
 - **Not in the tester**: GUI jars (only an index of their pages, built from them) and connectors other than CSV and LDAP on the classpath, custom Java overlays (add them as dependencies of
   your test module if your scripts need them; their Spring beans, such as hooks, through
-  [Extension beans](environment.md#extension-beans)), clustering. What such beans call outside midPoint (HTTP services, cloud
+  [Extension beans](environment.md#extension-beans); see [Customized midPoint deployments](customized-deployments.md)), clustering. What such beans call outside midPoint (HTTP services, cloud
   storage) is stood in for only through [HTTP services](environment.md#http-services).
 - **Time**: `t.clock()` moves midPoint's clock and the JVM's wall clock, not `System.currentTimeMillis()` called from
   Java, `System.nanoTime()`, Quartz, the database or other processes (see

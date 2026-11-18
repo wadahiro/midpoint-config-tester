@@ -220,6 +220,11 @@ each test in a few tens of milliseconds, so one test approves the request and th
 - [Static checks](docs/guide/static-checks.md): checking configuration XML against a line without starting midPoint.
 - [Supported lines](docs/guide/lines.md): the lines, their JDKs, what differs between them.
 - [Limitations, properties and output files](docs/guide/reference.md).
+
+Advanced:
+
+- [Customized midPoint deployments](docs/guide/customized-deployments.md): a custom build of midPoint, an overlay (its
+  jars, beans, replaced classes and initial objects, Java agents, plugin servers), customized DDL of the repository.
 - [Real connectors](docs/guide/real-connectors.md) (experimental): a resource on its real connector instead of the
   mirror.
 - [An authorization matrix](docs/guide/authz-matrix.md) (experimental): kinds of users against what they may do, as a
