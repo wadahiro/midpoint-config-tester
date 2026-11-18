@@ -145,7 +145,16 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
 
     private static final class RepositoryHandler extends Handler {
 
+        /**
+         * Types whose modifications are the runtime's own (a task's progress, activity state and buckets, a node's
+         * heartbeat): Effects leaves them out of its changes, so they are recorded without reading the object before
+         * and after (a task run modifies its task many times). Their names, for the call, are read once.
+         */
+        private static final Set<String> RUNTIME_TYPES = Set.of("TaskType", "NodeType");
+
         private final RepositoryService repository;
+        /** The names of runtime objects (by OID), read once ({@link #runtimeName}). */
+        private final Map<String, String> runtimeNames = new ConcurrentHashMap<>();
 
         RepositoryHandler(RepositoryService repository) {
             super(repository);
@@ -178,6 +187,9 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                     return result;
                 }
                 case "deleteObject": {
+                    if (oid != null) {
+                        runtimeNames.remove(oid);
+                    }
                     String objectName = nameOf(type, oid);
                     Object result = call(method, args);
                     record(name, type, oid, objectName, RepositoryCall.Change.DELETED, Collections.emptyList());
@@ -185,6 +197,13 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                 }
                 default: {
                     Collection<?> deltas = argument(args, Collection.class);
+                    if (type != null && RUNTIME_TYPES.contains(type.getSimpleName())) {
+                        Object result = call(method, args);
+                        List<Object> modifications = copies(modifications(result, deltas));
+                        record(name, type, oid, runtimeName(type, oid, modifications), RepositoryCall.Change.MODIFIED,
+                                modifications);
+                        return result;
+                    }
                     PrismObject<?> before = objectOf(type, oid);
                     Object result = call(method, args);
                     PrismObject<?> after = objectOf(type, oid);
@@ -200,6 +219,27 @@ public class EffectsHook implements SmartInstantiationAwareBeanPostProcessor {
                 RepositoryCall.Change change, List<Object> modifications) {
             EffectsCapture.record(new RepositoryCall(method, type != null ? type.getSimpleName() : null, oid, name,
                     change, modifications));
+        }
+
+        /** The runtime object's name: read once, again after a modification of its name. */
+        private String runtimeName(Class<?> type, String oid, List<Object> modifications) {
+            if (oid == null) {
+                return null;
+            }
+            boolean renamed = modifications.stream().anyMatch(m -> m instanceof ItemDelta
+                    && ((ItemDelta<?, ?>) m).getPath().equivalent(ObjectType.F_NAME));
+            if (renamed) {
+                runtimeNames.remove(oid);
+            }
+            String known = runtimeNames.get(oid);
+            if (known != null) {
+                return known;
+            }
+            String read = nameOf(type, oid);
+            if (read != null) {
+                runtimeNames.put(oid, read);
+            }
+            return read;
         }
 
         private String nameOf(Class<?> type, String oid) {

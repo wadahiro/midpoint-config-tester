@@ -63,10 +63,24 @@ public final class BackgroundWork {
         boolean waited = false;
         while (true) {
             long seen = changes();
+            boolean late = System.nanoTime() - deadline >= 0;
+            if (!late && Recorder.busyTaskThreads() > 0) {
+                // a task thread runs: work is pending, no need to search the repository for it (its end is a change)
+                waited = true;
+                try {
+                    long s = Timing.start();
+                    boolean changed = awaitChange(seen, RUNNING_RECHECK_MILLIS);
+                    Timing.end(changed ? "await.woken" : "await.recheck", s);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return pendingWork.get();
+                }
+                continue;
+            }
             long t = Timing.start();
             List<String> pending = pendingWork.get();
             Timing.end("await.pendingWork (task search)", t);
-            if (pending.isEmpty() || System.nanoTime() - deadline >= 0) {
+            if (pending.isEmpty() || late) {
                 if (waited) {
                     Timing.end("await.total", waitStart);
                     long end = Recorder.lastTaskEnd;
@@ -80,8 +94,7 @@ public final class BackgroundWork {
             waited = true;
             try {
                 long s = Timing.start();
-                boolean changed = awaitChange(seen,
-                        Recorder.busyTaskThreads() > 0 ? RUNNING_RECHECK_MILLIS : IDLE_RECHECK_MILLIS);
+                boolean changed = awaitChange(seen, IDLE_RECHECK_MILLIS);
                 Timing.end(changed ? "await.woken" : "await.recheck", s);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
