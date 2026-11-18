@@ -238,7 +238,7 @@ assertThat(t.rest().basic("jdoe", "wrong").get("/ws/rest/self").status()).isEqua
 
 - `basic(user, password)`, `header(name, value)`, `accept(mediaType)` (JSON by default); `get`, `delete`, `post`,
   `put`, `patch` with a JSON body or one of another media type. `RestResponse`: `status()`, `header(name)`,
-  `body()`, `effects()`.
+  `body()`, `json()` (Jackson's tree, e.g. a bulk action's output of `/rpc/executeScript`), `effects()`.
 - The caller is who the request's headers say: the test's login and `t.callAs` do not apply. A password is set by the
   test (`modify(m -> m.password(...))`): the deployment's password policy applies to it.
 - A successful login is recorded in the user (`behavior/authentication`, as in production): it is in the request's

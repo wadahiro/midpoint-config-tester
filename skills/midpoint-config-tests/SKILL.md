@@ -205,7 +205,7 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - calls a service makes on a user's behalf (a self-service application over midPoint's REST API; keep the
     service's own protocol in the project): `t.callAs(Caller.user(u).privileged().owner(u).channel(uri), () -> ...)`
   - a client of midPoint's own REST API (4.8+): `t.rest().basic(user, password).get("/ws/rest/self")`, `.header(...)`,
-    `.patch(path, json)`; `status()`, `body()`, `effects()`; through midPoint's authentication and authorizations
+    `.patch(path, json)`; `status()`, `body()`, `json()`, `effects()`; through midPoint's authentication and authorizations
     (the system configuration must reference a security policy), not `callAs`
   - a custom endpoint of the deployment (a server the tester cannot host): `t.midpoint().createBean(ServiceClass.class)`
     and `t.midpoint().invoke(label, (task, result) -> service.call(...))`; its protocol stays in the project

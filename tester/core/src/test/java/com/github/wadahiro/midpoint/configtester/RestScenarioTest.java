@@ -37,6 +37,7 @@ class RestScenarioTest {
         assertThat(self.status()).as("%s", self).isEqualTo(200);
         assertThat(self.header("Content-Type")).startsWith("application/json");
         assertThat(self.body()).contains("\"name\"").contains(ADMINISTRATOR);
+        assertThat(self.json().findValuesAsText("name")).contains(ADMINISTRATOR);
         // a read changes no data, but the login is recorded in the user (its last successful authentication)
         self.effects().changes().of(ADMINISTRATOR).single();
         assertThat(self.effects().changes().count()).isEqualTo(1);

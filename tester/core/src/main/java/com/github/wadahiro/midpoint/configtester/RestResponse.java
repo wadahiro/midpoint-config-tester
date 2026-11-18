@@ -43,6 +43,21 @@ public final class RestResponse {
         return exchange.bodyText();
     }
 
+    /**
+     * The body parsed as JSON (Jackson's tree; a missing node: {@code path(...)} returns a missing node, {@code get}
+     * null), e.g. a bulk action's output:
+     * {@code r.json().path("object").path("output").path("dataOutput").path("item").path(0).path("value")}.
+     * Fails when the body is not JSON.
+     */
+    public com.fasterxml.jackson.databind.JsonNode json() {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readTree(exchange.body);
+        } catch (java.io.IOException e) {
+            throw new AssertionError("The body of " + method + " " + path + " is not JSON: " + e.getMessage()
+                    + "\n" + this, e);
+        }
+    }
+
     public Effects effects() {
         return effects;
     }
