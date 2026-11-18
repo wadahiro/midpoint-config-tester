@@ -144,7 +144,9 @@ effect.
 
 ### Plugins with servers of their own
 
-A plugin may start a server inside midPoint's web application: a gRPC API, a custom REST endpoint. The tester starts
+midPoint's own REST API is called with `t.rest()` (4.8 and later, [midPoint's REST
+API](environment.md#midpoints-rest-api)). A plugin may start a server of its own inside midPoint's web application: a
+gRPC API, a custom REST endpoint. The tester starts
 no server. Add the plugin's jar as a test dependency and call its service classes in the test: create them with
 midPoint's beans injected (`t.midpoint().createBean(type)`) and call them as a driver call
 (`t.midpoint().invoke(label, (task, result) -> ...)`), on a caller's behalf when the server would log one in

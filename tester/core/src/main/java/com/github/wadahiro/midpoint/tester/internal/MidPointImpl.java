@@ -95,6 +95,7 @@ final class MidPointImpl implements MidPoint {
     private final AtomicInteger xmlCount = new AtomicInteger();
     private final AtomicInteger mailCount = new AtomicInteger();
     private LineDrivers drivers;
+    private RestImpl rest;
     private volatile String step;
     /** Whether a partial error fails a call ({@link #allowingPartialErrors}). */
     private volatile boolean partialErrorsAllowed;
@@ -1049,6 +1050,14 @@ final class MidPointImpl implements MidPoint {
             reports = new ReportsImpl(this);
         }
         return reports;
+    }
+
+    /** midPoint's REST API in this JVM (the line's {@code RestImpl}; 4.0 and 4.4: none). */
+    synchronized RestImpl rest() {
+        if (rest == null) {
+            rest = new RestImpl(this);
+        }
+        return rest;
     }
 
     @Override

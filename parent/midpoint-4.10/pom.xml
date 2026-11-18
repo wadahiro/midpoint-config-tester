@@ -114,6 +114,16 @@
                 <version>${midpoint.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>rest-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.evolveum.midpoint.model</groupId>
+                <artifactId>authentication-impl</artifactId>
+                <version>${midpoint.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.evolveum.midpoint.repo</groupId>
                 <artifactId>repo-sql-impl-test</artifactId>
                 <version>${midpoint.version}</version>

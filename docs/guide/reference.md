@@ -19,12 +19,14 @@
   what midPoint takes from them besides (e.g. a `references` capability, 4.9+) is not tested.
 - **PostgreSQL 18 in memory.** midPoint runs on pgmem, an in-memory PostgreSQL 18. Repository behaviour specific to other
   databases is not covered.
-- **No GUI and no REST.** Drivers call the services the GUI calls; GUI-only logic (forms, wizards, request access
+- **No GUI.** Drivers call the services the GUI calls; GUI-only logic (forms, wizards, request access
   shopping cart) is not run. What the GUI shows a user is asked of the services it calls
   ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, forms, the user's GUI profile (views, features, menu links); not
-  what a page does after it opens, the rest of the menus, or the REST authorizations. The web application is not
-  started: its filters (`web.xml`), the security configuration of the web layer, the GUI's localization and the servers
-  of plugins (gRPC, custom REST endpoints) are not run.
+  what a page does after it opens or the rest of the menus. The web application is not started: its filters
+  (`web.xml`), the GUI's localization and the servers of plugins (gRPC, custom REST endpoints) are not run.
+  midPoint's own REST API is called through its authentication, authorizations and controllers on 4.8 and later
+  ([midPoint's REST API](environment.md#midpoints-rest-api)), with no HTTP server: TLS, proxies and the network are
+  not tested.
 - **The server's configuration is the tester's.** midPoint's `config.xml` has the settings the tester needs, the line's
   required ones (`tester.timeZone`, `tester.safeScriptingLanguagesOnly` on 4.11) and the manifest's
   [constants](environment.md#midpoints-constants); the rest of a production `config.xml` (repository, node and

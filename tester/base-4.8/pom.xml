@@ -115,6 +115,18 @@
             <artifactId>security-enforcer-impl</artifactId>
             <version>${midpoint.version}</version>
         </dependency>
+        <!-- midPoint's REST API (t.rest()): its controllers and the authentication of its requests (the security
+             filter chain), in a web context started on the first call -->
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>rest-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.evolveum.midpoint.model</groupId>
+            <artifactId>authentication-impl</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
         <dependency>
             <!-- provides ctx-repository-test.xml (wires the native repository for tests) -->
             <groupId>com.evolveum.midpoint.repo</groupId>

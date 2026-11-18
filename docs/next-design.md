@@ -845,6 +845,36 @@ the evaluations of the test by mapping (name and owner): count, median, the tota
 compilation and the first search of LDAP), sorted by the total after the first. The projector evaluates a mapping 3
 times per user and operation on 4.0 and 2 times on 4.4 and 4.8 in the HR sample.
 
+## REST API calls as built
+
+`t.rest()` (`configtester.Rest`, `RestResponse`; `internal.RestExchange`; the line's `RestImpl`) sends a request to
+midPoint's REST API through its own security filter chain and controllers, with no HTTP server.
+
+- 4.8 to 4.11 share the REST layer (`model/rest-impl`: Spring MVC controllers, `RestConfig` with midPoint's message
+  converters) and the authentication (`model/authentication-impl`: `SecurityConfigurer` builds the
+  `springSecurityFilterChain`, whose `MidpointAuthFilter` builds the module chain of the REST channel from the security
+  policy per request). Both are dependencies of `base-4.8` (and managed by the 4.8+ parents). 4.0 and 4.4 serve REST
+  through CXF with an authentication of their own: their `RestImpl` refuses.
+- The first request of the JVM starts a child `AnnotationConfigWebApplicationContext` of the tester's context (a
+  `MockServletContext`, `@EnableWebMvc`, `RestConfig`, a scan of `com.evolveum.midpoint.authentication`) and MockMvc
+  over it with `RequestContextFilter` first (the session and request scoped beans of the security configuration) and
+  the filter chain. 0.25-0.3 s on the 4.8 sample; the dependencies did not change the tester's own start (Spring and
+  `initSystem` 4.14-4.20 s before, 4.15-4.30 s after). The context stays for the JVM: it keeps no state of a test (the
+  policy, the users and their authorizations are read per request), so resets and other deployments need nothing.
+- midPoint's converter beans go first (`extendMessageConverters`): Spring Boot orders them so, plain `@EnableWebMvc`
+  puts its own JSON converter first, which does not know midPoint's objects.
+- The request's servlet path is its whole path: the filter chain matches the channels on it, and an empty servlet
+  path is a public URL (every request passed as anonymous in the spike).
+- Each request is a driver call (`MidPoint.invoke`): recorded, background work awaited, timed. The filter chain sets
+  and clears the thread's security context; the request puts the context and its authentication back after it, and
+  `invoke` restores the tester's login too. The test's caller (`callAs`) does not apply: the headers decide.
+- A fresh `MockHttpSession` per request (REST is session-less).
+- A deployment whose system configuration references no security policy gets 500 with no body from midPoint (no
+  authentication for the REST channel): `RestImpl` checks the reference on a 500 and fails with it.
+- A successful login writes `behavior/authentication` of the user (as in production): a read's effects show it.
+- Not covered: bearer tokens (an OIDC resource server; the HTTP stand-in could serve a test issuer's JWKS), a
+  deployment's own controllers (not scanned), TLS and the network.
+
 ## JVM startup: AOT cache and CRaC, measured and not adopted
 
 The JVM's start (Spring's context, midPoint's `initSystem`, the line's initial import) is once per test JVM; with the

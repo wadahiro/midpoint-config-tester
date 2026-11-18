@@ -217,6 +217,41 @@ injected by `t.midpoint().createBean(type)`, and called as a driver call by `t.m
 for, failing as a driver call fails. Its protocol (how its server authenticates and builds the call) stays in the
 project's tests.
 
+## midPoint's REST API
+
+A client of midPoint's REST API (a portal, a script, another system) is tested with the request it sends:
+`t.rest()` (midPoint 4.8 and later). The request goes through midPoint's own authentication (the security policy's
+sequence of the REST channel, e.g. HTTP Basic), its authorizations (the REST ones and the model's), the proxy header
+`Switch-To-Principal`, its controllers and its JSON, XML and YAML converters, without an HTTP server: in the test's
+JVM, as a driver call (its mappings recorded, the background work it starts awaited, its effects in the response).
+
+```java
+t.user("portal").modify(m -> m.password("Portal-Secret-1"));
+RestResponse r = t.rest().basic("portal", "Portal-Secret-1")
+        .header("Switch-To-Principal", t.user("jdoe").oid())
+        .patch("/ws/rest/users/" + jdoeOid, "{\"objectModification\": {\"itemDelta\": {\"modificationType\": \"replace\","
+                + " \"path\": \"telephoneNumber\", \"value\": \"+420 123\"}}}");
+assertThat(r.status()).isEqualTo(204);
+r.effects().changes().of("jdoe").single().only("telephoneNumber");
+assertThat(t.rest().basic("jdoe", "wrong").get("/ws/rest/self").status()).isEqualTo(401);
+```
+
+- `basic(user, password)`, `header(name, value)`, `accept(mediaType)` (JSON by default); `get`, `delete`, `post`,
+  `put`, `patch` with a JSON body or one of another media type. `RestResponse`: `status()`, `header(name)`,
+  `body()`, `effects()`.
+- The caller is who the request's headers say: the test's login and `t.callAs` do not apply. A password is set by the
+  test (`modify(m -> m.password(...))`): the deployment's password policy applies to it.
+- A successful login is recorded in the user (`behavior/authentication`, as in production): it is in the request's
+  effects.
+- The deployment's system configuration must reference a security policy (`globalSecurityPolicyRef`; midPoint's
+  initial system configuration references its default one). Without it midPoint answers 500 with no body, which the
+  tester turns into an error that names the reference.
+- midPoint's own controllers only (`/ws/rest`, `/rest/model`, `/api/model`): a deployment's own endpoint is called
+  as in [Customized midPoint deployments](customized-deployments.md#plugins-with-servers-of-their-own). Bearer tokens
+  (an OIDC resource server) are not covered yet.
+- The first request of a JVM starts the web layer (about 0.3 s), which then serves every test and deployment of the
+  JVM. 4.0 and 4.4 serve REST through CXF: `t.rest()` fails there.
+
 ## midPoint's constants
 
 `<const>` expressions and `midpoint.getConst(...)` read the `<constants>` of midPoint's config.xml, which a deployment

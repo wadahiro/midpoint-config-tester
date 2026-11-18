@@ -263,6 +263,15 @@ public final class MidPointConfigTester {
         return new HttpServer();
     }
 
+    /**
+     * A request to midPoint's REST API (4.8 and later), through midPoint's own authentication, authorization and
+     * controllers, without an HTTP server: {@code t.rest().basic("jdoe", "Secret-1").get("/ws/rest/self")}. See
+     * {@link Rest}.
+     */
+    public Rest rest() {
+        return new Rest(this);
+    }
+
     /** The tester's SMTP server: makes it refuse mails ({@code t.mailServer().reject()}) for this test. */
     public MailServer mailServer() {
         return new MailServer(this);
