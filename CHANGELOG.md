@@ -1,3 +1,18 @@
+# [0.10.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.9.0...v0.10.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* **raw:** a lookup table's rows written past the model are read back ([29a1ed3](https://github.com/wadahiro/midpoint-config-tester/commit/29a1ed36da9b397df0d56650e1a8746b12e359cf))
+* **time:** midPoint 4.0's identifiers allow a short step back of the host clock ([86331d3](https://github.com/wadahiro/midpoint-config-tester/commit/86331d3e7e08c1c83dbd467370de443d45995192))
+
+
+### Features
+
+* **actor:** an actor changes and deletes as a logged-in user, in the GUI's channel ([61d97fb](https://github.com/wadahiro/midpoint-config-tester/commit/61d97fb613b2648e9817981d29a01f29ebe04f0e))
+* **load:** later stages of the configuration, each imported after the ones before it ([1222f10](https://github.com/wadahiro/midpoint-config-tester/commit/1222f10fba3917b2faf83e3957d7ec3e5190dd64))
+* **mirror:** an issued identifier already there can be handed back instead of failing ([005ea83](https://github.com/wadahiro/midpoint-config-tester/commit/005ea83e90be985400da360656722379137824de))
+
 # [0.9.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.8.0...v0.9.0) (2026-11-17)
 
 
