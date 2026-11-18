@@ -52,11 +52,17 @@ class ManifestTest {
     void anIdentifierTheTargetSystemIssues() throws IOException {
         Manifest m = read("config:\n  dirs: [objects]\ntargets:\n"
                 + "  Certs: { namingAttribute: certName, identifier: { attribute: certId, value: \"name + '/1'\" } }\n"
-                + "  CRM: { identifier: crmId }\n");
+                + "  CRM: { identifier: crmId }\n"
+                + "  SCIM: { identifier: { User: userId, Group: groupId } }\n");
 
         assertThat(m.targets.get("Certs").options.identifier()).isEqualTo("certId");
         assertThat(m.targets.get("Certs").options.identifierValue()).isEqualTo("name + '/1'");
         assertThat(m.targets.get("CRM").options.identifierValue()).isNull();
+        // by object class, over the resource's
+        assertThat(m.targets.get("SCIM").options.identifierOf("User")).isEqualTo("userId");
+        assertThat(m.targets.get("SCIM").options.identifierOf("Group")).isEqualTo("groupId");
+        assertThat(m.targets.get("SCIM").options.identifierOf("Other")).isNull();
+        assertThat(m.targets.get("CRM").options.identifierOf("Any")).isEqualTo("crmId");
         assertThatThrownBy(() -> read("config:\n  dirs: [objects]\ntargets:\n"
                 + "  Certs: { identifier: { attribute: certId } }\n"))
                 .hasMessageContaining("targets.Certs.identifier: attribute and value");

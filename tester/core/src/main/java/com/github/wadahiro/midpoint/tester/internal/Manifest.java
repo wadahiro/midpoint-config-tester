@@ -449,7 +449,17 @@ public final class Manifest {
             options = options.namingAttribute(naming.toString());
         }
         Object identifier = spec.get("identifier");
-        if (identifier instanceof Map) {
+        if (identifier instanceof Map && !Set.of("attribute", "value", "existing")
+                .containsAll(map(identifier, where + ".identifier").keySet())) {
+            // { User: userId, Group: groupId }: by object class
+            for (Map.Entry<String, Object> e : map(identifier, where + ".identifier").entrySet()) {
+                if (!(e.getValue() instanceof String)) {
+                    throw new IllegalArgumentException(where + ".identifier." + e.getKey()
+                            + ": the attribute of the class's identifier, not " + e.getValue());
+                }
+                options = options.classIdentifier(e.getKey(), e.getValue().toString());
+            }
+        } else if (identifier instanceof Map) {
             Map<String, Object> id = map(identifier, where + ".identifier");
             check(id, where + ".identifier.", Set.of("attribute", "value", "existing"));
             if (id.get("attribute") == null || id.get("value") == null) {

@@ -451,8 +451,8 @@ final class MirrorResourceXml {
         if (options.namingAttributeOf(midPointName) != null) {
             naming = options.namingAttributeOf(midPointName);
         }
-        if (options.identifier() != null) {
-            uid = options.identifier();
+        if (options.identifierOf(midPointName) != null) {
+            uid = options.identifierOf(midPointName);
         }
         attributes.remove(naming);
         attributes.remove(uid);
@@ -532,11 +532,11 @@ final class MirrorResourceXml {
             d.add(new QName(NS_RI, multi.attribute), true);
         }
         boolean legacy = derived.keySet().stream().anyMatch(MirrorResourceXml::isLegacyName);
-        String uid = options.identifier();
         List<MirrorClass> classes = new ArrayList<>();
         for (Map.Entry<String, Derived> e : derived.entrySet()) {
             String objectClass = e.getKey();
             Derived d = e.getValue();
+            String uid = options.identifierOf(objectClass);
             String naming = options.namingAttributeOf(objectClass);
             if (naming == null && accountClasses.contains(objectClass) && !d.refs.contains(ICFS_NAME)) {
                 throw new IllegalArgumentException("cannot tell which attribute names accounts of ri:" + objectClass

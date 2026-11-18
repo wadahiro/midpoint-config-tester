@@ -51,11 +51,14 @@ public final class ResourceOptions {
     private final IssuedIdentifier identifierValue;
     /** How the target system keeps the values of multi-valued attributes ({@link #multiValued}, {@link #store}...). */
     private final List<StoredValues> multiValued;
+    /** The identifier of an object class, over {@link #identifier} ({@link #classIdentifier} by class). */
+    private final java.util.Map<String, String> classIdentifier;
 
     private ResourceOptions(String namingAttribute, String identifier, List<Computed> computed,
             boolean referentialIntegrity, boolean caseInsensitiveNames, Real realConnector,
             List<String[]> attributes, java.util.Map<String, String> classNaming, java.nio.file.Path schema,
-            IssuedIdentifier identifierValue, List<StoredValues> multiValued) {
+            IssuedIdentifier identifierValue, List<StoredValues> multiValued,
+            java.util.Map<String, String> classIdentifier) {
         this.namingAttribute = namingAttribute;
         this.identifier = identifier;
         this.computed = Collections.unmodifiableList(computed);
@@ -67,17 +70,18 @@ public final class ResourceOptions {
         this.schema = schema;
         this.identifierValue = identifierValue;
         this.multiValued = Collections.unmodifiableList(multiValued);
+        this.classIdentifier = Collections.unmodifiableMap(classIdentifier);
     }
 
     public static ResourceOptions defaults() {
         return new ResourceOptions(null, null, List.of(), false, false, null, List.of(), java.util.Map.of(), null,
-                null, List.of());
+                null, List.of(), java.util.Map.of());
     }
 
     /** Attribute that names objects on the resource, e.g. {@code "dn"} (a {@code ri:} attribute). */
     public ResourceOptions namingAttribute(String attribute) {
         return new ResourceOptions(attribute, identifier, computed, referentialIntegrity,
-                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued);
+                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -89,7 +93,7 @@ public final class ResourceOptions {
         java.util.Map<String, String> map = new java.util.LinkedHashMap<>(classNaming);
         map.put(localName(objectClass), localName(attribute));
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                realConnector, attributes, map, schema, identifierValue, multiValued);
+                realConnector, attributes, map, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -101,7 +105,7 @@ public final class ResourceOptions {
      */
     public ResourceOptions schema(java.nio.file.Path file) {
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                realConnector, attributes, classNaming, file, identifierValue, multiValued);
+                realConnector, attributes, classNaming, file, identifierValue, multiValued, classIdentifier);
     }
 
     /** The file of {@link #schema(java.nio.file.Path)}, or null. */
@@ -118,7 +122,21 @@ public final class ResourceOptions {
     public ResourceOptions identifier(String attribute) {
         checkIdentifier(attribute);
         return new ResourceOptions(namingAttribute, attribute, computed, referentialIntegrity,
-                caseInsensitiveNames, realConnector, attributes, classNaming, schema, null, multiValued);
+                caseInsensitiveNames, realConnector, attributes, classNaming, schema, null, multiValued, classIdentifier);
+    }
+
+    /**
+     * The primary identifier of one object class, over {@link #identifier(String)}: a target system whose classes
+     * each have an identifier of their own that it issues on create, apart from the name, e.g. SCIM's users and groups
+     * ({@code userId}, {@code groupId}), where a group holds its members by the users' identifiers. The mirror
+     * issues a random UUID for it (manifest: {@code identifier: { User: userId, Group: groupId }}).
+     */
+    public ResourceOptions classIdentifier(String objectClass, String attribute) {
+        checkIdentifier(attribute);
+        java.util.Map<String, String> map = new java.util.LinkedHashMap<>(classIdentifier);
+        map.put(localName(objectClass), localName(attribute));
+        return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
+                realConnector, attributes, classNaming, schema, identifierValue, multiValued, map);
     }
 
     /**
@@ -142,7 +160,7 @@ public final class ResourceOptions {
         checkIdentifier(attribute);
         return new ResourceOptions(namingAttribute, attribute, computed, referentialIntegrity,
                 caseInsensitiveNames, realConnector, attributes, classNaming, schema,
-                new IssuedIdentifier(value, adoptExisting), multiValued);
+                new IssuedIdentifier(value, adoptExisting), multiValued, classIdentifier);
     }
 
     /** The expression of {@link #identifier(String, String, boolean)}, and whether a create adopts an existing one. */
@@ -190,7 +208,7 @@ public final class ResourceOptions {
         List<Computed> list = new ArrayList<>(computed);
         list.add(new Computed(attribute, sourceObjectClass, sourceAttribute));
         return new ResourceOptions(namingAttribute, identifier, list, referentialIntegrity,
-                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued);
+                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -200,7 +218,7 @@ public final class ResourceOptions {
      */
     public ResourceOptions referentialIntegrity() {
         return new ResourceOptions(namingAttribute, identifier, computed, true,
-                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued);
+                caseInsensitiveNames, realConnector, attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -212,7 +230,7 @@ public final class ResourceOptions {
      */
     public ResourceOptions caseInsensitiveNames() {
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, true,
-                realConnector, attributes, classNaming, schema, identifierValue, multiValued);
+                realConnector, attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -228,7 +246,7 @@ public final class ResourceOptions {
      */
     public ResourceOptions realConnector() {
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                Real.STAND_IN, attributes, classNaming, schema, identifierValue, multiValued);
+                Real.STAND_IN, attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -245,7 +263,7 @@ public final class ResourceOptions {
     public ResourceOptions realConnector(java.util.function.Supplier<RealSystem> system,
             java.util.Map<String, String> properties) {
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                new Real(system, properties), attributes, classNaming, schema, identifierValue, multiValued);
+                new Real(system, properties), attributes, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /**
@@ -304,7 +322,7 @@ public final class ResourceOptions {
         List<String[]> list = new ArrayList<>(attributes);
         list.add(new String[] { localName(objectClass), localName(attribute) });
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                realConnector, list, classNaming, schema, identifierValue, multiValued);
+                realConnector, list, classNaming, schema, identifierValue, multiValued, classIdentifier);
     }
 
     /** The {@link #attribute}s as {object class, attribute}. */
@@ -384,7 +402,7 @@ public final class ResourceOptions {
         }
         list.add(values);
         return new ResourceOptions(namingAttribute, identifier, computed, referentialIntegrity, caseInsensitiveNames,
-                realConnector, attributes, classNaming, schema, identifierValue, list);
+                realConnector, attributes, classNaming, schema, identifierValue, list, classIdentifier);
     }
 
     /** The attributes of {@link #multiValued}, {@link #keyedValues} and {@link #store}. */
@@ -405,6 +423,12 @@ public final class ResourceOptions {
     public String namingAttributeOf(String objectClass) {
         String own = classNaming.get(localName(objectClass));
         return own != null ? own : namingAttribute();
+    }
+
+    /** The identifier of the object class ({@link #classIdentifier}), else {@link #identifier()}. */
+    public String identifierOf(String objectClass) {
+        String own = classIdentifier.get(localName(objectClass));
+        return own != null ? own : identifier();
     }
 
     /** Local name of the identifier (a {@code ri:} attribute), or null; null also for {@code icfs:uid}. */

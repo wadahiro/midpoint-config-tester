@@ -115,5 +115,18 @@ public interface TargetSystem {
      */
     String identifier(String objectClass, String name);
 
+    /**
+     * The account's primary identifier ({@link #identifier} of the account class), or null if the target system does
+     * not tell: what a group's members refer to when they hold the accounts' identifiers.
+     */
+    default String accountIdentifier(String name) {
+        return null;
+    }
+
+    /** The group's primary identifier ({@link #identifier} of the group class), or null if not told. */
+    default String groupIdentifier(String name) {
+        return null;
+    }
+
     List<String> objectNames(String objectClass);
 }

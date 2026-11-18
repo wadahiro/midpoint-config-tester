@@ -160,12 +160,14 @@ public final class Account extends TargetObject {
         for (Deployment.Association association : associations) {
             if ("objectToSubject".equals(association.direction)) {
                 List<String> members = Values.texts(groupAttributes.get(association.associationAttribute));
-                if (containsIgnoreCase(members, valuesOrName(account, association.valueAttribute, name))) {
+                if (containsIgnoreCase(members, valuesOrName(account, association.valueAttribute, name,
+                        () -> system.accountIdentifier(name)))) {
                     return true;
                 }
             } else {
                 List<String> memberships = Values.texts(account.get(association.associationAttribute));
-                if (containsIgnoreCase(memberships, valuesOrName(groupAttributes, association.valueAttribute, group))) {
+                if (containsIgnoreCase(memberships, valuesOrName(groupAttributes, association.valueAttribute, group,
+                        () -> system.groupIdentifier(group)))) {
                     return true;
                 }
             }
@@ -173,10 +175,19 @@ public final class Account extends TargetObject {
         return false;
     }
 
-    /** The attribute's values, or the object's name when the attribute is its naming attribute (not an attribute). */
-    private static List<String> valuesOrName(Map<String, List<Object>> attributes, String attribute, String name) {
+    /**
+     * The attribute's values; when the object has none (the attribute is its naming attribute or its primary
+     * identifier, e.g. SCIM's {@code userId}, which the target system issues apart from the attributes): the object's
+     * name and its identifier.
+     */
+    private static List<String> valuesOrName(Map<String, List<Object>> attributes, String attribute, String name,
+            java.util.function.Supplier<String> identifier) {
         List<Object> values = attributes.get(attribute);
-        return values != null && !values.isEmpty() ? Values.texts(values) : List.of(name);
+        if (values != null && !values.isEmpty()) {
+            return Values.texts(values);
+        }
+        String uid = identifier.get();
+        return uid != null && !uid.equals(name) ? List.of(name, uid) : List.of(name);
     }
 
     private static boolean containsIgnoreCase(List<String> values, List<String> wanted) {

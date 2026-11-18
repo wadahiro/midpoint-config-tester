@@ -148,6 +148,37 @@ class MembershipTest {
         assertThat(scim.groupValues("staff", "members")).isEmpty();
     }
 
+    /**
+     * SCIM with an identifier of its own per class (userId, groupId), issued apart from the name, and no stored
+     * schema: the mirror issues both, a group's members hold the users' identifiers, and the scenario API reads the
+     * memberships through them (the accounts have no userId attribute: it is their identifier).
+     */
+    @Test
+    void scimMembersByIdentifiersOfEachClass(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        TargetSystem scim = mp.importResource(Fixtures.of(mp, new File(DIR, "resource-scim-issued.xml")),
+                ResourceOptions.defaults().namingAttribute("User", "userName").namingAttribute("Group", "displayName")
+                        .classIdentifier("User", "userId").classIdentifier("Group", "groupId"));
+        scim.addGroup("staff", Map.of());
+        mp.importObject(new File(DIR, "role-scim-issued-staff.xml"));
+        mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name><fullName>John Doe</fullName></user>");
+
+        mp.assign(UserType.class, "jdoe", "10000000-0000-0000-0000-00000000c005");
+
+        String jdoeId = scim.identifier("User", "jdoe");
+        assertThat(jdoeId).isNotEqualTo("jdoe");
+        assertThat(scim.accountIdentifier("jdoe")).isEqualTo(jdoeId);
+        assertThat(scim.groupIdentifier("staff")).isNotEqualTo("staff").isEqualTo(scim.identifier("Group", "staff"));
+        assertThat(scim.groupValues("staff", "members")).containsExactly(jdoeId);
+        assertThat(t.target("SCIM issued").group("staff").members()).containsExactly("jdoe");
+        t.target("SCIM issued").group("staff").hasMember("jdoe");
+        assertThat(t.target("SCIM issued").account("jdoe").groups()).containsExactly("staff");
+
+        mp.unassign(UserType.class, "jdoe", "10000000-0000-0000-0000-00000000c005");
+        assertThat(scim.groupValues("staff", "members")).isEmpty();
+        assertThat(t.target("SCIM issued").group("staff").members()).isEmpty();
+    }
+
     @Test
     void scimInboundFromComputedGroups(MidPointConfigTester t) {
         MidPoint mp = t.midpoint();

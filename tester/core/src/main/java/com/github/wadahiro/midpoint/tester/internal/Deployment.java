@@ -1143,7 +1143,26 @@ public final class Deployment {
 
     /** The associations of the resource's account object types (empty if none or unknown). */
     public List<Association> associations(String resource) {
-        return associations.getOrDefault(resource, List.of());
+        List<Association> known = associations.get(resource);
+        if (known != null) {
+            return known;
+        }
+        // a resource the test imported (not in the configuration): its definition as midPoint stores it
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ResourceType stored;
+        try {
+            stored = mp.find(com.evolveum.midpoint.xml.ns._public.common.common_3.ResourceType.class, resource);
+        } catch (RuntimeException | AssertionError e) {
+            return List.of();
+        }
+        if (stored == null) {
+            return List.of();
+        }
+        try {
+            String xml = mp.prismContext().xmlSerializer().serialize(stored.asPrismObject());
+            return associations(Xml.parse(xml).getDocumentElement());
+        } catch (com.evolveum.midpoint.util.exception.SchemaException e) {
+            throw new IllegalStateException("Cannot read the associations of resource " + resource, e);
+        }
     }
 
     /** What midPoint's initial import of the line's initial objects did before this deployment (shared by all). */

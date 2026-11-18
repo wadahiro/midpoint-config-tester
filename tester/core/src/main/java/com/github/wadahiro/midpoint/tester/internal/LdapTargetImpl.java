@@ -462,6 +462,16 @@ final class LdapTargetImpl implements ManagedTarget, RealTarget, LdapDirectory {
     }
 
     @Override
+    public String accountIdentifier(String name) {
+        return identifier(accountClass(), name);
+    }
+
+    @Override
+    public String groupIdentifier(String name) {
+        return identifier(groupClass(), name);
+    }
+
+    @Override
     public List<String> objectNames(String objectClass) {
         return search("(objectClass=" + objectClass + ")");
     }

@@ -99,7 +99,12 @@ attribute: certId, value: "…", existing: adopt }`, `ResourceOptions.identifier
 create adds nothing and returns that object. A connector that gives ConnId's `__UID__` no native name (a stored schema
 shows it as `icfs:uid` beside `icfs:name`) may still issue it apart from the name, which the schema does not say:
 `identifier: icfs:uid` (or with a `value`) makes the mirror issue it, so a rename keeps it; without it the
-identifier is the name. The resources the tester cannot stand in for are reported together, with the
+identifier is the name. Classes that each have an identifier of their own, issued apart from the name (SCIM's users and
+groups: `userId`, `groupId`), take one each: `ResourceOptions.classIdentifier("User", "userId")` (manifest:
+`identifier: { User: userId, Group: groupId }`); the mirror issues a random UUID for each. A group that holds its
+members by those identifiers (an association `objectToSubject` whose `valueAttribute` is the account's identifier) is
+read as midPoint reads it: `group(name).members()`, `hasMember` and `account(name).groups()` match the members against
+the accounts' identifiers (`TargetSystem.accountIdentifier`, `groupIdentifier`). The resources the tester cannot stand in for are reported together, with the
 manifest's other mistakes, in one load failure. `TargetSystem` has the same calls for accounts, groups (the
 first non-account object type) and any object class by name (`addObject(objectClass, ...)`, `identifier(...)` for
 references by `__UID__`). Changes made there are seen by midPoint when it next reads the object, and by the next
