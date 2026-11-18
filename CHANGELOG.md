@@ -1,3 +1,23 @@
+# [0.11.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.10.0...v0.11.0) (2026-11-18)
+
+
+### Features
+
+* **manifest:** repository.ddl runs the deployment's own DDL on midPoint's repository before the post-initial import and before a cache restore; the files are part of the cache key ([0a901f2](https://github.com/wadahiro/midpoint-config-tester/commit/0a901f29230519edbe98d68e221275dc36452d4b))
+* **rest:** RestResponse.json() parses the body as Jackson's tree ([3a163ac](https://github.com/wadahiro/midpoint-config-tester/commit/3a163ac7055931c354a4f779c5979aa5edf464fa))
+* **rest:** t.rest() sends a request to midPoint's REST API (4.8 and later) through its security filter chain and controllers, in a web context over the tester's context, as a driver call ([1872ace](https://github.com/wadahiro/midpoint-config-tester/commit/1872ace8121ee1553ce4c4f61038730950ab9182))
+* **timing:** the JVM before the tester, the deployment's load, each test's own time, a JSON report compared with the previous run or a baseline ([a28b1ff](https://github.com/wadahiro/midpoint-config-tester/commit/a28b1ff6740223e5fe593d5b44cd741107ac76d2))
+
+
+### Performance Improvements
+
+* **effects:** a task's or node's modification is recorded without reading the object before and after, and a wait does not search the tasks while task threads run ([0d37442](https://github.com/wadahiro/midpoint-config-tester/commit/0d37442483c15a321b0b241c46d364bdef18fc29))
+* **reset:** a reset back to the state Quartz still matches (no task row written, no job or trigger changed or fired since) leaves out the synchronization of the tasks and the re-arming of their triggers ([16c0055](https://github.com/wadahiro/midpoint-config-tester/commit/16c005545297ddd0f1d15b624afa7120b031504e))
+* **reset:** keep the provisioning caches on 4.4 and 4.8+ too, invalidating every other cache of midPoint's cache registry (all of them when the registry cannot be read so) ([e80082d](https://github.com/wadahiro/midpoint-config-tester/commit/e80082d77eddeb97623c1ecac08939566efd9693))
+* **reset:** on 4.0 a reset back to the state the provisioning caches still match (no resource or connector row written since) keeps the resource cache and the connector manager's instances and types ([1b4213c](https://github.com/wadahiro/midpoint-config-tester/commit/1b4213ce7cfafd4e1a0ac92542609cb50b4cc6d0))
+* **reset:** reuse the administrator's login of the last reset to the same state when neither the user nor a role, org, archetype, service, security policy or system configuration row was written since and the user's version is unchanged ([2099411](https://github.com/wadahiro/midpoint-config-tester/commit/2099411eec708df42a3971fef8d5ed72f1a31291))
+* **wait:** the waits for background work wake on its changes (task threads and runs, Quartz jobs) instead of a 20 ms tick, and time each task ([2211db2](https://github.com/wadahiro/midpoint-config-tester/commit/2211db27884dfaf27043620d23af99c6b6c7cafa))
+
 # [0.10.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.9.0...v0.10.0) (2026-11-18)
 
 
