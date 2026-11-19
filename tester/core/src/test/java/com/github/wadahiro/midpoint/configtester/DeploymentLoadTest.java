@@ -84,7 +84,7 @@ class DeploymentLoadTest {
             // 4.0's reports are Jasper reports: no Jasper libraries in the tester
             assertThat(deployment.initialObjectsSkipped()).hasSize(7)
                     .allMatch(skipped -> skipped.contains("-report-") && skipped.contains("Jasper"));
-            // 39 files of 4.0.3's admin-gui (another 4.0 patch version may ship another set)
+            // 39 files of 4.0.3's and 4.0.4's admin-gui (an older 4.0 patch version may ship another set)
             assertThat(deployment.initialObjectsImported()).hasSize(32);
         } else {
             assertThat(deployment.initialObjectsSkipped()).isEmpty();

@@ -263,7 +263,7 @@ in `~/.m2` once the line modules have been built) and check the diff:
 M=~/.m2/repository/com/evolveum/midpoint
 python3 -I .claude/skills/add-midpoint-line/scripts/initial-names.py \
     tester/core/src/main/java/com/github/wadahiro/midpoint/configtester/names/midpoint \
-    4.0=$M/gui/admin-gui/4.0.3/admin-gui-4.0.3-classes.jar 4.4=$M/gui/admin-gui/4.4.11/admin-gui-4.4.11-classes.jar \
+    4.0=$M/gui/admin-gui/4.0.4/admin-gui-4.0.4-classes.jar 4.4=$M/gui/admin-gui/4.4.11/admin-gui-4.4.11-classes.jar \
     4.8=$M/repo/system-init/4.8.12/system-init-4.8.12.jar ... X.Y=$M/repo/system-init/<v>/system-init-<v>.jar
 ```
 

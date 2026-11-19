@@ -286,7 +286,7 @@ global to the JVM.
 
 Resources imported with `ResourceOptions.realConnector()` (README, "Real connectors") run on the connectors the line
 ships: the versions of midPoint's own POM (`connector-csv` / `connector-ldap` in the dependency management of the
-`midpoint` BOM; 4.0's are in `parent-4.0.3`, which its BOM does not import, so `midpoint-4.0/pom.xml` names them). The
+`midpoint` BOM; 4.0's are in `parent` of 4.0 (`com.evolveum.midpoint:parent`), which its BOM does not import, so `midpoint-4.0/pom.xml` names them). The
 line modules declare both with `runtime` scope and every transitive dependency excluded: the jars are ConnId bundles
 with their libraries in `lib/`, loaded child-first by ConnId's `BundleClassLoader`; midPoint finds them by scanning the
 classpath (`icf/scanClasspath`, set by every line's `LineSupport.config`). The LDAP server is UnboundID LDAP SDK

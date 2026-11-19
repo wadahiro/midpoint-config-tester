@@ -294,7 +294,7 @@
             <artifactId>midpoint-localization</artifactId>
             <version>${midpoint.version}</version>
         </dependency>
-        <!-- the 4.0 BOM does not manage these; versions of midPoint 4.0.3 -->
+        <!-- the 4.0 BOM does not manage these; versions of midPoint 4.0.3 and 4.0.4 -->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>

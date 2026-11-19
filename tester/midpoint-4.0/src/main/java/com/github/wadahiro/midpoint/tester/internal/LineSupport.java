@@ -10,7 +10,7 @@ public final class LineSupport {
     /** 4.0's ctx-configuration-test.xml always loads this file name from midPoint home. */
     static final String CONFIG_FILE = "test-config.xml";
 
-    /** config/sql/postgresql-4.0-all.sql of midPoint 4.0.3, unchanged (it runs on PostgreSQL 16). */
+    /** config/sql/postgresql-4.0-all.sql of midPoint 4.0.3 and 4.0.4, unchanged (it runs on PostgreSQL 16). */
     static final String[] SCHEMA_SCRIPTS = { "/tester/sql/postgresql-4.0-all.sql" };
 
     /**

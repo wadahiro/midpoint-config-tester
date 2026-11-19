@@ -63,7 +63,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Patch versions can be overridden from the command line, e.g. -Dmidpoint48.version=4.8.11 -->
-        <midpoint40.version>4.0.3</midpoint40.version>
+        <midpoint40.version>4.0.4</midpoint40.version>
         <midpoint44.version>4.4.11</midpoint44.version>
         <midpoint48.version>4.8.14</midpoint48.version>
         <midpoint49.version>4.9.9</midpoint49.version>
