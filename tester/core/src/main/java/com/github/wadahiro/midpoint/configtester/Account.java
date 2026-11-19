@@ -158,36 +158,61 @@ public final class Account extends TargetObject {
             throw new AssertionError("No group " + group + " on " + resource.name() + "; groups: " + system.groupNames());
         }
         for (Deployment.Association association : associations) {
-            if ("objectToSubject".equals(association.direction)) {
-                List<String> members = Values.texts(groupAttributes.get(association.associationAttribute));
-                if (containsIgnoreCase(members, valuesOrName(account, association.valueAttribute, name,
-                        () -> system.accountIdentifier(name)))) {
-                    return true;
-                }
-            } else {
-                List<String> memberships = Values.texts(account.get(association.associationAttribute));
-                if (containsIgnoreCase(memberships, valuesOrName(groupAttributes, association.valueAttribute, group,
-                        () -> system.groupIdentifier(group)))) {
-                    return true;
-                }
+            if (containsIgnoreCase(references(association, groupAttributes), referents(association, account, group))) {
+                return true;
             }
         }
         return false;
     }
 
+    /** The references the association holds: the group's members, or the account's groups. */
+    private List<String> references(Deployment.Association association, Map<String, List<Object>> groupAttributes) {
+        return Values.texts(("objectToSubject".equals(association.direction) ? groupAttributes : existing())
+                .get(association.associationAttribute));
+    }
+
+    /** What those references would be of this account (objectToSubject) or of the group (subjectToObject). */
+    private List<String> referents(Deployment.Association association, Map<String, List<Object>> account,
+            String group) {
+        TargetSystem system = resource.system();
+        return "objectToSubject".equals(association.direction)
+                ? referents(account, association.valueAttribute, name, system.accountReferenceAttributes(),
+                        () -> system.accountIdentifier(name))
+                : referents(system.group(group), association.valueAttribute, group, system.groupReferenceAttributes(),
+                        () -> system.groupIdentifier(group));
+    }
+
     /**
-     * The attribute's values; when the object has none (the attribute is its naming attribute or its primary
-     * identifier, e.g. SCIM's {@code userId}, which the target system issues apart from the attributes): the object's
-     * name and its identifier.
+     * What midPoint takes the {@code valueAttribute} of the object to be (EntitlementConverter): its values when the
+     * object has the attribute; its primary identifier when the attribute is the identifier (e.g. SCIM's
+     * {@code userId}, or ConnId's {@code uid}), its name when it is the naming attribute (or ConnId's {@code name}):
+     * these two the attributes leave out. Otherwise nothing (midPoint finds no value: not a reference to it). When the
+     * target system does not tell its naming and identifier attributes: the name and the identifier.
      */
-    private static List<String> valuesOrName(Map<String, List<Object>> attributes, String attribute, String name,
-            java.util.function.Supplier<String> identifier) {
+    private static List<String> referents(Map<String, List<Object>> attributes, String attribute, String name,
+            String[] namingAndIdentifier, java.util.function.Supplier<String> identifier) {
         List<Object> values = attributes.get(attribute);
         if (values != null && !values.isEmpty()) {
             return Values.texts(values);
         }
-        String uid = identifier.get();
-        return uid != null && !uid.equals(name) ? List.of(name, uid) : List.of(name);
+        String naming = namingAndIdentifier[0];
+        String identifierAttribute = namingAndIdentifier[1];
+        if (naming == null && identifierAttribute == null) {
+            String uid = identifier.get();
+            return uid != null && !uid.equals(name) ? List.of(name, uid) : List.of(name);
+        }
+        if (attribute.equalsIgnoreCase("uid") || attribute.equalsIgnoreCase(identifierAttribute)) {
+            String uid = identifier.get();
+            if (uid == null) {
+                throw new AssertionError("The association refers to the primary identifier " + attribute + " of "
+                        + name + ", which the target system does not tell");
+            }
+            return List.of(uid);
+        }
+        if (attribute.equalsIgnoreCase("name") || attribute.equalsIgnoreCase(naming)) {
+            return List.of(name);
+        }
+        return List.of();
     }
 
     private static boolean containsIgnoreCase(List<String> values, List<String> wanted) {
@@ -205,15 +230,20 @@ public final class Account extends TargetObject {
         TargetSystem system = resource.system();
         StringBuilder sb = new StringBuilder();
         for (Deployment.Association association : tester.deployment().associations(resource.name())) {
+            Map<String, List<Object>> attributes = system.group(group);
+            if (attributes == null) {
+                sb.append(group).append(": (no such group)");
+                continue;
+            }
             if ("objectToSubject".equals(association.direction)) {
-                Map<String, List<Object>> attributes = system.group(group);
                 sb.append(group).append(' ').append(association.associationAttribute).append(": ")
-                        .append(attributes != null ? Values.texts(attributes.get(association.associationAttribute))
-                                : "(no such group)");
+                        .append(Values.texts(attributes.get(association.associationAttribute)));
             } else {
                 sb.append(name).append(' ').append(association.associationAttribute).append(": ")
                         .append(Values.texts(existing().get(association.associationAttribute)));
             }
+            sb.append(", looked for ").append(association.valueAttribute).append(' ')
+                    .append(referents(association, existing(), group));
         }
         return sb.toString();
     }

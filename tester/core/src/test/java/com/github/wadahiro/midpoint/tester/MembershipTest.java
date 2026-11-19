@@ -148,6 +148,14 @@ class MembershipTest {
         assertThat(scim.groupValues("staff", "members")).isEmpty();
     }
 
+    private static final File SCIM_ISSUED = new File(DIR, "resource-scim-issued.xml");
+    private static final String SCIM_ISSUED_STAFF_ROLE = "10000000-0000-0000-0000-00000000c005";
+
+    private static ResourceOptions scimIssued() {
+        return ResourceOptions.defaults().namingAttribute("User", "userName").namingAttribute("Group", "displayName")
+                .classIdentifier("User", "userId").classIdentifier("Group", "groupId");
+    }
+
     /**
      * SCIM with an identifier of its own per class (userId, groupId), issued apart from the name, and no stored
      * schema: the mirror issues both, a group's members hold the users' identifiers, and the scenario API reads the
@@ -156,27 +164,75 @@ class MembershipTest {
     @Test
     void scimMembersByIdentifiersOfEachClass(MidPointConfigTester t) {
         MidPoint mp = t.midpoint();
-        TargetSystem scim = mp.importResource(Fixtures.of(mp, new File(DIR, "resource-scim-issued.xml")),
-                ResourceOptions.defaults().namingAttribute("User", "userName").namingAttribute("Group", "displayName")
-                        .classIdentifier("User", "userId").classIdentifier("Group", "groupId"));
+        TargetSystem scim = mp.importResource(Fixtures.of(mp, SCIM_ISSUED), scimIssued());
         scim.addGroup("staff", Map.of());
         mp.importObject(new File(DIR, "role-scim-issued-staff.xml"));
-        mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name><fullName>John Doe</fullName></user>");
+        mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name><fullName>John Doe</fullName>"
+                + "<familyName>Doe</familyName></user>");
 
-        mp.assign(UserType.class, "jdoe", "10000000-0000-0000-0000-00000000c005");
+        mp.assign(UserType.class, "jdoe", SCIM_ISSUED_STAFF_ROLE);
 
         String jdoeId = scim.identifier("User", "jdoe");
         assertThat(jdoeId).isNotEqualTo("jdoe");
         assertThat(scim.accountIdentifier("jdoe")).isEqualTo(jdoeId);
         assertThat(scim.groupIdentifier("staff")).isNotEqualTo("staff").isEqualTo(scim.identifier("Group", "staff"));
-        assertThat(scim.groupValues("staff", "members")).containsExactly(jdoeId);
+        assertThat(scim.attribute("jdoe", "name.familyName")).isEqualTo("Doe");
+        assertThat(scim.groupValues("staff", "members.User.value")).containsExactly(jdoeId);
         assertThat(t.target("SCIM issued").group("staff").members()).containsExactly("jdoe");
         t.target("SCIM issued").group("staff").hasMember("jdoe");
         assertThat(t.target("SCIM issued").account("jdoe").groups()).containsExactly("staff");
 
-        mp.unassign(UserType.class, "jdoe", "10000000-0000-0000-0000-00000000c005");
-        assertThat(scim.groupValues("staff", "members")).isEmpty();
+        // the members hold identifiers: a member that is a user's name is not that user (midPoint compares the userId)
+        scim.addAccount("asmith", Map.of());
+        String asmithId = scim.accountIdentifier("asmith");
+        scim.modifyGroup("staff", "members.User.value", jdoeId, "asmith");
+        assertThat(t.target("SCIM issued").group("staff").members()).containsExactly("jdoe");
+        assertThatThrownBy(() -> t.target("SCIM issued").group("staff").hasMember("asmith"))
+                .hasMessageContaining("expected the member asmith");
+        assertThatThrownBy(() -> t.target("SCIM issued").account("asmith").memberOf("staff"))
+                .hasMessageContaining("looked for userId [" + asmithId + "]");
+
+        mp.unassign(UserType.class, "jdoe", SCIM_ISSUED_STAFF_ROLE);
+        assertThat(scim.groupValues("staff", "members.User.value")).containsExactly("asmith");
         assertThat(t.target("SCIM issued").group("staff").members()).isEmpty();
+    }
+
+    /**
+     * As a SCIM service keeps its groups: a user deleted is no member any more, whether the service deletes it or
+     * midPoint does (which removes the user's identifier from the groups first: the association's referential
+     * integrity); the users' read-only groups computed from the members.
+     */
+    @Test
+    void scimIssuedIdentifiersWithReferentialIntegrity(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        TargetSystem scim = mp.importResource(Fixtures.of(mp, SCIM_ISSUED), scimIssued()
+                .computed("groups", "Group", "members.User.value").referentialIntegrity());
+        scim.addGroup("staff", Map.of());
+        mp.importObject(new File(DIR, "role-scim-issued-staff.xml"));
+        mp.addObjectXml("<user " + Fixtures.NS + "><name>jdoe</name><fullName>John Doe</fullName></user>");
+        mp.addObjectXml("<user " + Fixtures.NS + "><name>asmith</name><fullName>Alice Smith</fullName></user>");
+        mp.assign(UserType.class, "jdoe", SCIM_ISSUED_STAFF_ROLE);
+        mp.assign(UserType.class, "asmith", SCIM_ISSUED_STAFF_ROLE);
+
+        assertThat(scim.attributeValues("jdoe", "groups")).containsExactly(scim.groupIdentifier("staff"));
+        assertThat(t.target("SCIM issued").group("staff").members()).containsExactlyInAnyOrder("jdoe", "asmith");
+
+        scim.deleteAccount("jdoe");
+        assertThat(t.target("SCIM issued").group("staff").members()).containsExactly("asmith");
+
+        mp.deleteObject(UserType.class, "asmith");
+        assertThat(scim.accountNames()).doesNotContain("asmith");
+        assertThat(scim.groupValues("staff", "members.User.value")).isEmpty();
+    }
+
+    /** Without the class's identifier, the association's userId is no attribute the mirror has: loading says so. */
+    @Test
+    void anAssociationByAnIdentifierNotGivenFailsOnLoading(MidPointConfigTester t) {
+        MidPoint mp = t.midpoint();
+        assertThatThrownBy(() -> mp.importResource(Fixtures.of(mp, SCIM_ISSUED), ResourceOptions.defaults()
+                .namingAttribute("User", "userName").namingAttribute("Group", "displayName")))
+                .hasMessageContaining("refers to User by")
+                .hasMessageContaining("identifier: { User: userId }");
     }
 
     @Test

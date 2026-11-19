@@ -279,6 +279,18 @@ final class MirrorTargetImpl implements ManagedTarget {
     }
 
     @Override
+    public String[] accountReferenceAttributes() {
+        MirrorClass c = resource.byName(accountClass());
+        return new String[] { c.namingAttribute, c.uidAttribute };
+    }
+
+    @Override
+    public String[] groupReferenceAttributes() {
+        MirrorClass c = resource.byName(groupClass());
+        return new String[] { c.namingAttribute, c.uidAttribute };
+    }
+
+    @Override
     public List<String> objectNames(String objectClass) {
         List<String> names = new ArrayList<>();
         for (MirrorObject object : resource.list(resource.byName(objectClass))) {

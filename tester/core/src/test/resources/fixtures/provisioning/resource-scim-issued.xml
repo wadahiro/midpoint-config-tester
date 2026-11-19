@@ -1,8 +1,9 @@
 <!--
     SCIM service whose classes each have an identifier of their own that it issues on create, apart from the name: Users
     named by userName and identified by userId, Groups named by displayName and identified by groupId. A Group's members
-    hold the userIds of its Users. No stored <schema>: the mirror takes the classes from schemaHandling and the
-    identifiers from the options (ResourceOptions.classIdentifier(objectClass, attribute)).
+    hold the userIds of its Users, in an attribute named as SCIM connectors name a sub-attribute (members.User.value,
+    name.familyName). No stored <schema>: the mirror takes the classes from schemaHandling and the identifiers from
+    the options (ResourceOptions.classIdentifier(objectClass, attribute)).
 -->
 <resource oid="10000000-0000-0000-0000-00000000a005"
           xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
@@ -38,12 +39,16 @@
                 <ref>ri:displayName</ref>
                 <outbound><source><path>fullName</path></source></outbound>
             </attribute>
+            <attribute>
+                <ref>ri:name.familyName</ref>
+                <outbound><source><path>familyName</path></source></outbound>
+            </attribute>
             <association>
                 <ref>ri:group</ref>
                 <kind>entitlement</kind>
                 <intent>group</intent>
                 <direction>objectToSubject</direction>
-                <associationAttribute>ri:members</associationAttribute>
+                <associationAttribute>ri:members.User.value</associationAttribute>
                 <valueAttribute>ri:userId</valueAttribute>
             </association>
         </objectType>
@@ -55,7 +60,7 @@
                 <ref>ri:displayName</ref>
             </attribute>
             <attribute>
-                <ref>ri:members</ref>
+                <ref>ri:members.User.value</ref>
             </attribute>
         </objectType>
     </schemaHandling>

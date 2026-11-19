@@ -101,10 +101,22 @@ shows it as `icfs:uid` beside `icfs:name`) may still issue it apart from the nam
 `identifier: icfs:uid` (or with a `value`) makes the mirror issue it, so a rename keeps it; without it the
 identifier is the name. Classes that each have an identifier of their own, issued apart from the name (SCIM's users and
 groups: `userId`, `groupId`), take one each: `ResourceOptions.classIdentifier("User", "userId")` (manifest:
-`identifier: { User: userId, Group: groupId }`); the mirror issues a random UUID for each. A group that holds its
-members by those identifiers (an association `objectToSubject` whose `valueAttribute` is the account's identifier) is
-read as midPoint reads it: `group(name).members()`, `hasMember` and `account(name).groups()` match the members against
-the accounts' identifiers (`TargetSystem.accountIdentifier`, `groupIdentifier`). The resources the tester cannot stand in for are reported together, with the
+`identifier: { User: userId, Group: groupId }`); the mirror issues a random UUID for each. This is what a SCIM
+connector does (it gives `__UID__` the native name `userId`; midPoint keeps it as the shadow's `ri:userId`), so it is the
+way to write such a resource without a stored schema; keep a stored schema only for what it says beyond that (a
+read-only `groups`, types, multi-valued attributes). Without the identifier, an association whose `valueAttribute`
+the mirror has no value of (neither the naming attribute, nor the identifier, nor an attribute `schemaHandling` maps)
+fails loading, as midPoint would fail the assignment ("No value attribute ... in shadow"). Give such a resource
+`referentialIntegrity()` (manifest: `referentialIntegrity: true`) too: a SCIM service removes a deleted user from its
+groups. Matching rules need not be given: midPoint compares the association's values by the association's own
+`<matchingRule>`, not by the attributes' types. On 4.0, do not name the identifier `id` (4.0 cannot read back a shadow
+with an attribute named so).
+
+Memberships are read as midPoint reads them: `group(name).members()`, `hasMember` and `account(name).groups()` compare
+the association's references with the `valueAttribute` of each account (of each group, for `subjectToObject`): the
+account's identifier when the attribute is the class's identifier (or `icfs:uid`), its name when it is the naming
+attribute (or `icfs:name`), else the attribute's values; an account with none is no member. A failed `memberOf`
+shows what it looked for. The resources the tester cannot stand in for are reported together, with the
 manifest's other mistakes, in one load failure. `TargetSystem` has the same calls for accounts, groups (the
 first non-account object type) and any object class by name (`addObject(objectClass, ...)`, `identifier(...)` for
 references by `__UID__`). Changes made there are seen by midPoint when it next reads the object, and by the next

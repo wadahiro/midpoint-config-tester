@@ -128,5 +128,19 @@ public interface TargetSystem {
         return null;
     }
 
+    /**
+     * The names of the account class's naming attribute and primary identifier attribute (null: not told), which the
+     * attributes of {@link #account} leave out: what an association's {@code valueAttribute} names when the references
+     * are the accounts' names or identifiers.
+     */
+    default String[] accountReferenceAttributes() {
+        return new String[] { null, null };
+    }
+
+    /** {@link #accountReferenceAttributes} of the group class. */
+    default String[] groupReferenceAttributes() {
+        return new String[] { null, null };
+    }
+
     List<String> objectNames(String objectClass);
 }
