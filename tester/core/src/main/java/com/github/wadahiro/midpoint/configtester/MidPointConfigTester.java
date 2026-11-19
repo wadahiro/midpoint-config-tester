@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import com.github.wadahiro.midpoint.configtester.names.CertificationDefinitionRef;
+import com.github.wadahiro.midpoint.configtester.names.ObjectRef;
 import com.github.wadahiro.midpoint.configtester.names.ReportRef;
 import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
 import com.github.wadahiro.midpoint.configtester.names.TaskRef;
@@ -282,6 +283,14 @@ public final class MidPointConfigTester {
     public EditObjectForm editForm(
             Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type, String nameOrOid) {
         return new EditObjectForm(this, type, nameOrOid, null);
+    }
+
+    /**
+     * {@link #editForm(Class, String)} by the generated name ({@code Orgs.SITE_1}): its type from the ref, e.g.
+     * {@code t.editForm(Orgs.SITE_1).tabs().names()}.
+     */
+    public EditObjectForm editForm(ObjectRef object) {
+        return editForm(Actor.typeOf(object), object.oid() != null ? object.oid() : object.on(line()));
     }
 
     /**

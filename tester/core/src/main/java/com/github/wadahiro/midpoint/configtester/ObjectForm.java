@@ -23,7 +23,9 @@ import com.github.wadahiro.midpoint.tester.internal.GuiForms;
  *   <li>{@link #submit} presses Save: every field's validator again (those not typed into with their value, an
  *       empty one with {@code input} null), then on 4.4 and later the validation on saving
  *       (FormWrapperValidator: the items whose field said nothing, with the values in {@code object}), then the
- *       changes executed through the model as the user (the object stored, or the operation's error).</li>
+ *       changes executed through the model as the user (the object stored, or the operation's error);</li>
+ *   <li>{@link #tabs} reads the page's tabs: those the user sees and those the GUI hides from them, with why
+ *       ({@code tabs().hasNoTab("Governance")}).</li>
  * </ul>
  * The user ({@link Actor#newObjectForm}, {@link Actor#editForm}; without one, the administrator) is logged in as the
  * tester logs a user in; the page's URL is decided first as midPoint's security filter decides it (a user who may not
@@ -47,6 +49,15 @@ public abstract class ObjectForm {
     }
 
     abstract GuiForms.Spec spec();
+
+    /** The page as failures name it: {@code Org site-1}, {@code a new Org}. */
+    abstract String page();
+
+    /** {@code Org} of {@code OrgType}. */
+    String kind() {
+        String name = type.getSimpleName();
+        return name.endsWith("Type") ? name.substring(0, name.length() - 4) : name;
+    }
 
     static Map<String, Object> with(Map<String, Object> items, String item, Object value) {
         Map<String, Object> copy = new LinkedHashMap<>(items);
@@ -75,6 +86,120 @@ public abstract class ObjectForm {
     /** Save pressed, the items typed in: {@code submit().saves()}, {@code submit().rejects("identifier")}. */
     public Submit submit() {
         return new Submit(gui().save(spec()));
+    }
+
+    /**
+     * The page's tabs as the GUI has them for the user, read from the page opened as the user (as {@link #validate}
+     * opens it; once, the claims chain on it): {@code tabs().hasTab("Assignments").hasNoTab("Governance")},
+     * {@code tabs().names()}.
+     */
+    public Tabs tabs() {
+        List<Tab> tabs = new ArrayList<>();
+        for (GuiForms.TabInfo info : gui().tabs(spec())) {
+            tabs.add(new Tab(info));
+        }
+        if (user != null) {
+            tester.actor(user).explainAuthorizations();
+        }
+        return new Tabs(user, page(), tabs);
+    }
+
+    /**
+     * The tabs of an object's details page ({@link #tabs}): those the user sees, in the GUI's order, and those the
+     * GUI hides from them, with why ({@link Tab#hiddenBecause}). A tab is named by its label as shown, its label key or
+     * its identifier ({@link Tab}); a sub-tab through its tab ({@code tab("Assignments").subtabs()}). A failed claim
+     * lists the shown and the hidden tabs, and for a user their authorizations.
+     */
+    public static final class Tabs {
+
+        private final String user;
+        private final String page;
+        private final List<Tab> all;
+
+        Tabs(String user, String page, List<Tab> all) {
+            this.user = user;
+            this.page = page;
+            this.all = Collections.unmodifiableList(new ArrayList<>(all));
+        }
+
+        /** The labels of the tabs the user sees, in the GUI's order (in the JVM's locale). */
+        public List<String> names() {
+            List<String> out = new ArrayList<>();
+            for (Tab tab : all) {
+                if (tab.shown()) {
+                    out.add(tab.label());
+                }
+            }
+            return Collections.unmodifiableList(out);
+        }
+
+        /** Every tab the page has for the object, shown or hidden, in the GUI's order. */
+        public List<Tab> all() {
+            return all;
+        }
+
+        /** The tab by its label as shown, its label key or its identifier, shown or hidden; none fails. */
+        public Tab tab(String tab) {
+            Tab found = find(tab, false);
+            if (found == null) {
+                throw new IllegalArgumentException("The page of " + page + " has no tab " + tab
+                        + " (label, key or identifier); " + text());
+            }
+            return found;
+        }
+
+        /** The user sees the tab (by its label, key or identifier). */
+        public Tabs hasTab(String tab) {
+            if (find(tab, true) == null) {
+                throw new AssertionError(subject() + " shows no " + tab + " tab; " + text());
+            }
+            return this;
+        }
+
+        /** The user does not see the tab (by its label, key or identifier): hidden from them, or not on the page. */
+        public Tabs hasNoTab(String tab) {
+            if (find(tab, true) != null) {
+                throw new AssertionError(subject() + " shows a " + tab + " tab; " + text());
+            }
+            return this;
+        }
+
+        /** A shown tab of the name, else (not only shown) a hidden one; null: none. */
+        private Tab find(String name, boolean shownOnly) {
+            Tab hidden = null;
+            for (Tab tab : all) {
+                if (tab.is(name)) {
+                    if (tab.shown()) {
+                        return tab;
+                    }
+                    hidden = hidden != null ? hidden : tab;
+                }
+            }
+            return shownOnly ? null : hidden;
+        }
+
+        /** {@code helpdesk: the page of Org site-1}; without a user {@code The page of Org site-1}. */
+        private String subject() {
+            return (user != null ? user + ": the page of " : "The page of ") + page;
+        }
+
+        /** {@code its tabs: Basic, Members; hidden: Governance (visibility hidden)}. */
+        private String text() {
+            List<String> hidden = new ArrayList<>();
+            for (Tab tab : all) {
+                if (!tab.shown()) {
+                    hidden.add(tab.describe());
+                }
+            }
+            List<String> names = names();
+            return "its tabs: " + (names.isEmpty() ? "none" : String.join(", ", names))
+                    + (hidden.isEmpty() ? "" : "; hidden: " + String.join(", ", hidden));
+        }
+
+        @Override
+        public String toString() {
+            return "the tabs of the page of " + page + (user != null ? " as " + user : "") + ": " + text();
+        }
     }
 
     /** What the item's field says of a value typed into it. */

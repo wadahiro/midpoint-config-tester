@@ -25,6 +25,7 @@ import com.github.wadahiro.midpoint.tester.internal.GuiForms;
  *     .set("displayName", "Category").submit().saves()
  * t.newObjectForm(UserType::class.java).archetype("employee").memberOf("site-1", SchemaConstants.ORG_MANAGER)
  *     .set("name", "mgr-1").submit().saves()
+ * t.newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1").tabs().hasNoTab("Governance")
  * }</pre>
  */
 public final class NewObjectForm extends ObjectForm {
@@ -115,5 +116,11 @@ public final class NewObjectForm extends ObjectForm {
         }
         return new GuiForms.Spec(type, null, archetype != null ? oidOf(api, ArchetypeType.class, archetype) : null,
                 memberOid, memberClass, relation, user, items);
+    }
+
+    @Override
+    String page() {
+        return "a new " + kind() + (archetype != null ? " of archetype " + archetype : "")
+                + (member != null ? " in " + member : "");
     }
 }

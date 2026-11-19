@@ -54,7 +54,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
  *   <li>a value is typed into the item's field and the field's change event fires, as leaving the field does (the
  *       field's validator); an item the page does not show until "show empty fields" is pressed gets it pressed;</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
- *       for, then its progress timer fires once, as the browser's poll.</li>
+ *       for, then its progress timer fires once, as the browser's poll;</li>
+ *   <li>the tabs are read from the rendered page ({@link GuiLine#tabs}): each as the GUI decided its visibility.</li>
  * </ul>
  */
 final class GuiFormsImpl implements GuiForms {
@@ -119,6 +120,12 @@ final class GuiFormsImpl implements GuiForms {
             boolean left = tester.getLastRenderedPage().getClass() != page.getClass();
             return new Saved(!errors && (success || left), fields, other);
         });
+    }
+
+    @Override
+    public List<TabInfo> tabs(Spec spec) {
+        // the page as opened: the items typed into change no tab
+        return run(spec, "tabs", tester -> LINE.tabs(tester.getLastRenderedPage()));
     }
 
     private <T> T run(Spec spec, String what, java.util.function.Function<WicketTester, T> action) {

@@ -171,6 +171,7 @@ porting expectations between lines. The test of each row:
 | prism's message for an item without a definition | `StaticCheckTest.schema` |
 | The members panel's "+": shown to every user (4.0); midPoint's assignment holder specification without an archetype (4.0: no relations, 4.4+: none); the org of a new member in `parentOrgRef` (4.0: any relation) | `CreateMemberButtonScenarioTest`, `NewMemberOffersScenarioTest` |
 | A new object without a name saved by a user who may not add it (4.0: refused for the name first) | `CreateMemberButtonScenarioTest.theModelRefusesAMemberTheUserMayNotAdd` |
+| The tabs of a details page: hidden by `objectForms` (4.0, 4.4's old design) or by an `objectDetails` panel's `visibility` (4.4+); identifiers (4.0: `focusTabGovernance`, 4.4+: `orgGovernance`); no Governance on a new object's page | `DetailsTabsScenarioTest` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
 line and older ones (e.g. resources without `delineation` for 4.4). A configuration you test on several lines

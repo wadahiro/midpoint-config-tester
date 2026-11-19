@@ -1,0 +1,64 @@
+<!--
+    The tabs of a details page (DetailsTabsScenarioTest): an org, a role and a user; a help desk user whose role hides
+    the Governance panel of orgs (objectDetails, 4.4 and later; fixtures-4.0 has the 4.0 variant); a site admin who
+    opens new orgs, with no GUI configuration of their own.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <org oid="10000000-0000-0000-0000-0000000f0201">
+        <name>tabs-site-1</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0202">
+        <name>tabs-team-1</name>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0203">
+        <name>tabs-jack</name>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0210">
+        <name>tabs-helpdesk-role</name>
+        <!-- the pages of orgs, roles and users; reads everything -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <!-- the Governance panel of orgs hidden; the other panels as midPoint has them -->
+        <adminGuiConfiguration>
+            <objectDetails>
+                <objectDetailsPage>
+                    <type>OrgType</type>
+                    <panel>
+                        <identifier>orgGovernance</identifier>
+                        <visibility>hidden</visibility>
+                    </panel>
+                </objectDetailsPage>
+            </objectDetails>
+        </adminGuiConfiguration>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0211">
+        <name>tabs-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0210" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0212">
+        <name>tabs-site-admin-role</name>
+        <!-- the pages of orgs, new ones too; no adminGuiConfiguration -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0213">
+        <name>tabs-site-admin</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0212" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

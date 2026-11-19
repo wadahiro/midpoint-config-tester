@@ -116,6 +116,11 @@ Other line notes:
   it once), and a new member's org is in its `parentOrgRef` with any relation (4.4 and later: with a relation stored
   into `parentOrgRef`, by default `default` and `manager`). A new object without a name is refused for its name
   before its request is authorized.
+- **4.0**: the tabs of a details page (`tabs()`) follow the user's `adminGuiConfiguration/objectForms` of the type
+  (only the tabs a `panelUri` names, unless `includeDefaultForms`), not an authorization per tab nor `objectDetails`; a
+  tab is identified by its URI's local name (`focusTabGovernance`), and has no sub-tabs. 4.4 and later: the panels of
+  `objectDetails` (identifier `orgGovernance`), shown by their `visibility` and `applicableForOperation`. 4.4 has both
+  designs: the old one (`useNewDesign` false) reads `objectForms` as 4.0 does.
 - **4.4**: accounts are imported by searching the shadow and `importFromResource`; scanners and report exports are
   tasks switched to the background. `why()` places a mapping by finding its value in its object, so two equal mappings
   in one object are told apart by their name only.

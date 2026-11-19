@@ -84,8 +84,8 @@ out.hasRows(2).hasRowWith("User", "jack");
 
 | Call | What it is | Returns, fails with |
 |---|---|---|
-| `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember`, `offersNewMember`, `offersNoNewMember` (also `isShown`, `isHidden`) | a claim about midPoint now | its subject; `AssertionError` |
-| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown` | a read, for AssertJ | the value |
+| `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember`, `offersNewMember`, `offersNoNewMember` (also `isShown`, `isHidden`), a form's `tabs().hasTab`, `hasNoTab` | a claim about midPoint now | its subject; `AssertionError` |
+| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown`, a form's `tabs().names()`, `all()`, `tab(tab)` | a read, for AssertJ | the value |
 | `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` |

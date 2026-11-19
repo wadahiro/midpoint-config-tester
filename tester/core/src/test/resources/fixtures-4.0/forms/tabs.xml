@@ -1,0 +1,75 @@
+<!--
+    The 4.0 variant of fixtures/forms/tabs.xml (DetailsTabsScenarioTest): 4.0 has no objectDetails panels; the help
+    desk user's role names the tabs of orgs the user sees (objectForms: Basic, Assignments and Members), which hides
+    the others, Governance among them.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <org oid="10000000-0000-0000-0000-0000000f0201">
+        <name>tabs-site-1</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0202">
+        <name>tabs-team-1</name>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0203">
+        <name>tabs-jack</name>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0210">
+        <name>tabs-helpdesk-role</name>
+        <!-- the pages of orgs, roles and users; reads everything -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <!-- the tabs of orgs the user sees; every other tab of an org hidden -->
+        <adminGuiConfiguration>
+            <objectForms>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabBasic</panelUri>
+                    </formSpecification>
+                </objectForm>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabAssignments</panelUri>
+                    </formSpecification>
+                </objectForm>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabMembers</panelUri>
+                    </formSpecification>
+                </objectForm>
+            </objectForms>
+        </adminGuiConfiguration>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0211">
+        <name>tabs-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0210" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0212">
+        <name>tabs-site-admin-role</name>
+        <!-- the pages of orgs, new ones too; no adminGuiConfiguration -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0213">
+        <name>tabs-site-admin</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0212" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

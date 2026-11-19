@@ -1,5 +1,6 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
+import java.util.List;
 import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
 
@@ -13,7 +14,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 /**
  * What {@link GuiFormsImpl} needs of the line's GUI, whose classes differ by line (GuiLineImpl of the line module):
  * the details page of a type and how the GUI opens it for a new object (an org's parentOrgRef of a new member), a
- * page's URL, the item panels' wrappers, the background execution of a save.
+ * page's URL, the item panels' wrappers, the background execution of a save, the page's tabs.
  */
 interface GuiLine {
 
@@ -46,4 +47,10 @@ interface GuiLine {
 
     /** The background execution of the changes a save started on the page, or null (none, or executed already). */
     Future<?> saving(Page page);
+
+    /**
+     * The tabs of the rendered details page, shown or hidden, in the GUI's order: 4.4 and later the items of its
+     * details navigation, 4.0 (and 4.4's old design) the tabs of its tabbed panel.
+     */
+    List<GuiForms.TabInfo> tabs(Page page);
 }

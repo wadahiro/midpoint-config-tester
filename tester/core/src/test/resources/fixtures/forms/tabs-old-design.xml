@@ -1,0 +1,44 @@
+<!--
+    The old design of 4.4's details pages (DetailsTabsScenarioTest, 4.4 only; imported after tabs.xml): a user whose
+    role turns the new design off (useNewDesign) and names the tabs of orgs they see (objectForms, as on 4.0).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0214">
+        <name>tabs-old-design-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <adminGuiConfiguration>
+            <objectForms>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabBasic</panelUri>
+                    </formSpecification>
+                </objectForm>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabAssignments</panelUri>
+                    </formSpecification>
+                </objectForm>
+                <objectForm>
+                    <type>OrgType</type>
+                    <formSpecification>
+                        <panelUri>http://midpoint.evolveum.com/xml/ns/public/gui/component-3#focusTabMembers</panelUri>
+                    </formSpecification>
+                </objectForm>
+            </objectForms>
+            <useNewDesign>false</useNewDesign>
+        </adminGuiConfiguration>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0215">
+        <name>tabs-old-design</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0214" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

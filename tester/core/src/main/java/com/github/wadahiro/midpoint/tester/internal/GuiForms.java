@@ -85,11 +85,42 @@ public interface GuiForms {
         }
     }
 
+    /**
+     * A tab of the page as the GUI has it (4.4 and later: an item of the details navigation; 4.0 and 4.4's old design:
+     * a tab of the tabbed panel), shown to the user or not.
+     */
+    final class TabInfo {
+        /** The label as the GUI renders it, in the session's locale (a hidden tab's translated the same way). */
+        public final String label;
+        /** The label's localization key, or null: a literal label. */
+        public final String key;
+        /** The line's identifier: 4.4 and later the panel's identifier, 4.0 the local name of the tab's URI; or null. */
+        public final String identifier;
+        public final boolean shown;
+        /** Why the GUI does not show it, or null: shown. */
+        public final String hiddenBecause;
+        /** Its sub-tabs (4.4 and later: the panel's sub-panels), in the GUI's order. */
+        public final List<TabInfo> subtabs;
+
+        public TabInfo(String label, String key, String identifier, boolean shown, String hiddenBecause,
+                List<TabInfo> subtabs) {
+            this.label = label;
+            this.key = key;
+            this.identifier = identifier;
+            this.shown = shown;
+            this.hiddenBecause = shown ? null : hiddenBecause;
+            this.subtabs = Collections.unmodifiableList(new ArrayList<>(subtabs));
+        }
+    }
+
     /** The page opened, the items typed into, then the value into the item. */
     Field type(Spec spec, String item, Object value);
 
     /** The page opened, the items typed into, then Save. */
     Saved save(Spec spec);
+
+    /** The page opened: its tabs, shown or hidden, in the GUI's order. */
+    List<TabInfo> tabs(Spec spec);
 
     /** The forms of the deployment's midPoint (one per runtime). */
     static GuiForms of(com.github.wadahiro.midpoint.tester.MidPoint api) {

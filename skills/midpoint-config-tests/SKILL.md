@@ -136,7 +136,10 @@ object's: `t.editForm(type, name)`), as the user who fills it in with `t.actor(u
 `.rejects(item)`. The tester runs the GUI's own page in the JVM, nothing to declare
 (docs/guide/gui-and-authorizations.md). The "+" of a members panel: its buttons by `t.org(x).offersNewMember(type,
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
-`.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`.
+`.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The
+tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")`
+(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`); a tab's buttons are authorizations,
+`t.actor(u).isAuthorized(action, ref)`.
 
 - **A, scenario**: a midPoint-internal flow (sync, mappings, roles and inducements, lifecycle, tasks, approvals,
   certification, notifications, what is provisioned to a target).

@@ -92,8 +92,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
   `parentOrgRef`), `.memberOf(roleOrOrg, relation)` (as the "+" of its members: the assignment with the relation;
   for an org its `parentOrgRef` as the line's GUI adds it, on 4.0 with any relation, on 4.4 and later with a
   relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
-  opened by its OID as from a list: the fields show the stored values. On either, `.set(item, value)` types a value
-  in first (by path of local names: `identifier`, `extension/site`), then:
+  opened by its OID as from a list: the fields show the stored values (`editForm(ref)` takes a generated name,
+  `Orgs.SITE_1`, its type from the ref). On either, `.set(item, value)` types a value in first (by path of local
+  names: `identifier`, `extension/site`), then:
   - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
     `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
     `messages()`, `absent()`: why the page has no field to type into).
@@ -101,6 +102,32 @@ assertThat(form.canRead("emailAddress")).isTrue();
     `rejectsWith(message)` (on a field or on the form), `saved()`, `rejected()`, `messages()`, `item(item)`. Saving
     executes the changes through the model as the user: what their authorizations or a policy rule refuse is a
     message of the page too.
+  - `.tabs()` reads the page's tabs as the GUI has them for the user, from the page it renders (once; the claims
+    chain on it): `names()` the labels of the tabs shown, in the GUI's order; `hasTab(tab)`, `hasNoTab(tab)`;
+    `tab(tab)` one tab (`label()`, `key()`, `identifier()`, `shown()`, `hiddenBecause()`, `subtabs()`); `all()` every
+    tab the page has for the object, the hidden ones too. A tab is named by its label as shown (`Governance`, in the
+    JVM's locale), its label key (`pageRole.governance`, the same on every line for the built-in tabs: a test that
+    names the key reads the same in any locale) or its identifier (4.4 and later the panel's, `orgGovernance`; 4.0 the
+    local name of the tab's URI, `focusTabGovernance`). What hides a tab is the line's:
+    - 4.4 and later: the details navigation lists every panel of the type's `objectDetails` as the page merges them
+      (the GUI's panels, the system configuration's, the user's roles', the object's archetype's), and shows a panel
+      unless its `visibility` is `hidden` or `vacant` (`hiddenBecause()`: `visibility hidden`) or its
+      `applicableForOperation` is not the page's (`applicableForOperation modify: not on a new object`: Governance,
+      Members, History and Cases are not on a new object's page). `subtabs()` are a panel's sub-panels (Assignments:
+      All, Role, Organization...), by the same rule.
+    - 4.0 (and 4.4's old design, `useNewDesign` false): the user's `adminGuiConfiguration/objectForms` of the type.
+      None: every tab; one with `includeDefaultForms`: every tab; else only the tabs whose URI a
+      `formSpecification/panelUri` names (`no objectForm of OrgType names focusTabGovernance`). Then the tab's own
+      rule: Governance and Members not on a new object (`not on a new object`), Members only for a user who may read
+      the members, History only with `#auditRead`. A custom `objectForm` with a `panelClass` is a tab of its
+      `title`. No sub-tabs.
+    Not authorizations: a tab shown is not a tab whose content the user may change. Whether the configuration hides
+    a panel, without opening the page, is `t.actor(user).guiProfile().objectDetails()` (4.4 and later; without the
+    object's archetype's part). A tab's buttons (the assign "+" of Assignments) are not read: the GUI decides them by
+    an authorization, `t.actor(user).isAuthorized(AuthorizationConstants.AUTZ_UI_ADMIN_ASSIGN_ACTION_URI, ref)`, the
+    security enforcer's decision in any phase (4.0's GUI asks it for the request phase: the same unless an
+    authorization is limited to a phase); 4.4 and later show the button for any authorization of the user that names
+    the action, a deny or one limited to some objects too, where `isAuthorized` may be false.
 
   midPoint evaluates an object template's item validation (`item/validation/server`) only in the GUI's form, never in
   the model's operations: an object added through the model API is not validated, so a test of the validation asks
@@ -112,6 +139,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor("site-admin").newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1")
       .set("name", "cat-1").set("identifier", "CAT1").submit().saves()
   t.editForm(OrgType::class.java, "cat-1").set("costCenter", "CC2").submit().rejects("costCenter")
+  t.actor(Users.HELPDESK).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("pageRole.governance")
+  t.actor("site-admin").newObjectForm(OrgType::class.java).parent("site-1").tabs().hasNoTab("Governance")
+  t.editForm(Orgs.SITE_1).tabs().names() shouldContainAll listOf("Basic", "Assignments", "Members", "Governance")
   ```
 
   What the page does is the GUI's:

@@ -239,6 +239,11 @@ public final class Actor {
         return new EditObjectForm(tester, type, nameOrOid, name);
     }
 
+    /** {@link #editForm(Class, String)} by the generated name ({@code Orgs.SITE_1}): its type from the ref. */
+    public EditObjectForm editForm(ObjectRef object) {
+        return editForm(typeOf(object), key(object));
+    }
+
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();
@@ -389,8 +394,9 @@ public final class Actor {
         return object.getClass().getSimpleName();
     }
 
+    /** The midPoint type of the ref ({@code RoleType}). */
     @SuppressWarnings("unchecked")
-    private Class<ObjectType> typeOf(ObjectRef object) {
+    static Class<ObjectType> typeOf(ObjectRef object) {
         try {
             return (Class<ObjectType>) Class.forName(
                     "com.evolveum.midpoint.xml.ns._public.common.common_3." + object.type());
