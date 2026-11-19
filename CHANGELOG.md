@@ -1,3 +1,19 @@
+# [0.12.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.11.0...v0.12.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* **gui:** a user's GUI profile has the GUI's part from the first login on, whether or not a form loaded the GUI ([27b3a63](https://github.com/wadahiro/midpoint-config-tester/commit/27b3a639d2a3912e003831f4a9d051f28221298f))
+* **membership:** read memberships by the association's value attribute ([00c3553](https://github.com/wadahiro/midpoint-config-tester/commit/00c35537ad35723837224ebdec5329e8760b4b10))
+
+
+### Features
+
+* **failure:** t.expectFailure(...).userMessage("ja") is the refusal as the GUI shows it, translated with the deployment's localization (config.localization) ([f6de172](https://github.com/wadahiro/midpoint-config-tester/commit/f6de172112d2fbe7c462b681df05879d5c264b6f))
+* **forms:** t.newObjectForm(type) and t.editForm(type, name) run the GUI's own details page in the JVM, as the user: a value typed into a field, Save, and whether the user may open the page ([8f72124](https://github.com/wadahiro/midpoint-config-tester/commit/8f72124edea0697a6b587e179e14985a5d9bbd15))
+* **membership:** read 4.9+ simulated reference types as associations ([bfb3bdf](https://github.com/wadahiro/midpoint-config-tester/commit/bfb3bdf97d7f261ac2be77b713fdec033a4e0808))
+* **mirror:** an identifier per object class that the target system issues (identifier: { User: userId, Group: groupId }), and memberships a group holds by the accounts' identifiers read through them ([81dbfb9](https://github.com/wadahiro/midpoint-config-tester/commit/81dbfb90700b144b8abc72fd2586c281dfb4137a))
+
 # [0.11.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.10.0...v0.11.0) (2026-11-18)
 
 
