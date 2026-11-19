@@ -30,6 +30,7 @@ import com.github.wadahiro.midpoint.tester.ResourceOptions;
  *   overlays:
  *     "4.0": { dirs: [overlays/4.0], remove: [tasks/050-old.xml] }
  *   schema: schema                        # extension XSDs (midPoint's schema directory)
+ *   localization: localization            # midPoint's localization directory: Midpoint.properties, Midpoint_ja...
  * targets:                                # by resource name; any other resource is a mirror
  *   HR:   { connector: csv, initialData: initial-data/hr.csv }   # the target system's content at the start
  *   LDAP: { connector: ldap, initialData: initial-data/directory.ldif, referentialIntegrity: true }
@@ -100,6 +101,8 @@ public final class Manifest {
     public final Map<String, String> replace;
     public final Map<String, Overlay> overlays;
     public final Path schema;
+    /** The deployment's message bundles ({@code <midpoint.home>/localization}), or null. */
+    public final Path localization;
     public final Map<String, Target> targets;
     public final boolean mailRedirect;
     /** URL prefixes of HTTP services the tester stands in for ({@code http.redirect}). */
@@ -143,7 +146,8 @@ public final class Manifest {
         check(yaml, "", Set.of("config", "targets", "constants", "databases", "repository", "environment", "mail", "http", "network", "logs", "files",
                 "names", "timeZone"));
         Map<String, Object> config = map(yaml.get("config"), "config");
-        check(config, "config.", Set.of("dirs", "then", "exclude", "properties", "replace", "overlays", "schema"));
+        check(config, "config.", Set.of("dirs", "then", "exclude", "properties", "replace", "overlays", "schema",
+                "localization"));
         configDirs = paths(config.get("dirs"), "config.dirs");
         if (configDirs.isEmpty()) {
             throw invalid("config.dirs: at least one directory of post-initial objects is needed");
@@ -208,6 +212,8 @@ public final class Manifest {
         });
         overlays = Collections.unmodifiableMap(ov);
         schema = config.get("schema") != null ? dir.resolve(config.get("schema").toString()).normalize() : null;
+        localization = config.get("localization") != null
+                ? dir.resolve(config.get("localization").toString()).normalize() : null;
 
         Map<String, Target> t = new LinkedHashMap<>();
         map(yaml.get("targets"), "targets").forEach((resource, value) -> t.put(resource, target(resource, value)));

@@ -4,6 +4,7 @@ import static com.github.wadahiro.midpoint.configtester.assertj.MidPointConditio
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -172,6 +173,42 @@ class AccessRequestScenarioTest {
         failure.isPolicyViolation();
         failure.hasMessageContaining("Auditor");
         t.user(Users.ANN).hasNoAssignment(Roles.AUDITOR).hasAssignment(Roles.ACCOUNTANT);
+    }
+
+    /**
+     * The refusal as the GUI shows it, in the user's language: midPoint's text of the exclusion, the deployment's own
+     * Japanese one (its localization directory, config.localization).
+     */
+    @Test
+    void theUserMessageIsInTheLanguage(MidPointConfigTester t) {
+        Failure failure = t.expectFailure(() -> t.user(Users.ANN).assign(Roles.AUDITOR));
+
+        assertThat(failure.userMessage(Locale.ENGLISH))
+                .isEqualTo("Violation of SoD policy: Role \"Auditor\" excludes role \"Accountant\", they cannot be"
+                        + " assigned at the same time")
+                .isEqualTo(failure.exception().getCause().getMessage());
+        assertThat(failure.userMessage("ja")).isEqualTo("職務分離の違反です（ロール \"Auditor\" と ロール \"Accountant\" は同時に持てません）");
+    }
+
+    /**
+     * A constraint's presentation/message is the user's message: its key translated by the deployment's bundles, the
+     * fallback in a language they have no text for (and in midPoint's own message).
+     */
+    @Test
+    void theConstraintsPresentationIsTheUserMessage(MidPointConfigTester t) {
+        t.midpoint().addObjectXml("<role xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'>"
+                + "<name>Bookkeeper</name><assignment><policyRule><policyConstraints><exclusion><presentation>"
+                + "<message><key>bookkeeper.excludes.accountant</key>"
+                + "<fallbackMessage>A bookkeeper cannot be an accountant.</fallbackMessage></message></presentation>"
+                + "<targetRef oid='30000000-0000-0000-0000-00000000c003' type='RoleType'/></exclusion>"
+                + "</policyConstraints><policyActions><enforcement/></policyActions></policyRule></assignment>"
+                + "</role>");
+
+        Failure failure = t.expectFailure(() -> t.user(Users.ANN).assign("Bookkeeper"));
+
+        failure.isPolicyViolation().hasMessageContaining("A bookkeeper cannot be an accountant.");
+        assertThat(failure.userMessage("ja")).isEqualTo("記帳担当者は経理担当者を兼ねられません。");
+        assertThat(failure.userMessage("en")).isEqualTo("A bookkeeper cannot be an accountant.");
     }
 
     @Test

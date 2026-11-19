@@ -142,6 +142,14 @@ along the assignment path. Set it in the surefire configuration of the module th
 
 A deployment whose lines need different schemas points each line module at its own directory.
 
+**Texts of messages**: the manifest's `config.localization: <dir>` (the `*.properties` files as deployed to midPoint's
+`localization` directory: `Midpoint_ja.properties` with the keys of policy constraints' `presentation/message`,
+`schema_ja.properties` replacing midPoint's own texts). midPoint reads them when it starts, so they are one set per
+test JVM, as the extension schema; with tests of other manifests in the same JVM, also give it as
+`-Dtester.localizationDir=<dir>`. They are what `Failure.userMessage("ja")` translates with, as the GUI does for a
+user of that language. Keep them off the test classpath's `localization/`, where they would hide midPoint's own
+bundles of the same name.
+
 ### Provisioning scripts and additional connectors
 
 A resource's provisioning scripts (its `<scripts>`: a home directory made after an account is added, archived before

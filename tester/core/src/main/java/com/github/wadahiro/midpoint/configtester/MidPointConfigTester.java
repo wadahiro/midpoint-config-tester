@@ -422,7 +422,7 @@ public final class MidPointConfigTester {
         try {
             operation.run();
         } catch (com.github.wadahiro.midpoint.tester.OperationFailed e) {
-            return new Failure(e);
+            return new Failure(e, deployment.api());
         }
         throw new AssertionError("Expected midPoint to refuse the operation, but it was done");
     }

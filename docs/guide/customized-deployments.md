@@ -48,6 +48,7 @@ services in a Spring context of its own. Each part of an overlay goes to the tes
 | Classes that replace midPoint's (same name) | `WEB-INF/classes`, read before the jars | test resources, read before the jars |
 | Initial objects that replace midPoint's | `WEB-INF/classes/initial-objects` | a directory of `config.dirs` |
 | Extension schemas (`*.xsd`) | `midpoint.home/schema` | `tester.extensionSchemaDir` |
+| Texts of messages (`Midpoint_ja.properties`, `schema_ja.properties`) | `midpoint.home/localization` | `config.localization` |
 | Patches applied by a Java agent (Byteman) | `-javaagent` of the server | `-javaagent` of the test JVM |
 | Servers of plugins (gRPC, custom REST endpoints) | started by the web application | not started: the tests call their services |
 

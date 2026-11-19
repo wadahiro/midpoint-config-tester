@@ -252,6 +252,7 @@ public final class Deployment {
                     + TesterRuntime.zone() + " (tester.timeZone): one time zone per JVM");
         }
         useSchema(manifest);
+        useLocalization(manifest);
         TesterRuntime runtime = TesterRuntime.get();
         // the load's own time, without midPoint's start
         start = System.currentTimeMillis();
@@ -349,32 +350,59 @@ public final class Deployment {
         String used = System.getProperty("tester.extensionSchemaDir");
         if (!TesterRuntime.isStarted()) {
             // the same schema in another directory (a copy) is the one given to the JVM: kept, the copy may go
-            if (used == null || !sameSchemas(Path.of(used), manifest.schema)) {
+            if (used == null || !sameFiles(Path.of(used), manifest.schema, ".xsd")) {
                 System.setProperty("tester.extensionSchemaDir", manifest.schema.toString());
             }
             return;
         }
         if (used == null || !Path.of(used).toAbsolutePath().normalize().equals(manifest.schema)
-                && !sameSchemas(Path.of(used), manifest.schema)) {
+                && !sameFiles(Path.of(used), manifest.schema, ".xsd")) {
             throw new DeploymentLoadException(manifest.file + ": config.schema " + manifest.schema
                     + " cannot be used: midPoint has already started in this JVM with the extension schema " + used
                     + " (one schema per JVM: run this manifest's tests in a JVM of their own)");
         }
     }
 
-    /** Whether the two directories hold the same XSD files (relative path and content), e.g. a copy of the other. */
-    private static boolean sameSchemas(Path a, Path b) {
+    /**
+     * The message bundles must be in midPoint's home before midPoint starts (its localization reads them once, and
+     * keeps them).
+     */
+    private static void useLocalization(Manifest manifest) {
+        if (manifest.localization == null) {
+            return;
+        }
+        if (!Files.isDirectory(manifest.localization)) {
+            throw new DeploymentLoadException(manifest.file + ": config.localization " + manifest.localization
+                    + " is not a directory");
+        }
+        String used = System.getProperty(TesterRuntime.LOCALIZATION_DIR);
+        if (!TesterRuntime.isStarted()) {
+            if (used == null || !sameFiles(Path.of(used), manifest.localization, ".properties")) {
+                System.setProperty(TesterRuntime.LOCALIZATION_DIR, manifest.localization.toString());
+            }
+            return;
+        }
+        if (used == null || !sameFiles(Path.of(used), manifest.localization, ".properties")) {
+            throw new DeploymentLoadException(manifest.file + ": config.localization " + manifest.localization
+                    + " cannot be used: midPoint has already started in this JVM with "
+                    + (used == null ? "no localization of a deployment" : "the localization " + used)
+                    + " (one localization per JVM: run this manifest's tests in a JVM of their own)");
+        }
+    }
+
+    /** Whether the two directories hold the same files of the suffix (relative path and content), e.g. a copy. */
+    private static boolean sameFiles(Path a, Path b, String suffix) {
         try {
-            return xsds(a).equals(xsds(b));
+            return files(a, suffix).equals(files(b, suffix));
         } catch (IOException | UncheckedIOException e) {
             return false;
         }
     }
 
-    private static Map<String, String> xsds(Path dir) throws IOException {
+    private static Map<String, String> files(Path dir, String suffix) throws IOException {
         Map<String, String> out = new java.util.TreeMap<>();
         try (Stream<Path> files = Files.walk(dir)) {
-            for (Path file : files.filter(p -> p.toString().endsWith(".xsd")).collect(Collectors.toList())) {
+            for (Path file : files.filter(p -> p.toString().endsWith(suffix)).collect(Collectors.toList())) {
                 out.put(slashed(dir.relativize(file)), Files.readString(file, StandardCharsets.UTF_8));
             }
         }

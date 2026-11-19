@@ -1,5 +1,11 @@
 package com.github.wadahiro.midpoint.configtester;
 
+import java.util.Locale;
+
+import com.evolveum.midpoint.common.LocalizationService;
+import com.evolveum.midpoint.util.LocalizableMessage;
+import com.evolveum.midpoint.util.exception.CommonException;
+import com.github.wadahiro.midpoint.tester.MidPoint;
 import com.github.wadahiro.midpoint.tester.OperationFailed;
 
 /**
@@ -9,14 +15,42 @@ import com.github.wadahiro.midpoint.tester.OperationFailed;
 public final class Failure {
 
     private final OperationFailed failure;
+    private final MidPoint mp;
 
-    Failure(OperationFailed failure) {
+    Failure(OperationFailed failure, MidPoint mp) {
         this.failure = failure;
+        this.mp = mp;
     }
 
-    /** midPoint's message (with the tester's description of the operation). */
+    /**
+     * midPoint's message (with the tester's description of the operation). A policy constraint's
+     * {@code presentation/message} is in it untranslated: its {@code fallbackMessage}; for the text the user sees, in
+     * their language, {@link #userMessage(Locale)}.
+     */
     public String message() {
         return failure.getMessage();
+    }
+
+    /**
+     * The message midPoint has for the user (its exception's user-friendly message: a policy constraint's
+     * {@code presentation/message}, midPoint's own text of the constraint without one), translated into the language
+     * as the GUI translates it for a user of that locale: by midPoint's localization (its bundles and the deployment's,
+     * {@code config.localization}; a key none has a text for is its {@code fallbackMessage}); the messages of several
+     * constraints joined. Without a user-friendly
+     * message, midPoint's message.
+     */
+    public String userMessage(Locale locale) {
+        LocalizableMessage message = userFriendlyMessage();
+        if (message == null) {
+            Throwable cause = failure.getCause() != null ? failure.getCause() : failure;
+            return cause.getMessage();
+        }
+        return mp.bean(LocalizationService.class).translate(message, locale);
+    }
+
+    /** {@link #userMessage(Locale)} of a language tag ({@code "ja"}, {@code "en"}). */
+    public String userMessage(String languageTag) {
+        return userMessage(Locale.forLanguageTag(languageTag));
     }
 
     /** midPoint refused it by a policy rule (an exclusion, a password policy...); fails with the error if not. */
@@ -57,6 +91,22 @@ public final class Failure {
             throw new AssertionError("Expected the failure to be " + what + ", but it is: " + message(), failure);
         }
         return this;
+    }
+
+    private LocalizableMessage userFriendlyMessage() {
+        for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof CommonException && ((CommonException) t).getUserFriendlyMessage() != null) {
+                return ((CommonException) t).getUserFriendlyMessage();
+            }
+        }
+        if (failure.run() != null) {
+            for (Throwable t = failure.run().failure(); t != null; t = t.getCause() == t ? null : t.getCause()) {
+                if (t instanceof CommonException && ((CommonException) t).getUserFriendlyMessage() != null) {
+                    return ((CommonException) t).getUserFriendlyMessage();
+                }
+            }
+        }
+        return null;
     }
 
     private boolean causedBy(String simpleName) {

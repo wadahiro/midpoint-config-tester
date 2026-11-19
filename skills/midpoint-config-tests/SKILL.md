@@ -171,7 +171,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - focuses by name or OID: `t.org(name).add(...)` for a name the test gives and midPoint keeps; a focus an object
     template names (or renames): `val org = t.addOrg { ... }` (`addUser`, `addRole`, `addService`), then `org` and
     `org.oid()` where a name goes, never the name it was added with
-  - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims
+  - refusals: `t.expectFailure { ... }.isPolicyViolation()` / `.isNotAuthorized()` / `.isAlreadyExists()`, claims;
+    the message the GUI shows (a constraint's `presentation/message`, translated): `.userMessage("ja")`, with the
+    deployment's `midpoint.home/localization` given as the manifest's `config.localization`
   - a resource's provisioning scripts (run through an SSH `additionalConnector`): accepted and recorded, never run;
     `c.connectorCalls().to(r).scripts().single().hasArgument("user", "jdoe").codeContains("mkdir")`; a broken
     connection: `t.target(r).scriptsFail()`

@@ -2,10 +2,13 @@
 # CertificationScenarioTest, ReportScenarioTest, InitialObjectsScenarioTest): no resources; users, roles with an
 # approval policy (one with a deadline and an escalation) and a segregation of duties rule, notifications of the
 # approvals by mail, a certification definition and a report, on top of midPoint's initial objects (the End user role
-# every user gets from the template, the default security and password policies). Written in the 4.4 format, which
+# every user gets from the template, the default security and password policies), Japanese texts of its own for
+# messages. Written in the 4.4 format, which
 # 4.0, 4.4 and 4.8 all read; the overlays hold what a line needs differently.
 config:
   dirs: [post-initial-objects]
+  # midPoint's localization directory: the deployment's own texts of messages
+  localization: localization
   overlays:
     # 4.0 has no object collection reports (its reports are Jasper reports)
     "4.0": { remove: [050-report-users.xml] }

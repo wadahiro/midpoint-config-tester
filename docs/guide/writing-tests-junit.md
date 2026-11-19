@@ -58,6 +58,8 @@ request.isApproved();
 t.user("jack").hasAssignment("Privileged Access");
 
 t.expectFailure(() -> t.user("ann").assign("Auditor")).isPolicyViolation();   // excluded by Accountant
+// the refusal as the GUI shows it to a user of that language (a constraint's presentation/message, else midPoint's text)
+assertThat(t.expectFailure(() -> t.user("ann").assign("Auditor")).userMessage("ja")).contains("Auditor");
 
 Campaign c = t.certification("Role assignments").start();
 c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "left the audit");

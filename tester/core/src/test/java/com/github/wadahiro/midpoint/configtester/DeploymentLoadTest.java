@@ -159,6 +159,22 @@ class DeploymentLoadTest {
                         + " time zone per JVM");
     }
 
+    /** A manifest's {@code config.localization} must be the bundles midPoint started with: one localization per JVM. */
+    @Test
+    void aManifestOfOtherBundlesFailsTheLoad(@org.junit.jupiter.api.io.TempDir Path dir) throws IOException {
+        TesterRuntime.get();
+        Files.createDirectories(dir.resolve("objects"));
+        Files.writeString(Files.createDirectories(dir.resolve("localization")).resolve("Midpoint_ja.properties"),
+                "other.key=other\n");
+        Path manifest = Files.writeString(dir.resolve("midpoint-config-tester.yaml"),
+                "config:\n  dirs: [objects]\n  localization: localization\n");
+
+        assertThatThrownBy(() -> Deployment.load(manifest))
+                .isInstanceOf(DeploymentLoadException.class)
+                .hasMessageContaining("cannot be used: midPoint has already started in this JVM with the localization")
+                .hasMessageContaining("one localization per JVM");
+    }
+
     static Path resource(String name) {
         try {
             return Path.of(DeploymentLoadTest.class.getClassLoader().getResource(name).toURI());

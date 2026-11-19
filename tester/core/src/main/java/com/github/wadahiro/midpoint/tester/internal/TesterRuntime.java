@@ -6,11 +6,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.github.wadahiro.midpoint.tester.MidPoint;
 import com.github.wadahiro.midpoint.tester.Run;
@@ -24,6 +27,8 @@ import com.github.wadahiro.midpoint.tester.TargetSystem;
  * <ul>
  *   <li>{@code tester.extensionSchemaDir}: directory with extension XSD files (as deployed to midPoint's
  *       {@code schema} directory);</li>
+ *   <li>{@code tester.localizationDir}: directory with message bundles (as deployed to midPoint's
+ *       {@code localization} directory: {@code Midpoint.properties}, {@code Midpoint_ja.properties}...);</li>
  *   <li>{@code tester.workDir}: working directory, {@code target} by default (midPoint home is
  *       {@code <workDir>/midpoint-home}).</li>
  * </ul>
@@ -31,6 +36,8 @@ import com.github.wadahiro.midpoint.tester.TargetSystem;
 public final class TesterRuntime {
 
     public static final String ADMINISTRATOR = "administrator";
+    /** The system property of the deployment's message bundles ({@code config.localization}). */
+    static final String LOCALIZATION_DIR = "tester.localizationDir";
     /** How long a driver call waits for the background tasks it started (system property {@code tester.taskTimeout}, seconds). */
     static final long TASK_WAIT_MILLIS = Long.getLong("tester.taskTimeout", 60) * 1000;
     private static final long RESET_WAIT_MILLIS = 10_000;
@@ -146,6 +153,9 @@ public final class TesterRuntime {
         Path home = workDir.resolve("midpoint-home");
         Files.createDirectories(home);
         System.setProperty("midpoint.home", home.toString());
+        // the deployment's message bundles: midPoint's localization reads <home>/localization once (a run before may
+        // have left another's)
+        copyLocalization(home.resolve("localization"));
         // the directories scripts' files are mapped to, and midPoint's report output directory (<home>/export)
         FileArea.get().init(workDir, home);
         // the agent is installed now: from here on the JVM reaches no other machine (NetworkGuard)
@@ -224,6 +234,27 @@ public final class TesterRuntime {
      * several JVMs ({@code tester.forks} above 1 and {@code tester.fork}, Surefire's fork number): each fork has its
      * own midPoint home, files, CSV files and reports.
      */
+    private static void copyLocalization(Path target) throws IOException {
+        if (Files.exists(target)) {
+            try (Stream<Path> files = Files.walk(target)) {
+                for (Path file : files.sorted(Comparator.reverseOrder()).collect(Collectors.toList())) {
+                    Files.delete(file);
+                }
+            }
+        }
+        String dir = System.getProperty(LOCALIZATION_DIR);
+        if (dir == null) {
+            return;
+        }
+        Path source = Path.of(dir);
+        Files.createDirectories(target);
+        try (Stream<Path> files = Files.list(source)) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".properties")).collect(Collectors.toList())) {
+                Files.copy(file, target.resolve(file.getFileName().toString()));
+            }
+        }
+    }
+
     public static Path workDirOfThisJvm() {
         String fork = System.getProperty("tester.fork", "");
         if (Integer.getInteger("tester.forks", 1) > 1 && !fork.isEmpty() && !fork.startsWith("$")) {

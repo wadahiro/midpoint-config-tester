@@ -216,6 +216,10 @@
                         <!-- the extension schema of the shared tests, as a deployment's midPoint schema directory
                              (ExtensionTest); a line module may point it elsewhere -->
                         <tester.extensionSchemaDir>${tester.dir}/core/src/test/resources/schema</tester.extensionSchemaDir>
+                        <!-- the message bundles of the shared tests, as a deployment's midPoint localization directory
+                             (AccessRequestScenarioTest; not at the classpath's localization/, which would hide
+                             midPoint's own bundles) -->
+                        <tester.localizationDir>${tester.dir}/core/src/test/resources/scenarios/access/localization</tester.localizationDir>
                         <!-- RuntimeTest: the line must match the release the module is built against -->
                         <tester.midpointVersion>${midpoint.version}</tester.midpointVersion>
                         <!-- the fork's working directory (TesterRuntime.workDirOfThisJvm); the fork's number is in
