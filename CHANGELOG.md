@@ -1,3 +1,10 @@
+# [0.14.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.13.0...v0.14.0) (2026-11-19)
+
+
+### Features
+
+* **gui:** a form's tabs() are the tabs of the object's details page as the user sees them, and editForm(ref) takes a generated name ([1b73599](https://github.com/wadahiro/midpoint-config-tester/commit/1b735990e7e6172c32a62a014ef8a922ab622393))
+
 # [0.13.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.12.0...v0.13.0) (2026-11-19)
 
 
