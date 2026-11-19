@@ -205,6 +205,25 @@ public final class Actor {
         return out;
     }
 
+    /**
+     * The GUI's form for a new object as the user fills it in ({@link NewObjectForm}), run by midPoint's GUI with the
+     * user logged in: the page's URL decided by their GUI authorizations, the fields their authorizations show (an item
+     * they cannot add has no field), the validations evaluated and the object saved as them.
+     */
+    public NewObjectForm newObjectForm(
+            Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type) {
+        return new NewObjectForm(tester, type, name);
+    }
+
+    /**
+     * The GUI's form of an existing object (name or OID) as the user changes it ({@link EditObjectForm}), run by
+     * midPoint's GUI with the user logged in, as {@link #newObjectForm}.
+     */
+    public EditObjectForm editForm(
+            Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type, String nameOrOid) {
+        return new EditObjectForm(tester, type, nameOrOid, name);
+    }
+
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();

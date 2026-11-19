@@ -52,6 +52,21 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- the GUI's forms (GuiFormsImpl) run midPoint's GUI in WicketTester (in wicket-core on this line): a
+             dependency of the tester, so a deployment has it with nothing to declare (one without the forms may
+             exclude it) -->
+        <dependency>
+            <groupId>com.evolveum.midpoint.gui</groupId>
+            <artifactId>admin-gui</artifactId>
+            <version>${midpoint.version}</version>
+            <classifier>classes</classifier>
+            <exclusions>
+                <!-- reporting libraries from dead http repositories, as for the model -->
+                <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>com.evolveum.midpoint.model</groupId>
             <artifactId>model-test</artifactId>
@@ -364,7 +379,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex), not on the classpath -->
+                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex) -->
                         <id>gui-jars</id>
                         <phase>generate-resources</phase>
                         <goals>

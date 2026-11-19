@@ -40,10 +40,59 @@ assertThat(form.canRead("emailAddress")).isTrue();
   `/admin/user`. `canOpen(actions...)` (more than one argument, or one not starting with `/`) takes a page's actions
   instead (`PageUsers`: `#usersAll`, `#users`, `#usersView`). Either way the security enforcer decides
   (`decideAccess`): one allowed and none denied. A failed assertion shows what the URL matched and needed.
-- The tester knows the line's GUI pages from an index it ships; the GUI itself is not on the test classpath.
+- The tester knows the line's GUI pages from an index it ships: `canOpen` does not load the GUI.
 - `form(object)` is the object's definition as the GUI's form gets it (`getEditObjectDefinition`, request phase):
   `canRead(path)`, `canModify(path)`, and the top-level `readableItems()` and `modifiableItems()`; `opens()` is false
   when the user may not read the object at all.
+- `t.newObjectForm(type)` and `t.editForm(type, nameOrOid)` are the object's form in the GUI, **run by the GUI
+  itself**: the tester opens the type's details page in the JVM (Wicket's tester: no browser, no web server), types
+  the values into its fields and presses Save, as a user does. `newObjectForm` is a new object's page as the GUI opens
+  it from the "+" of an archetype's members: `.archetype(name)` (its object template gives the page its items and
+  validations), `.parent(org)` (as "create child" of the organization tree: the parent's assignment and
+  `parentOrgRef`). `editForm` is an existing object's page, opened by its OID as from a list: the fields show the
+  stored values. On either, `.set(item, value)` types a value in first (by path of local names: `identifier`,
+  `extension/site`), then:
+  - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
+    `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
+    `messages()`, `absent()`: why the page has no field to type into).
+  - `.submit()` presses Save: `saves()`, `rejects(item)` (not saved, and the item's field shows a message),
+    `rejectsWith(message)` (on a field or on the form), `saved()`, `rejected()`, `messages()`, `item(item)`. Saving
+    executes the changes through the model as the user: what their authorizations or a policy rule refuse is a
+    message of the page too.
+
+  midPoint evaluates an object template's item validation (`item/validation/server`) only in the GUI's form, never in
+  the model's operations: an object added through the model API is not validated, so a test of the validation asks
+  the form. `validate` records nothing and changes nothing; `submit` stores the object when it saves.
+
+  ```kotlin
+  t.newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1")
+      .validate("identifier", "a1").fails("The identifier is upper case letters and digits.")
+  t.actor("site-admin").newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1")
+      .set("name", "cat-1").set("identifier", "CAT1").submit().saves()
+  t.editForm(OrgType::class.java, "cat-1").set("costCenter", "CC2").submit().rejects("costCenter")
+  ```
+
+  What the page does is the GUI's:
+  - As the user: `t.actor(user).newObjectForm(type)` / `.editForm(...)` logs them in as the tester logs a user in. The
+    page's URL is decided first as midPoint's security filter decides it: a user who may not open the page fails the
+    form (`form-nobody may not open /admin/org/...`). The page shows the items as the GUI shows them to the user: an
+    item they may not see, add or change has no field (`absent()`). Without an actor, the administrator's form.
+  - The field's validator sees the value as `input` (a PolyString item's text) and the object **before** the value
+    in `object`: a new object's other items typed in, an existing object's stored values. Leaving the field puts the
+    value into the object, so on saving a validation that reads its own item from `object` sees it there. 4.0
+    validates a text field twice on leaving it, the second time with the value in `object`.
+  - Saving validates every field again (an empty one with `input` null: a required item left empty), then on 4.4
+    and later the validation on saving, with the values in `object` (its messages are shown on the field when the GUI
+    reports them there, else on the form; on 4.4 a PolyString item's `input` is then the PolyString itself).
+  - The first server expression of the item, its output an `OperationResultType`: any status but success rejects. Its
+    message is the result's user-friendly message, translated in the JVM's locale, or else its message; an expression
+    midPoint cannot make or evaluate rejects with "Cannot make expression: ..." / "Cannot evaluate expression: ...".
+  - A hidden empty field ("show empty fields") is shown before typing into it.
+
+  The tester brings midPoint's GUI for them, nothing to declare:
+  [Classes of the GUI](environment.md#classes-of-the-gui). The GUI's beans load once per JVM, on its first form (not
+  midPoint's web application: no initial import, filters or web server). Not covered: the browser's own validations and scripts,
+  wizards (a resource's, an object type's), and pages other than the objects' details pages.
 - A failed assertion after any of them lists the user's authorizations, by the role they come from:
   `'read-it-users': allow authorization-model-3#read of UserType with a filter; items name, givenName...`.
 - midPoint's initial End user role (every user of the sample has it) lets a user get **any** user, with all items

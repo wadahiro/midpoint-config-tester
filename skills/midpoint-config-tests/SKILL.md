@@ -115,7 +115,7 @@ resource it cannot stand in for at once; then midPoint's import errors, one file
 | Load failure | Cause, fix |
 |---|---|
 | refused connections to other machines | a service the deployment calls has no stand-in: `http.redirect`, a stand-in resource, or `network.allow` if it must be real |
-| scripts import GUI classes (`unable to resolve class com.evolveum.midpoint.web...`) | declare `com.evolveum.midpoint.gui:admin-gui` without a version (the parent manages it, test scope) |
+| scripts import GUI classes (`unable to resolve class com.evolveum.midpoint.web...`) | the tester brings `admin-gui`: look for an exclusion of it on the tester's dependency |
 | a script reads `System.getenv(...)` (null, an NPE) | the manifest's `environment` (Groovy), or Surefire's `environmentVariables` for Java code |
 | a script connects to another system's database over JDBC | the manifest's `databases` (its table definitions as init SQL) and `environment` with `${database.<name>.url}` |
 | cannot tell which attribute names accounts of ri:X | no stored schema: `namingAttribute` |
@@ -127,7 +127,14 @@ resource it cannot stand in for at once; then midPoint's import errors, one file
 
 ## 4. Triage the manual test cases
 
-Classify each case before writing tests; most of a GUI-driven manual case is often midPoint logic.
+Classify each case before writing tests; most of a GUI-driven manual case is often midPoint logic. An object
+template's item validation (`item/validation/server`: a form's "identifier is taken", "3 to 100 characters") runs
+only in the GUI's form, never when a test adds the object through the model: test it with
+`t.newObjectForm(type).archetype(a).parent(org).validate(item, value).passes()` / `.fails(message)` (an existing
+object's: `t.editForm(type, name)`), as the user who fills it in with `t.actor(user).newObjectForm(type)` (their
+`actor` and authorizations, and whether they may open the page), the whole form with `.submit().saves()` /
+`.rejects(item)`. The tester runs the GUI's own page in the JVM, nothing to declare
+(docs/guide/gui-and-authorizations.md).
 
 - **A, scenario**: a midPoint-internal flow (sync, mappings, roles and inducements, lifecycle, tasks, approvals,
   certification, notifications, what is provisioned to a target).

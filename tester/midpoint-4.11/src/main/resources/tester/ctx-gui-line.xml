@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The GUI's beans 4.11 adds to the 4.8 line's (tester/ctx-gui.xml): its application's one-time passwords
+    (MidPointApplication's OtpManager), which the tester's context, without midPoint's authentication modules, lacks;
+    the smart integration and connector development the pages inject (not in the tester, not used by the forms).
+-->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
+        default-lazy-init="true">
+    <bean id="otpServiceFactory" autowire="constructor"
+            class="com.evolveum.midpoint.authentication.impl.otp.OtpServiceFactoryImpl"/>
+    <bean id="otpManager" autowire="constructor" class="com.evolveum.midpoint.authentication.impl.otp.OtpManagerImpl"/>
+    <bean id="smartIntegrationService" class="com.github.wadahiro.midpoint.tester.internal.AbsentBean">
+        <constructor-arg value="com.evolveum.midpoint.smart.api.SmartIntegrationService"/>
+    </bean>
+    <bean id="connectorDevelopmentService" class="com.github.wadahiro.midpoint.tester.internal.AbsentBean">
+        <constructor-arg value="com.evolveum.midpoint.smart.api.conndev.ConnectorDevelopmentService"/>
+    </bean>
+</beans>

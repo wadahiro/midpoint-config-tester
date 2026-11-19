@@ -1,0 +1,254 @@
+<!--
+    A category archetype whose object template validates the form's items (item/validation/server), as the GUI's form
+    evaluates them: an identifier of upper case letters and digits, a display name other than the identifier, and a
+    parent organization (read from the object being edited). A site organization to create the categories in.
+    The other validations show how the GUI evaluates them (NewObjectFormScenarioTest): input's type (name), the field's
+    value not yet in the object (costCenter), the second pass on saving (locality), an expression that throws
+    (mailDomain), a user-friendly message (displayOrder), actor (description), an item a clerk may not add
+    (riskLevel). A person archetype validating an extension item.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <objectTemplate oid="10000000-0000-0000-0000-0000000f0001">
+        <name>form-category-template</name>
+        <item>
+            <ref>identifier</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input == null || !(input ==~ /[A-Z0-9]+/)) {
+                                    return new OperationResult("identifier", OperationResultStatus.WARNING,
+                                        "The identifier is upper case letters and digits.").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>displayName</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (object.parentOrgRef.isEmpty()) {
+                                    return new OperationResult("displayName", OperationResultStatus.WARNING,
+                                        "A category is created in a site.").createOperationResultType()
+                                }
+                                if (input == object.identifier) {
+                                    return new OperationResult("displayName", OperationResultStatus.WARNING,
+                                        "The display name is not the identifier.").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>name</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                // the field gives its text; 4.4's validation on saving gives the PolyString itself
+                                if (input != null &amp;&amp; !(input instanceof String)
+                                        &amp;&amp; !(input instanceof com.evolveum.midpoint.prism.polystring.PolyString)) {
+                                    return new OperationResult("name", OperationResultStatus.FATAL_ERROR, """The input is a ${input.getClass().simpleName}.""").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>costCenter</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                // the field's validator: the value typed is not in the object yet (4.0 validates a text field twice)
+                                return object.costCenter == null ? new OperationResult("costCenter", OperationResultStatus.SUCCESS, "").createOperationResultType()
+                                    : new OperationResult("costCenter", OperationResultStatus.FATAL_ERROR, "The cost center is in the object already.").createOperationResultType()
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>locality</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                // nothing while typing (a PolyString field validates once); on saving the value is in the object
+                                if (object.locality != null) {
+                                    return new OperationResult("locality", OperationResultStatus.FATAL_ERROR, "Saving sees the locality.").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>mailDomain</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input == 'boom') {
+                                    throw new IllegalStateException("No mail domain service")
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>displayOrder</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input != null &amp;&amp; input &lt;= 0) {
+                                    def r = new OperationResult("displayOrder")
+                                    r.setUserFriendlyMessage(new com.evolveum.midpoint.util.SingleLocalizableMessage("tester.form.noSuchKey", null,
+                                        "The display order is a positive number."))
+                                    r.recordFatalError("displayOrder not positive")
+                                    return r.createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>description</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input != null &amp;&amp; actor?.name?.orig != 'form-clerk') {
+                                    return new OperationResult("description", OperationResultStatus.FATAL_ERROR, "Only the clerk documents categories.").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+        <item>
+            <ref>riskLevel</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                return null
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+    </objectTemplate>
+    <archetype oid="10000000-0000-0000-0000-0000000f0002">
+        <name>form-category</name>
+        <archetypePolicy>
+            <objectTemplateRef oid="10000000-0000-0000-0000-0000000f0001"/>
+        </archetypePolicy>
+        <assignment>
+            <assignmentRelation>
+                <holderType>OrgType</holderType>
+            </assignmentRelation>
+        </assignment>
+    </archetype>
+    <org oid="10000000-0000-0000-0000-0000000f0003">
+        <name>form-site</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0004">
+        <name>form-clerk-role</name>
+        <!-- a clerk creates categories, without their risk level -->
+        <authorization>
+            <!-- the GUI's organization pages -->
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <item>name</item>
+            <item>identifier</item>
+            <item>displayName</item>
+            <item>description</item>
+            <item>assignment</item>
+            <item>parentOrgRef</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0005">
+        <name>form-clerk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0004" type="RoleType"/>
+        </assignment>
+    </user>
+    <objectTemplate oid="10000000-0000-0000-0000-0000000f0006">
+        <name>form-person-template</name>
+        <item>
+            <ref xmlns:ext="http://example.com/xml/ns/tester-extension">extension/ext:site</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input != null &amp;&amp; input != input.toUpperCase()) {
+                                    return new OperationResult("site", OperationResultStatus.FATAL_ERROR,
+                                        "The site is upper case.").createOperationResultType()
+                                }
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+    </objectTemplate>
+    <archetype oid="10000000-0000-0000-0000-0000000f0007">
+        <name>form-person</name>
+        <archetypePolicy>
+            <objectTemplateRef oid="10000000-0000-0000-0000-0000000f0006"/>
+        </archetypePolicy>
+        <assignment>
+            <assignmentRelation>
+                <holderType>UserType</holderType>
+            </assignmentRelation>
+        </assignment>
+    </archetype>
+</objects>

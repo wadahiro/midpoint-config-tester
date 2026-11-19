@@ -364,23 +364,31 @@ manifest (`repository.ddl`): see [Customized DDL of the repository](customized-d
 
 ## Classes of the GUI
 
-midPoint's GUI module is not on the tester's class path: a script or a custom class that uses one of its classes (a
-utility of the GUI, `com.evolveum.midpoint.web.util.ExpressionUtil`, Wicket) fails with `unable to resolve class`.
-Such a repository declares it, without a version (the parents manage it at the line's midPoint version, test scope):
+midPoint's GUI module (`admin-gui`, and on 4.8 and later Wicket's tester) is a dependency of the tester: the GUI's
+object forms (`newObjectForm`, `editForm`: [What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user))
+run its pages, and a script or a custom class that uses one of its classes (a utility of the GUI,
+`com.evolveum.midpoint.web.util.ExpressionUtil`, Wicket) finds them. A repository declares nothing for it.
+
+Until a form, the GUI is only a library: classes load when code uses them, and the tester's Spring context (midPoint's
+own context files, named one by one; no Spring Boot auto-configuration) neither scans its packages nor reads its
+context files. The first form loads the GUI's beans in a context of their own, once per JVM: its pages, panels and
+authorization evaluator, not midPoint's web application (no initial import, `web.xml` filters or web server). The
+larger class path costs about half a second of the JVM's start; the GUI's `logback.xml` is not taken for the
+repository's (the tester's logging stays).
+
+A repository without forms or GUI classes may leave the GUI out, an exclusion on the tester's dependency (a form then
+fails, naming what is missing):
 
 ```xml
 <dependency>
-    <groupId>com.evolveum.midpoint.gui</groupId>
-    <artifactId>admin-gui</artifactId>
+    <groupId>io.github.wadahiro.midpoint</groupId>
+    <artifactId>midpoint-config-tester-4.8</artifactId>
+    <exclusions>
+        <exclusion><groupId>com.evolveum.midpoint.gui</groupId><artifactId>admin-gui</artifactId></exclusion>
+        <exclusion><groupId>org.apache.wicket</groupId><artifactId>wicket-tester</artifactId></exclusion>
+    </exclusions>
 </dependency>
 ```
-
-On 4.4 the GUI module is a war, whose classes are its `classes` jar: add `<classifier>classes</classifier>`.
-
-The GUI is only a library then: classes load when code uses them, and the tester's Spring context (midPoint's own
-context files, named one by one; no Spring Boot auto-configuration) neither scans its packages nor reads its context
-files, so no page, filter or web server starts. It costs about half a second of the JVM's start (a larger class
-path); its `logback.xml` is not taken for the repository's (the tester's logging stays).
 
 ## No other machine
 

@@ -19,10 +19,12 @@
   what midPoint takes from them besides (e.g. a `references` capability, 4.9+) is not tested.
 - **PostgreSQL 18 in memory.** midPoint runs on pgmem, an in-memory PostgreSQL 18. Repository behaviour specific to other
   databases is not covered.
-- **No GUI.** Drivers call the services the GUI calls; GUI-only logic (forms, wizards, request access
-  shopping cart) is not run. What the GUI shows a user is asked of the services it calls
-  ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, forms, the user's GUI profile (views, features, menu links); not
-  what a page does after it opens or the rest of the menus. The web application is not started: its filters
+- **Little GUI.** Drivers call the services the GUI calls; GUI-only logic (wizards, the request access shopping
+  cart) is not run. What the GUI shows a user is asked of the services it calls
+  ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, the
+  user's GUI profile (views, features, menu links); not what a page does after it opens or the rest of the menus.
+  The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
+  (its fields' validations, Save); not the browser's side. The web application is not started: its filters
   (`web.xml`), the GUI's localization and the servers of plugins (gRPC, custom REST endpoints) are not run.
   midPoint's own REST API is called through its authentication, authorizations and controllers on 4.8 and later
   ([midPoint's REST API](environment.md#midpoints-rest-api)), with no HTTP server: TLS, proxies and the network are

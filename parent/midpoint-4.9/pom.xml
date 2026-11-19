@@ -176,12 +176,21 @@
                 <version>${tester.version}</version>
             </dependency>
             <dependency>
-                <!-- opt-in, for a deployment whose scripts or custom classes use GUI classes (a page's utility, Wicket):
-                     declared without a version by the repository, it is on the test class path as a library; the
-                     tester's Spring context does not load the GUI (README, Classes of the GUI) -->
+                <!-- a dependency of the tester (its object forms run the GUI's pages in-process), managed here at the
+                     line's version for a repository that declares it too (scripts or custom classes that use GUI
+                     classes). The tester's Spring context loads the GUI only for a form (docs/guide/environment.md,
+                     Classes of the GUI) -->
                 <groupId>com.evolveum.midpoint.gui</groupId>
                 <artifactId>admin-gui</artifactId>
                 <version>${midpoint.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <!-- a dependency of the tester, for its object forms: Wicket's tester, which runs the pages (a jar of
+                     its own from Wicket 10 on) -->
+                <groupId>org.apache.wicket</groupId>
+                <artifactId>wicket-tester</artifactId>
+                <version>10.11.0</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>

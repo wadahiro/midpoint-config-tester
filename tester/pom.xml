@@ -27,6 +27,7 @@
         <!-- Maven Build Cache (opt-in, .mvn/maven-build-cache-config.xml): the shared sources and tests are inputs of
              every line module -->
         <maven.build.cache.input.1>${tester.dir}/core</maven.build.cache.input.1>
+        <maven.build.cache.input.9>${tester.dir}/gui</maven.build.cache.input.9>
         <!-- the parents have no classes to run the generator from: the line modules set it to false -->
         <tester.names.skip>true</tester.names.skip>
         <!-- the index of the GUI's pages (GuiPagesIndex): the LTS line modules copy the GUI's jars and set it to false -->
@@ -89,6 +90,8 @@
                         <configuration>
                             <sources>
                                 <source>${tester.dir}/core/src/main/java</source>
+                                <!-- the GUI's forms (GuiFormsImpl): compiled against each line's GUI (provided) -->
+                                <source>${tester.dir}/gui/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -159,7 +162,8 @@
                     </execution>
                     <execution>
                         <!-- the GUI's pages and the actions they need, from the jars the line module copies to
-                             target/gui (the jars are not on the classpath): Actor.canOpen(url) -->
+                             target/gui, shipped as an index: Actor.canOpen(url) without the GUI on the repository's
+                             class path (the forms need it there) -->
                         <id>gui-pages</id>
                         <phase>process-classes</phase>
                         <goals>

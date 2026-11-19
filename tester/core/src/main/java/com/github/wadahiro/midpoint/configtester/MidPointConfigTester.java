@@ -264,6 +264,27 @@ public final class MidPointConfigTester {
     }
 
     /**
+     * The GUI's form for a new object of the type, run by midPoint's GUI as the administrator: what its validations
+     * (the object template's item validation, which only the GUI's forms evaluate) say of a value, and whether it
+     * saves, e.g. {@code t.newObjectForm(OrgType.class).archetype("org-category").parent("site-1")
+     * .validate("identifier", "a1").fails()}. See {@link NewObjectForm}; as a user: {@link Actor#newObjectForm}.
+     */
+    public NewObjectForm newObjectForm(
+            Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type) {
+        return new NewObjectForm(this, type, null);
+    }
+
+    /**
+     * The GUI's form of an existing object (name or OID), run by midPoint's GUI as the administrator, e.g.
+     * {@code t.editForm(OrgType.class, "cat-1").validate("costCenter", "CC2").fails()}. See {@link EditObjectForm};
+     * as a user: {@link Actor#editForm}.
+     */
+    public EditObjectForm editForm(
+            Class<? extends com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType> type, String nameOrOid) {
+        return new EditObjectForm(this, type, nameOrOid, null);
+    }
+
+    /**
      * A request to midPoint's REST API (4.8 and later), through midPoint's own authentication, authorization and
      * controllers, without an HTTP server: {@code t.rest().basic("jdoe", "Secret-1").get("/ws/rest/self")}. See
      * {@link Rest}.

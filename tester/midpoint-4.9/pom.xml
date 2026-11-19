@@ -27,7 +27,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex), not on the classpath -->
+                        <!-- the GUI's jars, for the index of its pages (GuiPagesIndex) -->
                         <id>gui-jars</id>
                         <phase>generate-resources</phase>
                         <goals>

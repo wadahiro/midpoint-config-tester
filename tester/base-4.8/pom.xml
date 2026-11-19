@@ -23,6 +23,8 @@
         <!-- Maven Build Cache: this base's sources are inputs of its line modules -->
         <maven.build.cache.input.2>${tester.dir}/base-4.8/src</maven.build.cache.input.2>
         <midpoint.version>${midpoint48.version}</midpoint.version>
+        <!-- the Wicket of the lines' GUI (4.8 to 4.11: 10.11.0); its tester is not a dependency of the GUI module -->
+        <wicket.tester.version>10.11.0</wicket.tester.version>
     </properties>
 
     <dependencyManagement>
@@ -49,6 +51,18 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- the GUI's forms (GuiFormsImpl) run midPoint's GUI in WicketTester: dependencies of the tester, so a
+             deployment has them with nothing to declare (one without the forms may exclude both) -->
+        <dependency>
+            <groupId>com.evolveum.midpoint.gui</groupId>
+            <artifactId>admin-gui</artifactId>
+            <version>${midpoint.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.wicket</groupId>
+            <artifactId>wicket-tester</artifactId>
+            <version>${wicket.tester.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.evolveum.midpoint.model</groupId>
             <artifactId>model-test</artifactId>

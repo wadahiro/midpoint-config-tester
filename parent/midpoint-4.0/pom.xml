@@ -218,15 +218,22 @@
                 <version>${tester.version}</version>
             </dependency>
             <dependency>
-                <!-- opt-in, for a deployment whose scripts or custom classes use GUI classes (a page's utility, Wicket):
-                     declared without a version by the repository, it is on the test class path as a library; the
-                     tester's Spring context does not load the GUI (README, Classes of the GUI) -->
+                <!-- a dependency of the tester (its object forms run the GUI's pages in-process), managed here at the
+                     line's version for a repository that declares it too (scripts or custom classes that use GUI
+                     classes). The tester's Spring context loads the GUI only for a form (docs/guide/environment.md,
+                     Classes of the GUI) -->
                 <groupId>com.evolveum.midpoint.gui</groupId>
                 <artifactId>admin-gui</artifactId>
                 <version>${midpoint.version}</version>
                 <!-- the GUI module of this line is a war: its classes are the "classes" jar -->
                 <classifier>classes</classifier>
                 <scope>test</scope>
+                <exclusions>
+                    <!-- reporting libraries from dead http repositories, which the tester leaves out -->
+                    <exclusion><groupId>com.lowagie</groupId><artifactId>itext</artifactId></exclusion>
+                    <exclusion><groupId>org.olap4j</groupId><artifactId>olap4j</artifactId></exclusion>
+                    <exclusion><groupId>net.sf.jasperreports</groupId><artifactId>*</artifactId></exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,0 +1,106 @@
+package com.github.wadahiro.midpoint.tester.internal;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
+
+/**
+ * The GUI's object forms, run by midPoint's own GUI ({@code configtester.NewObjectForm}, {@code EditObjectForm}): the
+ * line module's {@code GuiFormsImpl} opens the object's details page in WicketTester, types into its fields and
+ * saves, so the validations, the items shown and the saving are the GUI's. It needs midPoint's GUI module on the test
+ * class path (a test dependency of the deployment), and Wicket's tester on 4.8 and later; without them a form fails
+ * with what to add. Core has no GUI or Wicket type: the implementation is loaded by name.
+ */
+public interface GuiForms {
+
+    /** The page: a new object (oid null; its archetype and parent) or an existing one, the user, the items typed. */
+    final class Spec {
+        public final Class<? extends ObjectType> type;
+        /** The object edited, or null for a new one. */
+        public final String oid;
+        public final String archetypeOid;
+        public final String parentOid;
+        /** The user filling it in, or null: the administrator. */
+        public final String user;
+        /** The items typed into, by their paths of local names, in this order. */
+        public final Map<String, Object> items;
+
+        public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String parentOid, String user,
+                Map<String, Object> items) {
+            this.type = type;
+            this.oid = oid;
+            this.archetypeOid = archetypeOid;
+            this.parentOid = parentOid;
+            this.user = user;
+            this.items = Collections.unmodifiableMap(new LinkedHashMap<>(items));
+        }
+    }
+
+    /** What the field shows after a value is typed into it. */
+    final class Field {
+        /** Whether the item has a validation in the page (an object template's item/validation/server). */
+        public final boolean validated;
+        /** The messages the field shows (none: the value passes). */
+        public final List<String> messages;
+        /** Why the field is not there to type into (hidden, read-only, no such item), or null. */
+        public final String absent;
+
+        public Field(boolean validated, List<String> messages, String absent) {
+            this.validated = validated;
+            this.messages = Collections.unmodifiableList(new ArrayList<>(messages));
+            this.absent = absent;
+        }
+    }
+
+    /** What saving the page did. */
+    final class Saved {
+        /** The page saved the object (the changes executed without an error). */
+        public final boolean saved;
+        /** The messages on the fields, by item path, in the page's order. */
+        public final Map<String, List<String>> fields;
+        /** The other messages of the page: the form's (the validation on saving) and the operation's result. */
+        public final List<String> page;
+
+        public Saved(boolean saved, Map<String, List<String>> fields, List<String> page) {
+            this.saved = saved;
+            this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+            this.page = Collections.unmodifiableList(new ArrayList<>(page));
+        }
+    }
+
+    /** The page opened, the items typed into, then the value into the item. */
+    Field type(Spec spec, String item, Object value);
+
+    /** The page opened, the items typed into, then Save. */
+    Saved save(Spec spec);
+
+    /** The forms of the deployment's midPoint (one per runtime). */
+    static GuiForms of(com.github.wadahiro.midpoint.tester.MidPoint api) {
+        return ((MidPointImpl) api).guiForms();
+    }
+
+    /** The line's implementation: GuiFormsImpl of the line module, with the GUI module on the class path. */
+    static GuiForms load(MidPointImpl mp) {
+        for (String required : new String[] {"com.evolveum.midpoint.web.security.MidPointApplication",
+                "org.apache.wicket.util.tester.WicketTester"}) {
+            try {
+                Class.forName(required, false, GuiForms.class.getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException("The GUI's forms run midPoint's GUI, which is not on the test class path"
+                        + " (no " + required + "): the tester brings com.evolveum.midpoint.gui:admin-gui and on 4.8"
+                        + " and later org.apache.wicket:wicket-tester; remove their exclusion from the tester's"
+                        + " dependency (docs/guide/environment.md, Classes of the GUI)");
+            }
+        }
+        try {
+            return (GuiForms) Class.forName(GuiForms.class.getPackageName() + ".GuiFormsImpl")
+                    .getDeclaredConstructor(MidPointImpl.class).newInstance(mp);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("No GUI forms in this line: " + e, e);
+        }
+    }
+}

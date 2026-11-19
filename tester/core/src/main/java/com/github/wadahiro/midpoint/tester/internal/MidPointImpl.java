@@ -1576,6 +1576,47 @@ final class MidPointImpl implements MidPoint {
         }
     }
 
+    /**
+     * {@link #query} logged in as the user (null: the administrator), in a task the user owns, in the channel (null:
+     * the current one): a lookup the GUI would make for that user.
+     */
+    private GuiForms guiForms;
+
+    /** The GUI's object forms (GuiForms), loaded on the first form. */
+    synchronized GuiForms guiForms() {
+        if (guiForms == null) {
+            guiForms = GuiForms.load(this);
+        }
+        return guiForms;
+    }
+
+    /** The administrator logged in again, its GUI profile compiled anew (by the GUI's compilers, once they are beans). */
+    void loginAdministrator() {
+        runtime.login(TesterRuntime.ADMINISTRATOR);
+    }
+
+    <T> T queryAs(String user, String channel, String name, Query<T> query) {
+        String channelBefore = channel != null ? TaskChannel.use(channel) : null;
+        if (user != null) {
+            runtime.login(user);
+        }
+        try {
+            return query(name, (task, result) -> {
+                if (user != null) {
+                    task.setOwner(existing(UserType.class, user).asPrismObject());
+                }
+                return query.run(task, result);
+            });
+        } finally {
+            if (user != null) {
+                runtime.login(TesterRuntime.ADMINISTRATOR);
+            }
+            if (channel != null) {
+                TaskChannel.use(channelBefore);
+            }
+        }
+    }
+
     <T> T query(String name, Query<T> query) {
         Task task = harness.createTask("tester " + name);
         OperationResult result = task.getResult();

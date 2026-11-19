@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The GUI's beans (4.8 and later), a child of the tester's context (GuiFormsImpl): what midPoint's web application
+    declares for its pages, without its initial import (ctx-init.xml), web server, security filter chain and REST.
+    As ctx-webapp.xml: the rest of com.evolveum.midpoint.web, lazy; as MidPointSpringApplication's component scan:
+    com.evolveum.midpoint.gui and the certification handlers, eager (the panel and wrapper factories register
+    themselves in the GuiComponentRegistry); the beans its configuration classes make (WebConfig, SecurityConfigurer).
+-->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:context="http://www.springframework.org/schema/context"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd"
+        default-lazy-init="true">
+    <context:annotation-config/>
+    <context:component-scan base-package="com.evolveum.midpoint.web">
+        <context:exclude-filter type="regex" expression="com\.evolveum\.midpoint\.web\.boot\..*"/>
+        <context:exclude-filter type="regex" expression="com\.evolveum\.midpoint\.web\.page\.admin\.certification\.handlers\..*"/>
+    </context:component-scan>
+    <bean class="org.springframework.web.servlet.resource.ResourceUrlProvider"/>
+    <bean id="asyncWebProcessManager" class="com.evolveum.midpoint.web.application.AsyncWebProcessManagerImpl"/>
+    <bean id="descriptorLoader" class="com.evolveum.midpoint.authentication.impl.authorization.DescriptorLoaderImpl"/>
+    <!-- Spring Boot's conversions (MidPointApplication's @Value durations, "60s") -->
+    <bean id="conversionService" class="org.springframework.boot.convert.ApplicationConversionService" lazy-init="false"/>
+    <!-- the GUI's authorization evaluator, as SecurityConfigurer makes it; not a candidate for the SecurityEnforcer it
+         wraps -->
+    <bean id="accessDecisionManager" autowire-candidate="false" autowire="constructor"
+            class="com.evolveum.midpoint.authentication.impl.authorization.evaluator.MidPointGuiAuthorizationEvaluator"/>
+    <bean id="midpointFormValidatorRegistry" class="com.evolveum.midpoint.web.util.validation.MidpointFormValidatorRegistry"/>
+    <bean id="midPointApplication" class="com.evolveum.midpoint.web.security.MidPointApplication"/>
+    <!-- what a line's GUI needs besides (its module's tester/ctx-gui-line.xml) -->
+    <import resource="classpath*:tester/ctx-gui-line.xml"/>
+    <beans default-lazy-init="false">
+        <context:component-scan base-package="com.evolveum.midpoint.gui, com.evolveum.midpoint.web.page.admin.certification.handlers"/>
+    </beans>
+</beans>
