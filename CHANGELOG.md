@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.12.0...v0.13.0) (2026-11-19)
+
+
+### Features
+
+* **gui:** t.org(x).newMemberOffers() are the buttons of the members panel's "+", t.actor(u).createMemberButton(t.org(x)) the "+" as the user sees it, and its click the new member's form ([2c031eb](https://github.com/wadahiro/midpoint-config-tester/commit/2c031eb7e226cad3e82ba86af3375acb5f829f0d))
+
 # [0.12.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.11.0...v0.12.0) (2026-11-19)
 
 
