@@ -1,0 +1,240 @@
+<!--
+    The "+" of a members panel (CreateMemberButtonScenarioTest). A site archetype of orgs whose inducements say what
+    the "+" of a site's members offers: a category org; an employee user as a member, a manager and an approver (one
+    assignmentRelation with three relations); the category again (one button); an assignmentRelation with an archetype
+    only (ignored by the GUI). A team archetype of roles offering a user and a service without an archetype and an
+    owner of no type. An archetype with no assignmentRelation, and an org without an archetype.
+    The employee's object template has a validation of description that shows the parentOrgRef of the new user, as
+    the GUI's form gives it to the validation.
+    Users: a site admin (sees the + of orgs; may assign members only to site-1), a help desk user (sees no +), a user
+    whose only #adminAddOrgMember is a deny, a team admin (sees the + of roles and services, not of orgs).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <archetype oid="10000000-0000-0000-0000-0000000f0101">
+        <name>member-category</name>
+    </archetype>
+    <objectTemplate oid="10000000-0000-0000-0000-0000000f0102">
+        <name>member-employee-template</name>
+        <item>
+            <ref>description</ref>
+            <validation>
+                <server>
+                    <expression>
+                        <script>
+                            <code>
+                                import com.evolveum.midpoint.schema.result.*
+                                if (input == null) {
+                                    return null
+                                }
+                                def refs = object.parentOrgRef.collect { (it.relation?.localPart ?: 'no relation') }
+                                return new OperationResult("description", OperationResultStatus.FATAL_ERROR,
+                                    "parentOrgRef: " + (refs ? refs.join(', ') : 'none')).createOperationResultType()
+                            </code>
+                        </script>
+                    </expression>
+                </server>
+            </validation>
+        </item>
+    </objectTemplate>
+    <archetype oid="10000000-0000-0000-0000-0000000f0103">
+        <name>member-employee</name>
+        <archetypePolicy>
+            <objectTemplateRef oid="10000000-0000-0000-0000-0000000f0102"/>
+        </archetypePolicy>
+    </archetype>
+    <archetype oid="10000000-0000-0000-0000-0000000f0104">
+        <name>member-site</name>
+        <inducement>
+            <assignmentRelation>
+                <description>A category of the site</description>
+                <holderType>OrgType</holderType>
+                <holderArchetypeRef oid="10000000-0000-0000-0000-0000000f0101"/>
+            </assignmentRelation>
+        </inducement>
+        <inducement>
+            <assignmentRelation>
+                <holderType>UserType</holderType>
+                <holderArchetypeRef oid="10000000-0000-0000-0000-0000000f0103"/>
+                <relation>org:default</relation>
+                <relation>org:manager</relation>
+                <relation>org:approver</relation>
+            </assignmentRelation>
+        </inducement>
+        <inducement>
+            <assignmentRelation>
+                <holderType>OrgType</holderType>
+                <holderArchetypeRef oid="10000000-0000-0000-0000-0000000f0101"/>
+            </assignmentRelation>
+        </inducement>
+        <inducement>
+            <assignmentRelation>
+                <holderArchetypeRef oid="10000000-0000-0000-0000-0000000f0101"/>
+            </assignmentRelation>
+        </inducement>
+    </archetype>
+    <archetype oid="10000000-0000-0000-0000-0000000f0105">
+        <name>member-team</name>
+        <inducement>
+            <assignmentRelation>
+                <holderType>UserType</holderType>
+                <holderType>ServiceType</holderType>
+            </assignmentRelation>
+        </inducement>
+        <inducement>
+            <assignmentRelation>
+                <relation>org:owner</relation>
+            </assignmentRelation>
+        </inducement>
+    </archetype>
+    <archetype oid="10000000-0000-0000-0000-0000000f0106">
+        <name>member-plain</name>
+    </archetype>
+    <org oid="10000000-0000-0000-0000-0000000f0110">
+        <name>member-site-1</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0104" type="ArchetypeType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0111">
+        <name>member-site-2</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0104" type="ArchetypeType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0112">
+        <name>member-plain-org</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0106" type="ArchetypeType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0113">
+        <name>member-bare-org</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0114">
+        <name>member-team-1</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0105" type="ArchetypeType"/>
+        </assignment>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0120">
+        <name>member-site-admin-role</name>
+        <!-- the + of an org's members, the pages of orgs and users -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAddOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <!-- a new org or user with any item but its assignments, which need #assign -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <phase>request</phase>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <object>
+                <type>UserType</type>
+            </object>
+            <exceptItem>assignment</exceptItem>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <phase>execution</phase>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+        <!-- archetypes, and site-1 with any relation -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <target>
+                <type>ArchetypeType</type>
+            </target>
+            <target>
+                <type>OrgType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>member-site-1</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0121">
+        <name>member-site-admin</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0120" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0122">
+        <name>member-helpdesk-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0123">
+        <name>member-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0122" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0124">
+        <name>member-denied-role</name>
+        <authorization>
+            <name>no-org-members</name>
+            <decision>deny</decision>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAddOrgMember</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0125">
+        <name>member-denied</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0124" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0126">
+        <name>member-team-admin-role</name>
+        <!-- the + of a role's members, the pages of users and services; new users, no new service -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAddMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#servicesAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <target>
+                <type>RoleType</type>
+            </target>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0127">
+        <name>member-team-admin</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0126" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

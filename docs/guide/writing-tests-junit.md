@@ -84,8 +84,8 @@ out.hasRows(2).hasRowWith("User", "jack");
 
 | Call | What it is | Returns, fails with |
 |---|---|---|
-| `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember` | a claim about midPoint now | its subject; `AssertionError` |
-| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members` | a read, for AssertJ | the value |
+| `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember`, `offersNewMember`, `offersNoNewMember` (also `isShown`, `isHidden`) | a claim about midPoint now | its subject; `AssertionError` |
+| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown` | a read, for AssertJ | the value |
 | `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` |
@@ -247,7 +247,7 @@ assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).
 
 | Type | Values |
 |---|---|
-| `User`, `Role`, `Org`, `Service` | `asObject()` (the `UserType`...), `values(item)` (an item by path or typed name, e.g. an extension item), `members()`, `parents()` (an org), `projections(resource).names()`/`list()`/`count()` |
+| `User`, `Role`, `Org`, `Service` | `asObject()` (the `UserType`...), `values(item)` (an item by path or typed name, e.g. an extension item), `members()`, `parents()` (an org), `newMemberOffers()` (a role, org or service: the buttons of its members panel's "+"), `projections(resource).names()`/`list()`/`count()` |
 | `Account`, `Group`, `TargetObject` | `value(attribute)`, `values(attribute)`, `attributes()`; an account's `groups()`; a group's `members()` |
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |

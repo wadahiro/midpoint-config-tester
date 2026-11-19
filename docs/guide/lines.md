@@ -111,6 +111,11 @@ Overlays in the manifest hold what a line needs differently.
 
 Other line notes:
 
+- **4.0**: the "+" of a members panel is shown to every user who opens the page (only its header menu's Create needs
+  `#adminAddOrgMember` or `#adminAddMember`), a button its archetype repeats is shown twice (`newMemberOffers()` has
+  it once), and a new member's org is in its `parentOrgRef` with any relation (4.4 and later: with a relation stored
+  into `parentOrgRef`, by default `default` and `manager`). A new object without a name is refused for its name
+  before its request is authorized.
 - **4.4**: accounts are imported by searching the shadow and `importFromResource`; scanners and report exports are
   tasks switched to the background. `why()` places a mapping by finding its value in its object, so two equal mappings
   in one object are told apart by their name only.

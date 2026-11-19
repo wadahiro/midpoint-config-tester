@@ -37,6 +37,6 @@ public final class EditObjectForm extends ObjectForm {
 
     @Override
     GuiForms.Spec spec() {
-        return new GuiForms.Spec(type, oid, null, null, user, items);
+        return new GuiForms.Spec(type, oid, null, null, null, null, user, items);
     }
 }

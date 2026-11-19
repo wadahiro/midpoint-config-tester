@@ -1,6 +1,7 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
 import java.util.concurrent.Future;
+import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
@@ -12,6 +13,7 @@ import com.evolveum.midpoint.gui.impl.prism.panel.ItemPanel;
 import com.evolveum.midpoint.gui.impl.util.DetailsPageUtil;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.path.ItemPath;
+import com.evolveum.midpoint.web.security.MidPointApplication;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 
 /** The GUI of 4.8 and later for {@link GuiFormsImpl}: its details pages (DetailsPageUtil), item panels, progress. */
@@ -25,6 +27,12 @@ final class GuiLineImpl implements GuiLine {
     @Override
     public Class<? extends Page> newObjectPageClass(Class<? extends ObjectType> type) {
         return DetailsPageUtil.getNewlyCreatedObjectPage(type);
+    }
+
+    @Override
+    public boolean storedIntoParentOrgRef(QName relation) {
+        // DetailsPageUtil.initNewObjectWithReference: as the system configuration's relation definitions say
+        return MidPointApplication.get().getRelationRegistry().isStoredIntoParentOrgRef(relation);
     }
 
     @Override

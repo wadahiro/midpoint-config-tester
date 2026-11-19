@@ -39,19 +39,61 @@ assertThat(form.canRead("emailAddress")).isTrue();
   overlap as in the GUI: `/admin/user/**` (a user's details, `#userDetails`) also matches the new user page
   `/admin/user`. `canOpen(actions...)` (more than one argument, or one not starting with `/`) takes a page's actions
   instead (`PageUsers`: `#usersAll`, `#users`, `#usersView`). Either way the security enforcer decides
-  (`decideAccess`): one allowed and none denied. A failed assertion shows what the URL matched and needed.
+  (`decideAccess`): one allowed and none denied. A failed assertion shows what the URL matched and needed. The GUI
+  decides some of its buttons by Wicket's roles instead (any authorization naming the action, a deny too): the "+"
+  of a members panel is `createMemberButton`.
 - The tester knows the line's GUI pages from an index it ships: `canOpen` does not load the GUI.
 - `form(object)` is the object's definition as the GUI's form gets it (`getEditObjectDefinition`, request phase):
   `canRead(path)`, `canModify(path)`, and the top-level `readableItems()` and `modifiableItems()`; `opens()` is false
   when the user may not read the object at all.
+- The "+" of a role's, org's or service's members panel: what it offers is configuration, what a user sees and
+  creates with it is theirs.
+  - `t.org(x).newMemberOffers()` (`t.role(x)`, `t.service(x)`) are its buttons as the administrator reads the
+    configuration: what the `assignmentRelation`s of the object's archetype (of its inducements) say a new member
+    is, divided as the GUI divides them: one button per relation, type and archetype (`NewMemberOffer`: `type()`,
+    `archetype()`, `relation()`, `description()`), an `assignmentRelation` with neither a `holderType` nor a
+    `relation` ignored, each button once (4.0's GUI shows a repeated one twice). A button without a `relation` is
+    a member with `default`; one without a `holderType` opens the panel's default type (`type()` null). The claims
+    `offersNewMember(type, archetype[, relation])` and `offersNoNewMember(...)` compare the three (the archetype by
+    name, OID or `ArchetypeRef`; none: a button without an archetype). Not a button: the panel's generic "+", whose
+    dialog creates any type of the panel with any relation and no archetype, so `offersNoNewMember` does not mean
+    the user cannot create one. The archetype is the object's own: a super-archetype's `assignmentRelation`s are not
+    read (on no line), and on 4.4 and later only a structural archetype's.
+  - `t.actor(user).createMemberButton(t.org(x))` is the "+" as the user sees it. `shown()`, `isShown()`,
+    `isHidden()`: on 4.4 and later the GUI shows it when an authorization of the user names the panel's action
+    (`#adminAddOrgMember` for an org, `#adminAddMember` for a role or a service), `#all` or `#guiAll`, whatever its
+    decision: the GUI asks Wicket's roles of the session (every action of the user's authorizations), not the
+    security enforcer, so a deny of the action shows it too (where `canOpen` of the action is false). 4.0 shows it
+    to every user who opens the page (its header menu's Create needs the action): `isHidden()` fails there.
+    `offersNewMember` and `offersNoNewMember` are the configuration's buttons as the user sees them (shown and
+    offered). `click(type, archetype[, relation])` is the button's form: the user's
+    `newObjectForm(type).archetype(archetype).memberOf(x, relation)` (below), to fill in and submit; it fails when
+    the user does not see the "+" or it has no such button. A button without a type is clicked with the type given.
+    Whether the click creates the member is the form's: the page opens as the user's GUI authorizations allow, the
+    fields are the items they may add, then the model authorizes the new object as it does a request, its
+    assignments first (`#assign` of the role or org, with the relation, unless `#add` allows the assignments
+    already), then `#add`. A refusal is the page's message (`submit().saved()` false, `messages()`), after the
+    fields pass their validations.
+
+  ```kotlin
+  t.org("site-1").offersNewMember(OrgType::class.java, "org-category").offersNoNewMember(OrgType::class.java, "org-site")
+  t.actor("site-admin").createMemberButton(t.org("site-1")).isShown()
+      .click(OrgType::class.java, "org-category").set("name", "cat-1").submit().saves()
+  t.org("cat-1").hasParent("site-1").hasAssignment("org-category")
+  t.actor("helpdesk").createMemberButton(t.org("site-1")).isHidden()
+  t.actor("site-admin").createMemberButton(t.org("site-1"))
+      .click(UserType::class.java, "employee", SchemaConstants.ORG_MANAGER).set("name", "mgr-1").submit().saves()
+  ```
 - `t.newObjectForm(type)` and `t.editForm(type, nameOrOid)` are the object's form in the GUI, **run by the GUI
   itself**: the tester opens the type's details page in the JVM (Wicket's tester: no browser, no web server), types
   the values into its fields and presses Save, as a user does. `newObjectForm` is a new object's page as the GUI opens
   it from the "+" of an archetype's members: `.archetype(name)` (its object template gives the page its items and
   validations), `.parent(org)` (as "create child" of the organization tree: the parent's assignment and
-  `parentOrgRef`). `editForm` is an existing object's page, opened by its OID as from a list: the fields show the
-  stored values. On either, `.set(item, value)` types a value in first (by path of local names: `identifier`,
-  `extension/site`), then:
+  `parentOrgRef`), `.memberOf(roleOrOrg, relation)` (as the "+" of its members: the assignment with the relation;
+  for an org its `parentOrgRef` as the line's GUI adds it, on 4.0 with any relation, on 4.4 and later with a
+  relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
+  opened by its OID as from a list: the fields show the stored values. On either, `.set(item, value)` types a value
+  in first (by path of local names: `identifier`, `extension/site`), then:
   - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
     `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
     `messages()`, `absent()`: why the page has no field to type into).

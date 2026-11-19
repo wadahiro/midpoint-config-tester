@@ -30,8 +30,8 @@ import com.github.wadahiro.midpoint.tester.GuiProfile;
  * needs the End user role's "assign requestable roles", an approval the Approver role's, a review the Reviewer
  * role's). What the user sees and may do in the GUI is asked the same way, by midPoint's actions: what their searches
  * find ({@link #search}, {@link #canSearch}), what they get ({@link #canGet}), both ({@link #canRead}), which pages
- * open ({@link #canOpen}), what an object's form shows and lets them change ({@link #form}). When an assertion on
- * these fails, the failure lists the user's authorizations.
+ * open ({@link #canOpen}), what an object's form shows and lets them change ({@link #form}), the "+" of a members
+ * panel ({@link #createMemberButton}). When an assertion on these fails, the failure lists the user's authorizations.
  *
  * <pre>{@code
  * t.actor("jack").request().assign("Privileged Access");
@@ -216,6 +216,21 @@ public final class Actor {
     }
 
     /**
+     * The "+" of the role's, org's or service's members panel as the user sees it ({@link CreateMemberButton}):
+     * whether the GUI shows it to them, what it offers, and the form a click on a button opens, as the user:
+     * {@code t.actor("site-admin").createMemberButton(t.org("site-1")).click(OrgType.class, "org-category")
+     * .set("name", "cat-1").submit().saves()}.
+     */
+    public CreateMemberButton createMemberButton(AbstractRole<?> role) {
+        return new CreateMemberButton(tester, this, role);
+    }
+
+    /** {@link #createMemberButton(AbstractRole)} by the generated name ({@code Orgs.SITE_1}, a role or a service). */
+    public CreateMemberButton createMemberButton(ObjectRef role) {
+        return createMemberButton(AbstractRole.of(tester, role));
+    }
+
+    /**
      * The GUI's form of an existing object (name or OID) as the user changes it ({@link EditObjectForm}), run by
      * midPoint's GUI with the user logged in, as {@link #newObjectForm}.
      */
@@ -274,7 +289,7 @@ public final class Actor {
     }
 
     /** Once per user and test, however many of their checks the test makes. */
-    private void explainAuthorizations() {
+    void explainAuthorizations() {
         tester.read("authorizations of " + name, this::authorizations);
     }
 

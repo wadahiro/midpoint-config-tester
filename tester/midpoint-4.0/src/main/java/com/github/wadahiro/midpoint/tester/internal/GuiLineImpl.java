@@ -1,6 +1,7 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
 import java.util.concurrent.Future;
+import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
@@ -15,7 +16,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 
 /**
  * The GUI of 4.0 for {@link GuiFormsImpl}: its details pages (WebComponentUtil; a new object's page made with
- * isNewObject), item panels; its progress panel polls.
+ * isNewObject; an org a new member is created in is its parentOrgRef with any relation), item panels; its progress
+ * panel polls.
  */
 final class GuiLineImpl implements GuiLine {
 
@@ -27,6 +29,12 @@ final class GuiLineImpl implements GuiLine {
     @Override
     public Class<? extends Page> newObjectPageClass(Class<? extends ObjectType> type) {
         return WebComponentUtil.getNewlyCreatedObjectPage(type);
+    }
+
+    @Override
+    public boolean storedIntoParentOrgRef(QName relation) {
+        // WebComponentUtil.initNewObjectWithReference: every org reference, whatever its relation
+        return true;
     }
 
     @Override

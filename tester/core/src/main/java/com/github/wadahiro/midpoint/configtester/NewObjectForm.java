@@ -1,50 +1,92 @@
 package com.github.wadahiro.midpoint.configtester;
 
 import java.util.Map;
+import javax.xml.namespace.QName;
 
+import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ArchetypeType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
+import com.github.wadahiro.midpoint.configtester.names.ObjectRef;
 import com.github.wadahiro.midpoint.tester.internal.GuiForms;
 
 /**
  * The GUI's form for a new object ({@link MidPointConfigTester#newObjectForm}, as a user: {@link Actor#newObjectForm}):
  * the type's details page as the GUI opens it for a new object, with the archetype (as the "+" of an archetype's
- * members makes it: the archetype's object template gives the page its items and validations) and the parent
- * organization (as "create child" of the organization tree: its assignment and parentOrgRef). What the page does is
- * {@link ObjectForm}'s.
+ * members makes it: the archetype's object template gives the page its items and validations), the parent
+ * organization (as "create child" of the organization tree: its assignment and parentOrgRef) or the role, org or
+ * service the object is a member of with a relation (as the "+" of its members makes it:
+ * {@link Actor#createMemberButton}). What the page does is {@link ObjectForm}'s.
  *
  * <pre>{@code
  * t.newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1")
  *     .validate("identifier", "a1").fails("The identifier is upper case letters and digits.")
  * t.newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1").set("identifier", "CAT")
  *     .set("displayName", "Category").submit().saves()
+ * t.newObjectForm(UserType::class.java).archetype("employee").memberOf("site-1", SchemaConstants.ORG_MANAGER)
+ *     .set("name", "mgr-1").submit().saves()
  * }</pre>
  */
 public final class NewObjectForm extends ObjectForm {
 
     private final String archetype;
-    private final String parent;
+    /** The role, org or service of the membership (name or OID), or null. */
+    private final String member;
+    /** Its type; null: whichever abstract role has the name. */
+    private final Class<? extends AbstractRoleType> memberType;
+    private final QName relation;
 
     NewObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String user) {
-        this(tester, type, null, null, user, Map.of());
+        this(tester, type, null, null, null, null, user, Map.of());
     }
 
-    private NewObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String archetype, String parent,
-            String user, Map<String, Object> items) {
+    private NewObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String archetype,
+            String member, Class<? extends AbstractRoleType> memberType, QName relation, String user,
+            Map<String, Object> items) {
         super(tester, type, user, items);
         this.archetype = archetype;
-        this.parent = parent;
+        this.member = member;
+        this.memberType = memberType;
+        this.relation = relation;
     }
 
     /** The archetype of the new object (name or OID): its object template gives the page its items and validations. */
     public NewObjectForm archetype(String archetype) {
-        return new NewObjectForm(tester, type, archetype, parent, user, items);
+        return new NewObjectForm(tester, type, archetype, member, memberType, relation, user, items);
     }
 
-    /** The organization the new object is created in (name or OID): its assignment and parentOrgRef. */
+    /**
+     * The organization the new object is created in (name or OID), as "create child" of the organization tree makes
+     * it: its assignment (no relation set) and parentOrgRef.
+     */
     public NewObjectForm parent(String org) {
-        return new NewObjectForm(tester, type, archetype, org, user, items);
+        return new NewObjectForm(tester, type, archetype, org, OrgType.class, null, user, items);
+    }
+
+    /**
+     * The role, org or service (name or OID) the new object is a member of, as the "+" of its members makes it: its
+     * assignment with the relation set ({@code SchemaConstants.ORG_MANAGER}), and for an org its parentOrgRef when
+     * the line's GUI puts it there (4.0: for every relation; 4.4 and later: when the relation is stored into
+     * parentOrgRef, midPoint's {@code RelationRegistry}: by default the member relations, {@code default} and
+     * {@code manager}). {@link Actor#createMemberButton} clicks it from the members panel.
+     */
+    public NewObjectForm memberOf(String roleOrOrg, QName relation) {
+        return new NewObjectForm(tester, type, archetype, roleOrOrg, null, relation, user, items);
+    }
+
+    public NewObjectForm memberOf(AbstractRole<?> role, QName relation) {
+        return new NewObjectForm(tester, type, archetype, role.oid(), role.roleType(), relation, user, items);
+    }
+
+    /** {@link #memberOf(String, QName)} by the generated name ({@code Orgs.SITE_1}, a role or a service). */
+    public NewObjectForm memberOf(ObjectRef role, QName relation) {
+        return new NewObjectForm(tester, type, archetype, role.oid() != null ? role.oid() : role.on(tester.line()),
+                AbstractRole.roleType(role), relation, user, items);
+    }
+
+    /** As a member with no relation set: for an org, {@link #parent(String)}. */
+    public NewObjectForm memberOf(String roleOrOrg) {
+        return memberOf(roleOrOrg, null);
     }
 
     /**
@@ -52,13 +94,26 @@ public final class NewObjectForm extends ObjectForm {
      * {@code extension/site}), as the user fills in the form before the item validated or saving.
      */
     public NewObjectForm set(String item, Object value) {
-        return new NewObjectForm(tester, type, archetype, parent, user, with(items, item, value));
+        return new NewObjectForm(tester, type, archetype, member, memberType, relation, user,
+                with(items, item, value));
     }
 
     @Override
     GuiForms.Spec spec() {
         var api = tester.deployment().api();
+        String memberOid = null;
+        Class<? extends ObjectType> memberClass = null;
+        if (member != null) {
+            Class<? extends AbstractRoleType> lookup = memberType != null ? memberType : AbstractRoleType.class;
+            ObjectType target = api.find(lookup, member);
+            if (target == null) {
+                throw new IllegalArgumentException("No " + (memberType != null ? memberType.getSimpleName()
+                        : "role, org or service") + " " + member);
+            }
+            memberOid = target.getOid();
+            memberClass = target.getClass();
+        }
         return new GuiForms.Spec(type, null, archetype != null ? oidOf(api, ArchetypeType.class, archetype) : null,
-                parent != null ? oidOf(api, OrgType.class, parent) : null, user, items);
+                memberOid, memberClass, relation, user, items);
     }
 }

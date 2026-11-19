@@ -29,6 +29,7 @@ import org.springframework.security.web.FilterInvocation;
 import com.evolveum.midpoint.gui.api.component.result.OpResult;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.path.ItemPath;
+import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.result.OperationResultStatus;
 import com.evolveum.midpoint.web.security.MidPointApplication;
 import com.evolveum.midpoint.web.util.OnePageParameterEncoder;
@@ -49,7 +50,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
  *   <li>the page's URL is decided first by the GUI's authorization evaluator, as midPoint's security filter decides
  *       it (WicketTester renders any page for anyone);</li>
  *   <li>the page is the details page the GUI dispatches the type to, made as the GUI makes it for a new object (the
- *       archetype's and the parent's assignments, the parent's parentOrgRef) or opened by the object's OID;</li>
+ *       archetype's and the membership's assignments, an org's parentOrgRef) or opened by the object's OID;</li>
  *   <li>a value is typed into the item's field and the field's change event fires, as leaving the field does (the
  *       field's validator); an item the page does not show until "show empty fields" is pressed gets it pressed;</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
@@ -184,25 +185,34 @@ final class GuiFormsImpl implements GuiForms {
                 new org.springframework.mock.web.MockFilterChain());
     }
 
-    /** The new object as the GUI makes it for a new object with references (initNewObjectWithReference). */
+    /**
+     * The new object as the GUI makes it for a new object with references (initNewObjectWithReference): the
+     * archetype's assignment, the membership's (its relation set as the members panel sets it, none for "create
+     * child"), and for an org the parentOrgRef the line's GUI adds.
+     */
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private PrismObject<?> newObject(Spec spec) throws Exception {
         PrismObject object = mp.prismContext().createObject((Class) spec.type);
         ObjectType created = (ObjectType) object.asObjectable();
-        if (spec.archetypeOid != null || spec.parentOid != null) {
+        if (spec.archetypeOid != null || spec.memberOid != null) {
             if (!(created instanceof AssignmentHolderType)) {
-                throw new IllegalArgumentException("A form with an archetype or a parent is of an assignment holder,"
-                        + " not " + spec.type.getSimpleName());
+                throw new IllegalArgumentException("A form with an archetype, a parent or a membership is of an"
+                        + " assignment holder, not " + spec.type.getSimpleName());
             }
             AssignmentHolderType holder = (AssignmentHolderType) created;
             if (spec.archetypeOid != null) {
                 holder.getAssignment().add(new AssignmentType().targetRef(
                         new ObjectReferenceType().oid(spec.archetypeOid).type(ArchetypeType.COMPLEX_TYPE)));
             }
-            if (spec.parentOid != null) {
-                ObjectReferenceType parent = new ObjectReferenceType().oid(spec.parentOid).type(OrgType.COMPLEX_TYPE);
-                holder.getAssignment().add(new AssignmentType().targetRef(parent));
-                holder.getParentOrgRef().add(parent.clone());
+            if (spec.memberOid != null) {
+                ObjectReferenceType target = new ObjectReferenceType().oid(spec.memberOid)
+                        .type(ObjectTypes.getObjectType(spec.memberType).getTypeQName()).relation(spec.relation);
+                holder.getAssignment().add(new AssignmentType().targetRef(target));
+                // without a relation always, as "create child" does; with one as the line's members panel decides
+                if (OrgType.class.equals(spec.memberType)
+                        && (spec.relation == null || LINE.storedIntoParentOrgRef(spec.relation))) {
+                    holder.getParentOrgRef().add(target.clone());
+                }
             }
         }
         return object;

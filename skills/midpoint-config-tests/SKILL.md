@@ -134,7 +134,9 @@ only in the GUI's form, never when a test adds the object through the model: tes
 object's: `t.editForm(type, name)`), as the user who fills it in with `t.actor(user).newObjectForm(type)` (their
 `actor` and authorizations, and whether they may open the page), the whole form with `.submit().saves()` /
 `.rejects(item)`. The tester runs the GUI's own page in the JVM, nothing to declare
-(docs/guide/gui-and-authorizations.md).
+(docs/guide/gui-and-authorizations.md). The "+" of a members panel: its buttons by `t.org(x).offersNewMember(type,
+archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
+`.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`.
 
 - **A, scenario**: a midPoint-internal flow (sync, mappings, roles and inducements, lifecycle, tasks, approvals,
   certification, notifications, what is provisioned to a target).

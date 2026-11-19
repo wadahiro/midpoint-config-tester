@@ -169,6 +169,8 @@ porting expectations between lines. The test of each row:
 | Groovy in a resource, report, role... or an administrator's bulk action (the initial system configuration) | `FreshInstallationTest` |
 | The evaluator elements (`c:expressionEvaluator`'s substitution group) | `StaticCheckTest.evaluatorsOfTheLine` |
 | prism's message for an item without a definition | `StaticCheckTest.schema` |
+| The members panel's "+": shown to every user (4.0); midPoint's assignment holder specification without an archetype (4.0: no relations, 4.4+: none); the org of a new member in `parentOrgRef` (4.0: any relation) | `CreateMemberButtonScenarioTest`, `NewMemberOffersScenarioTest` |
+| A new object without a name saved by a user who may not add it (4.0: refused for the name first) | `CreateMemberButtonScenarioTest.theModelRefusesAMemberTheUserMayNotAdd` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
 line and older ones (e.g. resources without `delineation` for 4.4). A configuration you test on several lines

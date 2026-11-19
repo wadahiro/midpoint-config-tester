@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 
@@ -17,24 +18,36 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
  */
 public interface GuiForms {
 
-    /** The page: a new object (oid null; its archetype and parent) or an existing one, the user, the items typed. */
+    /**
+     * The page: a new object (oid null; its archetype and the role, org or service it is a member of) or an existing
+     * one, the user, the items typed.
+     */
     final class Spec {
         public final Class<? extends ObjectType> type;
         /** The object edited, or null for a new one. */
         public final String oid;
         public final String archetypeOid;
-        public final String parentOid;
+        /** The role, org or service a new object is a member of, or null. */
+        public final String memberOid;
+        public final Class<? extends ObjectType> memberType;
+        /**
+         * The relation of the membership, set on its targetRef; null: none set, as "create child" of the organization
+         * tree makes it (an org's parentOrgRef then always).
+         */
+        public final QName relation;
         /** The user filling it in, or null: the administrator. */
         public final String user;
         /** The items typed into, by their paths of local names, in this order. */
         public final Map<String, Object> items;
 
-        public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String parentOid, String user,
-                Map<String, Object> items) {
+        public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
+                Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items) {
             this.type = type;
             this.oid = oid;
             this.archetypeOid = archetypeOid;
-            this.parentOid = parentOid;
+            this.memberOid = memberOid;
+            this.memberType = memberType;
+            this.relation = relation;
             this.user = user;
             this.items = Collections.unmodifiableMap(new LinkedHashMap<>(items));
         }
