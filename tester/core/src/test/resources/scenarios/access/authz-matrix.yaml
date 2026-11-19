@@ -143,12 +143,13 @@ rules:
       shadows list too: their pages allow #usersAll, #users, #usersView
   - name: managers-see-the-views
     for: [it-manager]
-    rows: [gui/views/UserType/*]
+    rows: [gui/views/UserType/people, gui/views/UserType/department-members]
     value: {default: Y, "4.0": N}
     note: >-
       the side menu lists a type's views to whom it allows #usersAll or #usersView (not #users: the help desk opens
       the users list but sees no views): the system's People and the Department manager role's My department. On
-      4.0 the menu also gets the view's collection as the user, which the End user role does not read
+      4.0 the menu also gets the view's collection as the user, which the End user role does not read. The GUI's
+      default view of each type (allUsers...) is in no menu
 
 critical: [it-user/items/modify/assignment, other-user/items/modify/assignment, it-user/delete, other-user/delete,
            '*/assign/other-role', '*/assign/*-owner']

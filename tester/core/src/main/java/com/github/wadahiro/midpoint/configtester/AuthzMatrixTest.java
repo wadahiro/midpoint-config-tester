@@ -590,6 +590,10 @@ public abstract class AuthzMatrixTest {
                 for (GuiProfile profile : profiles) {
                     for (GuiProfile.CollectionView view : profile.views()) {
                         String type = view.type().getLocalPart();
+                        if (view.defaultView() && !view.inMenu()) {
+                            // a type's default view that no menu lists (the GUI's own, allUsers...): Y for no one
+                            continue;
+                        }
                         if (VIEW_ACTIONS.containsKey(type)) {
                             out.putIfAbsent(type + "/" + view.identifier(),
                                     new String[] {type, view.identifier(), view.label()});

@@ -59,7 +59,7 @@ critical: [it-user/items/modify/assignment, it-user/delete]
   same for orgs, roles, services, resources, cases, tasks; views of other types get no row, a warning). A `feature`
   row is midPoint's `isFeatureVisible`, a `menu-link` row whether the profile has the additional link (the page it
   opens is a page row). The rest of the menu (its sections and pages) is the page rows; a details page's panels
-  are not rows: the tester does not start the GUI, whose default panels midPoint adds to the profile.
+  are not rows. Nor are the GUI's default views of the types (`allUsers`...: a default view that no menu lists).
 - **Assignments** are decided as midPoint's clockwork decides a request, then its execution: the request is allowed
   by `#modify` of the `assignment` item or of all items, else by `#assign` (`#unassign`) with the target and the
   relation (`#delegate` too for a deputy); the execution needs `#modify` of the change. An authorization's `target`,

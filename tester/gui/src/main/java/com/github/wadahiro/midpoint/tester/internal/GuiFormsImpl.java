@@ -450,9 +450,6 @@ final class GuiFormsImpl implements GuiForms {
             MidPointApplication app = context.getBean(MidPointApplication.class);
             initializer = new WicketTester(app, true);
             application = app;
-            // the administrator's principal is older than the GUI's beans: its profile has none of the GUI's defaults
-            // (DefaultGuiConfigurationCompiler: the details pages' panels)
-            mp.loginAdministrator();
             Timing.end("gui.application", t);
         }
         return application;

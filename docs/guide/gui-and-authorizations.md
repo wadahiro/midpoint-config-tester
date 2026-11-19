@@ -140,7 +140,7 @@ midPoint compiled it at login:
 ```java
 GuiProfile manager = t.actor(Users.IT_MANAGER).guiProfile();
 assertThat(manager.views(UserType.COMPLEX_TYPE)).extracting(GuiProfile.CollectionView::identifier)
-        .containsExactlyInAnyOrder("people", "department-members");   // the system's, the induced role's
+        .containsExactlyInAnyOrder("people", "department-members", "allUsers");   // the system's, the induced role's, the GUI's
 assertThat(manager.view(UserType.COMPLEX_TYPE, "department-members").inMenu()).isTrue();
 assertThat(manager.featureVisibility("orgTreeExpandAll")).isEqualTo(UserInterfaceElementVisibilityType.HIDDEN);
 assertThat(manager.defaultTimezone()).isEqualTo("Asia/Tokyo");
@@ -151,6 +151,9 @@ assertThat(manager.defaultTimezone()).isEqualTo("Asia/Tokyo");
   stays hidden. `guiProfile()` is that result (`CompiledGuiProfile`), not a merge of the tester's own: the object collection views (`views()`, by type), the
   additional menu links, the dashboard links, the features, the details pages' configuration (`objectDetails()`),
   the time zone and the data language; `compiled()` is midPoint's object for the rest.
+- On 4.4 and later the GUI adds its own part, as in production: the default view of each type (`allUsers`,
+  `allRoles`...: the type's default view, in no menu) and the details pages' panels. It is in every profile, whether or
+  not a test has opened a form.
 - `inMenu()` is whether the line's side menu lists a view under its type, by the line's rule: on 4.8, not the
   default view, not hidden or vacant, for no operation or modify (4.4: the same with a collection, the default view
   too). The menu item's own page

@@ -1590,10 +1590,6 @@ final class MidPointImpl implements MidPoint {
         return guiForms;
     }
 
-    /** The administrator logged in again, its GUI profile compiled anew (by the GUI's compilers, once they are beans). */
-    void loginAdministrator() {
-        runtime.login(TesterRuntime.ADMINISTRATOR);
-    }
 
     <T> T queryAs(String user, String channel, String name, Query<T> query) {
         String channelBefore = channel != null ? TaskChannel.use(channel) : null;

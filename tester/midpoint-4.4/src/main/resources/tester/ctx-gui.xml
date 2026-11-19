@@ -27,6 +27,9 @@
     <bean id="midpointFormValidatorRegistry" class="com.evolveum.midpoint.web.util.validation.MidpointFormValidatorRegistry"/>
     <bean id="midPointApplication" class="com.evolveum.midpoint.web.security.MidPointApplication"/>
     <beans default-lazy-init="false">
-        <context:component-scan base-package="com.evolveum.midpoint.gui, com.evolveum.midpoint.web.page.admin.certification.handlers"/>
+        <!-- the GUI profile's compiler is the tester's context's (GuiProfileCompilers) -->
+        <context:component-scan base-package="com.evolveum.midpoint.gui, com.evolveum.midpoint.web.page.admin.certification.handlers">
+            <context:exclude-filter type="regex" expression="com\.evolveum\.midpoint\.gui\.api\.DefaultGuiConfigurationCompiler"/>
+        </context:component-scan>
     </beans>
 </beans>

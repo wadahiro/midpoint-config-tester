@@ -10,6 +10,8 @@
         default-lazy-init="false">
     <context:annotation-config/>
     <context:spring-configured/>
+    <!-- the GUI's compiler of GUI profiles, from the first login on (see GuiProfileCompilers) -->
+    <bean class="com.github.wadahiro.midpoint.tester.internal.GuiProfileCompilers"/>
     <!-- records mapping and expression evaluations (see RecorderInstaller) -->
     <bean class="com.github.wadahiro.midpoint.tester.internal.RecorderInstaller"/>
     <!-- records the repository and connector calls of an effectsOf block (see EffectsHook) -->

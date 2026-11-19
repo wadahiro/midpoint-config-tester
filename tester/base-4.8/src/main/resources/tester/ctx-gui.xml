@@ -30,6 +30,9 @@
     <!-- what a line's GUI needs besides (its module's tester/ctx-gui-line.xml) -->
     <import resource="classpath*:tester/ctx-gui-line.xml"/>
     <beans default-lazy-init="false">
-        <context:component-scan base-package="com.evolveum.midpoint.gui, com.evolveum.midpoint.web.page.admin.certification.handlers"/>
+        <!-- the GUI profile's compiler is the tester's context's (GuiProfileCompilers) -->
+        <context:component-scan base-package="com.evolveum.midpoint.gui, com.evolveum.midpoint.web.page.admin.certification.handlers">
+            <context:exclude-filter type="regex" expression="com\.evolveum\.midpoint\.gui\.api\.DefaultGuiConfigurationCompiler"/>
+        </context:component-scan>
     </beans>
 </beans>
