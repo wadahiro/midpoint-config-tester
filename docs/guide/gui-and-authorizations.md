@@ -63,6 +63,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
   | page | `PageAssignmentShoppingCart`, `/self/assignmentShoppingCart` | the wizard of `PageRequestAccess`, `/self/requestAccess` |
   | configuration | the system configuration's `roleManagement`: `roleCatalogRef`, `roleCatalogCollections` | the requester's compiled GUI profile's `adminGuiConfiguration/accessRequest` (each section replaced whole by the last one merged); `roleManagement/roleCatalogRef` is not read |
   | entries (`entries()`) | tabs: the role catalog (key `roleCatalog`, the catalog org itself, its org tree below at any depth) when `roleCatalogRef` is set; All roles, All organizations, All services, User's assignments (`allRoles`, `allOrgs`, `allServices`, `userAssignments`), each shown when `roleCatalogCollections` is empty or names its URI | the menu: the orgs under `roleCatalog/roleCatalogRef`, one level each, down to `roleCatalogDepth` (default 3; a deeper org is no menu item, its roles not listed); the `collection` items (an object collection, by its type and filter as written, or `allRoles`, `allOrgs`, `allServices`); Roles of teammate unless `showRolesOfTeammate` (`rolesOfTeammate/enabled`) is false |
+  | an org folder lists (`CatalogEntry.roles()`) | its roles and services one level in it together, by name (`RoleCatalogTabPanel`: searched as `AbstractRoleType`, `type RoleType` OR `type ServiceType` of the org, one level); the search panel has no type item: `withType(RoleType::class.java)` or `withType(ServiceType::class.java)` narrows the list to that type, as an Advanced query of the search panel (a `type` filter) does; any other type fails | the objects one level in it of the search panel's type, roles at first; `withType(ServiceType::class.java)` (or `OrgType`, `AbstractRoleType`) switches it |
   | target users (`canRequestFor`) | the requester, or any user their search finds | Myself unless `targetSelection/allowRequestForMyself` is false; another user unless `allowRequestForOthers` is false and when the requester's search with the object part of their `#assign` authorizations finds them; `inGroup(group, user)` a group tile's autocomplete (that filter AND the group's collection, its expressions evaluated) |
   | a role held (`offers`) | the target's assignments (`AssignmentEditorDto.isAssignable`) | the target's `roleMembershipRef` (`canAddTemplateAssignment`) |
 
@@ -73,13 +74,13 @@ assertThat(form.canRead("emailAddress")).isTrue();
   default, by name; a folder's children by display name, then name), a folder's children when first asked, as the
   user expands it, so `entry(name)` (the shallowest level first) and `children()` reach a folder at any depth the
   line shows; `roles()`, the claims and `explain` read every folder the line shows (for a large catalog,
-  `entry(name).offers(role)` reads less). An org folder lists the objects one level in it of the search panel's type, roles first on
-  every line: `withType(ServiceType::class.java)` (or `OrgType`, `AbstractRoleType`) switches it; collections and
-  the fixed entries keep their own type. `withRelation(relation)` picks the relation (default:
-  `relationSelection/defaultRelation`, else `default`); `relations()` are the relations of the `#assign`
-  authorizations for the target when none is global, else the self-service relations (4.8+: only the default when
-  `allowOtherRelations` is false). With a relation that neither a global filter nor a relation's filter covers the
-  GUI's query has no assignment filter at all and lists every object (the request is refused at Submit).
+  `entry(name).offers(role)` reads less). An org folder lists as the table says (`type()`: 4.0 and 4.4
+  `AbstractRoleType`, 4.8 and later `RoleType` until `withType`); collections and the fixed entries keep their own
+  type. `withRelation(relation)` picks the relation (default: `relationSelection/defaultRelation`, else `default`);
+  `relations()` are the relations of the `#assign` authorizations for the target when none is global, else the
+  self-service relations (4.8+: only the default when `allowOtherRelations` is false). With a relation that neither a
+  global filter nor a relation's filter covers the GUI's query has no assignment filter at all and lists every object
+  (the request is refused at Submit).
   Claims: `showsRole(role)` / `showsNoRole(role)` (listed, maybe with the add disabled), `offersRole(role)` /
   `offersNoRole(role)` (listed and its add enabled: a held role is offered again unless
   `roleManagement/defaultAssignmentConstraints` forbid the same target or relation, on every line by default),
@@ -97,13 +98,15 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor(Users.JACK).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)
   t.actor(Users.JACK).requestAccess().entry("it").roles() shouldContain Roles.VPN
   t.actor(Users.JACK).requestAccess().withType(ServiceType::class.java).entry("it").roles() shouldContain Services.WIKI
+  t.actor(Users.JACK).requestAccess().entry("it").roles() shouldContain Services.WIKI  // 4.0, 4.4
   t.actor(Users.MANAGER).requestAccess(Users.JACK).offersTarget(Users.JACK)
       .withRelation(SchemaConstants.ORG_MANAGER).offersRole(Roles.PROJECT_X)
   t.actor(Users.JACK).request().assign(Roles.VPN)
   ```
 
-  An `#assign` authorization's `target` of `AbstractRoleType` with a filter selects nothing for the page's types
-  (`RoleType`, `ServiceType`): name the types (`RoleType` and `ServiceType` targets), as midPoint's End user role does.
+  An `#assign` authorization's `target` of `AbstractRoleType` with a filter selects nothing for the lists searched
+  as `RoleType` or `ServiceType` (All roles, All services, 4.8+ folders): name the types (`RoleType` and
+  `ServiceType` targets), as midPoint's End user role does.
   Not modeled: the search box's text and subtree scope, the cart and its conflicts, several targets at once.
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings

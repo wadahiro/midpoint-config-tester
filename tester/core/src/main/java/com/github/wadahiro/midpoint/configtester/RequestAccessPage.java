@@ -23,6 +23,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RelationDefinitionType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RelationKindType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ServiceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.configtester.names.ObjectRef;
 import com.github.wadahiro.midpoint.tester.internal.AccessRequestModel;
@@ -46,10 +47,11 @@ import com.github.wadahiro.midpoint.tester.internal.AccessRequests;
  * Every entry's list is its query AND what the requester may assign to the target with the relation
  * ({@code getAssignableRoleSpecification}), searched as the requester. A role held already is still listed; its add is
  * disabled as the line and {@code roleManagement/defaultAssignmentConstraints} say ({@link #offers}). An org folder
- * lists the objects of the search panel's type, roles first ({@link #withType}). The catalog's tree and lists are read
- * across all of the GUI's pages (the GUI pages them 20 at a time; paging involves no authorization), a folder's
- * children when first asked, as the user expands it. A failed claim says which step hides the role; the requester's
- * authorizations follow. Immutable.
+ * lists the objects one level in it: 4.0 and 4.4 its roles and services together (narrowed by {@link #withType}), 4.8
+ * and later those of the search panel's type, roles first ({@link #withType} switches it). The catalog's tree and
+ * lists are read across all of the GUI's pages (the GUI pages them 20 at a time; paging involves no authorization), a
+ * folder's children when first asked, as the user expands it. A failed claim says which step hides the role; the
+ * requester's authorizations follow. Immutable.
  */
 public final class RequestAccessPage {
 
@@ -65,7 +67,7 @@ public final class RequestAccessPage {
     private final Map<CatalogEntry, List<ObjectRef>> listed = new HashMap<>();
 
     RequestAccessPage(MidPointConfigTester tester, Actor actor, String forUser) {
-        this(tester, actor, open(tester, actor), forUser, null, RoleType.class);
+        this(tester, actor, open(tester, actor), forUser, null, null);
     }
 
     private RequestAccessPage(MidPointConfigTester tester, Actor actor, AccessRequestModel model, String forUser,
@@ -107,11 +109,20 @@ public final class RequestAccessPage {
     }
 
     /**
-     * The page with the search panel's type switched, which an org folder lists the objects of ({@code RoleType} at
-     * first; {@code ServiceType}, {@code OrgType}, {@code AbstractRoleType}). Collections and the fixed entries keep
-     * their own type.
+     * The page with the type an org folder lists. 4.8 and later: the search panel's type switched ({@code RoleType}
+     * at first; {@code ServiceType}, {@code OrgType}, {@code AbstractRoleType}). 4.0 and 4.4: a folder lists roles and
+     * services together and its search panel has no type item; {@code RoleType} or {@code ServiceType} narrows the
+     * list to that type, as the search panel's Advanced query can (a {@code type} filter, ANDed with the folder's
+     * query: 4.0 Search.createObjectQueryAdvanced; 4.4 also Axiom, unless the GUI profile's search box configuration
+     * of AbstractRoleType leaves the mode out); any other type fails. Collections and the fixed entries keep their own
+     * type.
      */
     public RequestAccessPage withType(Class<? extends AbstractRoleType> type) {
+        if (!model.wizard && type != RoleType.class && type != ServiceType.class) {
+            throw new IllegalArgumentException(actor + ": withType(" + type.getSimpleName() + "): on 4.0 and 4.4 a"
+                    + " role-catalog folder lists roles and services; it has no type switch (withType(RoleType) or"
+                    + " withType(ServiceType) narrows the list, as the search panel's Advanced query can)");
+        }
         return new RequestAccessPage(tester, actor, model, targetName, chosenRelation, type);
     }
 
@@ -125,9 +136,12 @@ public final class RequestAccessPage {
         return chosenRelation != null ? chosenRelation : defaultRelation();
     }
 
-    /** The type an org folder lists ({@link #withType}). */
+    /**
+     * The type an org folder lists ({@link #withType}): by default 4.8 and later {@code RoleType}, 4.0 and 4.4
+     * {@code AbstractRoleType} (its roles and services).
+     */
     public Class<? extends AbstractRoleType> type() {
-        return folderType;
+        return folderType != null ? folderType : model.wizard ? RoleType.class : AbstractRoleType.class;
     }
 
     // ---- target selection ---------------------------------------------------------------------------------------
@@ -396,7 +410,7 @@ public final class RequestAccessPage {
             if (type == null) {
                 continue;
             }
-            ObjectFilter filter = and(queries, entry.model.filter, queries.createInOid(oid));
+            ObjectFilter filter = and(queries, filter(entry), queries.createInOid(oid));
             if (!AccessRequests.searchAsAdministrator(tester.midpoint(), type, filter).isEmpty()) {
                 listedIn.add(entry);
             }
@@ -417,7 +431,7 @@ public final class RequestAccessPage {
         }
         QueryFactory queries = tester.midpoint().prismContext().queryFactory();
         Class<? extends AbstractRoleType> type = type(entry);
-        ObjectFilter filter = entry.model.filter;
+        ObjectFilter filter = filter(entry);
         if (type == null) {
             if (teammate == null) {
                 return List.of();
@@ -456,12 +470,31 @@ public final class RequestAccessPage {
         return result;
     }
 
-    /** The type the entry lists: an org folder the page's type, else its own; null: roles of a teammate. */
+    /**
+     * The type the entry is searched as: an org folder of 4.8 and later the page's type ({@link #withType}), else its
+     * own (4.0, 4.4 a folder: AbstractRoleType, as RoleCatalogTabPanel.getQueryType); null: roles of a teammate.
+     */
     private Class<? extends AbstractRoleType> type(CatalogEntry entry) {
         if (entry.kind() == CatalogEntry.Kind.ROLES_OF_TEAMMATE || entry.kind() == CatalogEntry.Kind.USER_ASSIGNMENTS) {
             return null;
         }
-        return entry.kind() == CatalogEntry.Kind.ORG_FOLDER ? folderType : entry.model.type;
+        if (entry.kind() == CatalogEntry.Kind.ORG_FOLDER && !entry.model.rolesAndServices) {
+            return folderType != null ? folderType : entry.model.type;
+        }
+        return entry.model.type;
+    }
+
+    /**
+     * The entry's query: its filter; a 4.0 / 4.4 folder narrowed by {@link #withType} ANDs a type filter, as an
+     * Advanced query of the search panel does.
+     */
+    private ObjectFilter filter(CatalogEntry entry) {
+        if (entry.kind() == CatalogEntry.Kind.ORG_FOLDER && entry.model.rolesAndServices && folderType != null) {
+            QueryFactory queries = tester.midpoint().prismContext().queryFactory();
+            QName typeName = folderType == ServiceType.class ? ServiceType.COMPLEX_TYPE : RoleType.COMPLEX_TYPE;
+            return and(queries, entry.model.filter, queries.createType(typeName, null));
+        }
+        return entry.model.filter;
     }
 
     /** WebComponentUtil.getAssignableRolesFilter: the specification's global filter OR its filter of the relation. */
@@ -602,7 +635,8 @@ public final class RequestAccessPage {
     /** {@code jack: the request-access page for jack (relation default) }. */
     private String subject(ObjectRef role) {
         return actor + ": the request-access page for " + targetName + " (relation " + relation().getLocalPart()
-                + (folderType != RoleType.class ? ", folders of " + folderType.getSimpleName() : "") + ") ";
+                + (folderType != null && (folderType != RoleType.class || !model.wizard)
+                        ? ", folders of " + folderType.getSimpleName() : "") + ") ";
     }
 
     /** Which step hides the role. */

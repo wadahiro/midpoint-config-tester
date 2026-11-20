@@ -112,7 +112,7 @@ final class AccessRequestModels {
                     : DEFAULT_ROLE_CATALOG_DEPTH;
             // the first level; a folder's children read as the user opens it (AccessRequests.children)
             model.entries.addAll(AccessRequests.folders(harness.bean(ModelService.class), prism,
-                    catalog.getRoleCatalogRef().getOid(), 1, depth, task));
+                    catalog.getRoleCatalogRef().getOid(), 1, depth, false, task));
         }
         for (RoleCollectionViewType collection : catalog.getCollection()) {
             AccessRequestModel.Entry entry = collection(harness, prism, collection, task, result);

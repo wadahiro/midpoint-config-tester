@@ -3,7 +3,6 @@ package com.github.wadahiro.midpoint.tester.internal;
 import com.evolveum.midpoint.model.api.ModelService;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.PrismObject;
-import com.evolveum.midpoint.prism.query.OrgFilter;
 import com.evolveum.midpoint.prism.query.QueryFactory;
 import com.evolveum.midpoint.repo.api.RepositoryService;
 import com.evolveum.midpoint.schema.constants.SchemaConstants;
@@ -26,8 +25,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationT
  *       shown when {@code roleCatalogCollections} is empty or names its URI;</li>
  *   <li>the role catalog (RoleCatalogTabPanel): the tree of orgs under {@code roleCatalogRef} (OrgTreePanel, searched
  *       as the user, at any depth, a node's children read when it is expanded: AccessRequests.children; 20 a page,
- *       MidpointSubtree), the catalog org selected first; a folder lists the objects one level in it of the type the
- *       search panel shows (roles first, switchable);</li>
+ *       MidpointSubtree), the catalog org selected first; a folder lists the roles and services one level in it
+ *       together, by name (the search panel is of AbstractRoleType with no type item: no type switch);</li>
  *   <li>target users (UserSelectionButton): any user the requester's search finds; the relations and the held check
  *       over the target's assignments (AbstractShoppingCartTabPanel, AssignmentEditorDto.isAssignable).</li>
  * </ul>
@@ -78,7 +77,11 @@ final class ShoppingCartModels {
         return model;
     }
 
-    /** A folder: the objects one level in the org (RoleCatalogTabPanel.createContentQuery). */
+    /**
+     * A folder: the roles and services one level in the org (RoleCatalogTabPanel.createContentQuery: the org filter,
+     * scope ONE_LEVEL (4.4: RoleCatalogStorage.orgSearchScope, never changed), in a type filter of RoleType OR one
+     * of ServiceType; getQueryType AbstractRoleType, the assignable filter of AbstractRoleType).
+     */
     private static AccessRequestModel.Entry folder(QueryFactory queries, String oid, String name) {
         AccessRequestModel.Entry entry = new AccessRequestModel.Entry();
         entry.kind = "ORG_FOLDER";
@@ -87,9 +90,8 @@ final class ShoppingCartModels {
         entry.objectOid = oid;
         entry.objectType = OrgType.COMPLEX_TYPE;
         entry.objectName = name;
-        // the objects one level in it, of the type the search panel shows (roles first; the page's withType)
-        entry.type = RoleType.class;
-        entry.filter = queries.createOrg(oid, OrgFilter.Scope.ONE_LEVEL);
+        // the roles and services one level in it, searched as AbstractRoleType (getQueryType)
+        AccessRequests.folderListing(queries, entry, oid, true);
         // the tree's root; its children read as the user expands it (AccessRequests.children), at any depth
         entry.level = 0;
         entry.maxLevel = null;

@@ -11,12 +11,14 @@ import org.junit.jupiter.api.Test;
 
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.constants.SchemaConstants;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentConstraintsType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionUseType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectCollectionsUseType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleManagementConfigurationType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ServiceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationType;
 import com.github.wadahiro.midpoint.configtester.CatalogEntry;
@@ -91,13 +93,32 @@ class RequestAccessScenarioTest {
         assertThat(page.target()).isEqualTo(JACK);
         assertThat(page.relation()).isEqualTo(SchemaConstants.ORG_DEFAULT);
         assertThat(page.relations()).containsExactly(SchemaConstants.ORG_DEFAULT);
-        assertThat(page.roles()).containsExactlyInAnyOrder(VPN, CRM, DEEP, OUTSIDE);
-        // a folder lists the roles one level in it; the search panel's type switched, its services
-        assertThat(page.entry("rc-it").roles()).containsExactly(VPN);
         assertThat(page.entry("rc-it").shows(ADMIN_TOOLS)).isFalse();
         assertThat(page.withType(ServiceType.class).entry("rc-it").roles()).containsExactly(WIKI);
         assertThat(page.withType(ServiceType.class).offers(WIKI)).isTrue();
-        assertThat(page.offers(WIKI)).isFalse();
+        if (wizard(t)) {
+            // a folder lists the roles one level in it; the search panel's type switched, its services
+            assertThat(page.roles()).containsExactlyInAnyOrder(VPN, CRM, DEEP, OUTSIDE);
+            assertThat(page.type()).isEqualTo(RoleType.class);
+            assertThat(page.entry("rc-it").roles()).containsExactly(VPN);
+            assertThat(page.offers(WIKI)).isFalse();
+        } else {
+            // a folder lists the roles and services one level in it together, by name; no type switch, the
+            // search panel's Advanced query narrows it to a type
+            assertThat(page.roles()).containsExactlyInAnyOrder(VPN, WIKI, CRM, DEEP, OUTSIDE);
+            assertThat(page.type()).isEqualTo(AbstractRoleType.class);
+            assertThat(page.entry("rc-it").roles()).containsExactly(VPN, WIKI);
+            assertThat(page.offers(WIKI)).isTrue();
+            assertThat(page.withType(RoleType.class).entry("rc-it").roles()).containsExactly(VPN);
+            assertThat(page.withType(RoleType.class).offers(WIKI)).isFalse();
+            assertThatThrownBy(() -> page.withType(RoleType.class).showsRole(WIKI))
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessageStartingWith("rc-jack: the request-access page for rc-jack (relation default, folders of"
+                            + " RoleType) does not show Service rc-wiki");
+            assertThatThrownBy(() -> page.withType(OrgType.class)).isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageStartingWith("rc-jack: withType(OrgType): on 4.0 and 4.4 a role-catalog folder lists"
+                            + " roles and services; it has no type switch");
+        }
         assertThat(page.entry("rc-it").children()).extracting(CatalogEntry::key).containsExactly("rc-it-sub");
         assertThat(page.entry("rc-it-sub").kind()).isEqualTo(CatalogEntry.Kind.ORG_FOLDER);
         assertThat(page.entry("allRoles").kind()).isEqualTo(CatalogEntry.Kind.ALL_ROLES);

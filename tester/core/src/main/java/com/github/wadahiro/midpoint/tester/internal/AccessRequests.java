@@ -21,6 +21,7 @@ import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.ServiceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.tester.MidPoint;
 
@@ -49,12 +50,12 @@ public final class AccessRequests {
     /**
      * The org folders one level under the org, searched with the task's principal (the requester), as the GUI reads
      * a tree node's or a menu item's children: ordered by display name, then name (4.0, 4.4 OrgTreeProvider
-     * .createPaging; 4.8+ RoleCatalogPanel.loadMenuFromOrgTree), every page. Each lists the roles one level in it;
-     * its own children are read when asked ({@link #children}). Past {@code maxLevel}: none. Refused: none, as the
-     * GUI logs it and shows no folder.
+     * .createPaging; 4.8+ RoleCatalogPanel.loadMenuFromOrgTree), every page. Each lists the objects one level in it
+     * as {@link #folderListing} says (4.0, 4.4: {@code rolesAndServices}); its own children are read when asked
+     * ({@link #children}). Past {@code maxLevel}: none. Refused: none, as the GUI logs it and shows no folder.
      */
     public static List<AccessRequestModel.Entry> folders(ModelService model, PrismContext prism, String parentOid,
-            int level, Integer maxLevel, Task task) {
+            int level, Integer maxLevel, boolean rolesAndServices, Task task) {
         List<AccessRequestModel.Entry> out = new ArrayList<>();
         if (maxLevel != null && level > maxLevel) {
             return out;
@@ -81,14 +82,32 @@ public final class AccessRequests {
             entry.objectOid = org.getOid();
             entry.objectType = OrgType.COMPLEX_TYPE;
             entry.objectName = org.getName().getOrig();
-            // the objects one level in it, of the type the search panel shows (roles first; the page's withType)
-            entry.type = RoleType.class;
-            entry.filter = queries.createOrg(org.getOid(), OrgFilter.Scope.ONE_LEVEL);
+            folderListing(queries, entry, org.getOid(), rolesAndServices);
             entry.level = level;
             entry.maxLevel = maxLevel;
             out.add(entry);
         }
         return out;
+    }
+
+    /**
+     * What an org folder lists: the objects one level in the org. 4.8+ (RoleCatalogPanel): of the type of the search
+     * panel, {@code RoleType} at first ({@code RequestAccessPage.withType}). 4.0, 4.4 (RoleCatalogTabPanel
+     * .createContentQuery, getQueryType): roles and services together, searched as {@code AbstractRoleType} with
+     * {@code OR(type RoleType (org one level), type ServiceType (org one level))}, the search panel without a type.
+     */
+    public static void folderListing(QueryFactory queries, AccessRequestModel.Entry entry, String orgOid,
+            boolean rolesAndServices) {
+        entry.rolesAndServices = rolesAndServices;
+        if (rolesAndServices) {
+            entry.type = AbstractRoleType.class;
+            entry.filter = queries.createOr(
+                    queries.createType(RoleType.COMPLEX_TYPE, queries.createOrg(orgOid, OrgFilter.Scope.ONE_LEVEL)),
+                    queries.createType(ServiceType.COMPLEX_TYPE, queries.createOrg(orgOid, OrgFilter.Scope.ONE_LEVEL)));
+        } else {
+            entry.type = RoleType.class;
+            entry.filter = queries.createOrg(orgOid, OrgFilter.Scope.ONE_LEVEL);
+        }
     }
 
     /** The folder's children, read as the requester the first time they are asked, as the user expands it. */
@@ -100,7 +119,7 @@ public final class AccessRequests {
                     ? List.of()
                     : mp.queryAs(requester, null, "folders of " + parent.key + " as " + requester,
                             (task, result) -> folders(mp.model(), mp.prismContext(), parent.objectOid,
-                                    parent.level + 1, parent.maxLevel, task));
+                                    parent.level + 1, parent.maxLevel, parent.rolesAndServices, task));
             parent.children.addAll(children);
             parent.childrenRead = true;
         }
