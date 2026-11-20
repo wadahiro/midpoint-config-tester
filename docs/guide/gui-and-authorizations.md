@@ -96,8 +96,10 @@ assertThat(form.canRead("emailAddress")).isTrue();
     an authorization of the user names the panel's action, `#all` or `#guiAll`, whatever its decision and object
     (Wicket's roles of the session). The action: `#adminAssignOrgMember` / `#adminUnassignOrgMember` on an org's
     panels, `#adminAssignMember` / `#adminUnassignMember` on a role's or service's; 4.0's Governance panel has its own,
-    `#adminAssignGovernance` / `#adminUnassignGovernance` (4.4 and later: the Members panel's). Unlike the "+", 4.0
-    shows Assign and Unassign only by the action too.
+    `#adminAssignGovernance` / `#adminUnassignGovernance` (4.4 and later: the Members panel's). On 4.0 the toolbar's
+    Assign (the icon right of the "+") is shown to every user, as the "+" is; only its header menu's Assign needs the
+    action, so `isHidden()` fails there and a user without the authorizations fails when the task starts. Unassign
+    is shown by the action on every line.
   - `assign(relation, members...)` (no relation: `default`) is the Assign popup: each member selected on the tab of
     its type, the relation picked, Add. The GUI starts a task owned by the user per tab, which runs the bulk action
     `assign` over the selection as the user; the call waits for it. The line checks the task when it starts: 4.0 and
@@ -134,7 +136,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
   tree.assign(SchemaConstants.ORG_MANAGER, t.user("jack"))
   t.user("jack").hasAssignment("site-1", SchemaConstants.ORG_MANAGER)
   tree.unassign(SchemaConstants.ORG_MANAGER, t.user("jack"))
-  t.actor("helpdesk").governancePanel(t.org("site-1")).assignButton().isHidden()
+  t.actor("helpdesk").governancePanel(t.org("site-1")).unassignButton().isHidden()
   val uiOnly = t.actor("ui-only").orgTreeMembersPanel(t.org("site-1"))
   t.expectFailure { uiOnly.assign(SchemaConstants.ORG_MANAGER, t.user("jack")) }
   ```

@@ -123,7 +123,8 @@ Other line notes:
   designs: the old one (`useNewDesign` false) reads `objectForms` as 4.0 does.
 - **4.0**: a members panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the
   Governance panel's actions are its own (`#adminAssignGovernance`, `#adminUnassignGovernance`; 4.4 and later the
-  Members panel's, `#adminAssignOrgMember`...), a row has no menu (a row's `unassign` is the selection's task, its
+  Members panel's, `#adminAssignOrgMember`...), the toolbar's Assign (the icon right of the "+") is shown to every user
+  (only the header menu's Assign needs the action), a row has no menu (a row's `unassign` is the selection's task, its
   relation the dialog's), the task is an iterative scripting task (`Add.members`, `Remove.SELECTED.members`) checked
   for `#executeScript` when it starts. 4.4: an activity task switched to the background, `#executeScript` too; the
   row's Unassign deletes the assignments through the model, no task. 4.8 and later: the task is submitted

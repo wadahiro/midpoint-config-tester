@@ -74,7 +74,9 @@ class MembersPanelScenarioTest {
         MembersPanel tree2 = t.actor("mo-members-only").orgTreeMembersPanel(SITE_1);
         tree2.assignButton().isShown();
         t.actor("mo-members-only").membersPanel(SITE_1).unassignButton().isShown();
-        assertThat(t.actor("mo-members-only").governancePanel(SITE_1).assignButton().shown()).isEqualTo(!v40);
+        // 4.0's Governance has its own actions: its Unassign is hidden (the toolbar's Assign is shown to everyone)
+        assertThat(t.actor("mo-members-only").governancePanel(SITE_1).unassignButton().shown()).isEqualTo(!v40);
+        assertThat(t.actor("mo-members-only").governancePanel(SITE_1).assignButton().shown()).isTrue();
         // Wicket's roles are the actions of every authorization, a deny's too
         t.actor("mo-denied").orgTreeMembersPanel(SITE_1).assignButton().isShown();
         t.actor("mo-denied").orgTreeMembersPanel(SITE_1).unassignButton().isHidden();
@@ -84,15 +86,25 @@ class MembersPanelScenarioTest {
     void aHiddenButtonFailsItsClaimsAndItsOperations(MidPointConfigTester t) {
         MembersPanel helpdesk = orgTree(t, "mo-helpdesk");
 
-        helpdesk.assignButton().isHidden();
         helpdesk.unassignButton().isHidden();
-        String hidden = "mo-helpdesk does not see Assign on the members panel of Org mo-site-1 in the organization"
-                + " tree: no authorization names #adminAssignOrgMember, #all or #guiAll";
-        assertThatThrownBy(() -> helpdesk.assignButton().isShown()).hasMessage(hidden);
-        assertThatThrownBy(() -> helpdesk.assign(SchemaConstants.ORG_MANAGER, JACK)).hasMessage(hidden);
-        assertThatThrownBy(() -> t.actor("mo-site-manager").orgTreeMembersPanel(SITE_1).assignButton().isHidden())
-                .hasMessageStartingWith("mo-site-manager sees Assign on the members panel of Org mo-site-1 in the"
-                        + " organization tree (allow authorization-ui-3#adminAssignOrgMember,");
+        if (t.line().equals("4.0")) {
+            // 4.0: the toolbar's Assign is shown to every user; the task refuses it when it starts
+            helpdesk.assignButton().isShown();
+            assertThatThrownBy(() -> helpdesk.assignButton().isHidden()).hasMessage("mo-helpdesk sees Assign on the"
+                    + " members panel of Org mo-site-1 in the organization tree: on 4.0 the toolbar's Assign is shown"
+                    + " to every user (only the header menu's needs #adminAssignOrgMember)");
+            assertThat(t.expectFailure(() -> helpdesk.assign(SchemaConstants.ORG_MANAGER, JACK)).message())
+                    .contains("#executeScript");
+        } else {
+            helpdesk.assignButton().isHidden();
+            String hidden = "mo-helpdesk does not see Assign on the members panel of Org mo-site-1 in the organization"
+                    + " tree: no authorization names #adminAssignOrgMember, #all or #guiAll";
+            assertThatThrownBy(() -> helpdesk.assignButton().isShown()).hasMessage(hidden);
+            assertThatThrownBy(() -> helpdesk.assign(SchemaConstants.ORG_MANAGER, JACK)).hasMessage(hidden);
+        }
+        assertThatThrownBy(() -> t.actor("mo-site-manager").orgTreeMembersPanel(SITE_1).unassignButton().isHidden())
+                .hasMessageStartingWith("mo-site-manager sees Unassign on the members panel of Org mo-site-1 in the"
+                        + " organization tree (allow authorization-ui-3#adminAssignOrgMember, authorization-ui-3#adminUnassignOrgMember,");
         t.user("mo-jack").hasNoAssignment("mo-site-1", SchemaConstants.ORG_MANAGER);
     }
 

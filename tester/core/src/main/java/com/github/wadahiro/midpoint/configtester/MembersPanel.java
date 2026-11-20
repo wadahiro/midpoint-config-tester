@@ -48,7 +48,7 @@ import com.github.wadahiro.midpoint.tester.internal.MemberTask;
  * t.actor("site-admin").orgTreeMembersPanel(t.org("site-1")).assign(SchemaConstants.ORG_MANAGER, Users.JACK);
  * t.user(Users.JACK).hasAssignment("site-1", SchemaConstants.ORG_MANAGER);
  * t.actor("site-admin").orgTreeMembersPanel(t.org("site-1")).unassign(SchemaConstants.ORG_MANAGER, Users.JACK);
- * t.actor("helpdesk").governancePanel(t.org("site-1")).assignButton().isHidden();
+ * t.actor("helpdesk").governancePanel(t.org("site-1")).unassignButton().isHidden();
  * t.expectFailure(() -> t.actor("ui-only").membersPanel(t.org("site-1")).assign(Users.JACK));
  * }</pre>
  *
@@ -143,39 +143,49 @@ public final class MembersPanel {
 
     // ---- the buttons as the user sees them ------------------------------------------------------------------------
 
-    /** The Assign of the panel (its toolbar button and header menu item). */
+    /**
+     * The Assign of the panel (its toolbar button and header menu item). On 4.0 the toolbar's Assign, the icon right of
+     * the "+", is shown to every user who opens the panel, as the "+" is (4.0 AbstractRoleMemberPanel
+     * createToolbarButtonsList); only the header menu's Assign needs the action. A user without the authorizations then
+     * fails when the task starts or on each member.
+     */
     public Button assignButton() {
-        return new Button("Assign", action(true));
+        return new Button("Assign", action(true), tester.line().equals("4.0"));
     }
 
     /** The Unassign of the panel (its toolbar button, header menu item and, on 4.4 and later, a row's menu). */
     public Button unassignButton() {
-        return new Button("Unassign", action(false));
+        return new Button("Unassign", action(false), false);
     }
 
     /**
      * A button of the panel as the user sees it: the GUI shows it when an authorization of the user names its action,
      * {@code #all} or {@code #guiAll} (Wicket's roles of the session, whatever the authorization's decision and
-     * object).
+     * object), or, 4.0's toolbar Assign, to every user.
      */
     public final class Button {
 
         private final String label;
         private final String action;
+        private final boolean toEveryone;
 
-        private Button(String label, String action) {
+        private Button(String label, String action, boolean toEveryone) {
             this.label = label;
             this.action = action;
+            this.toEveryone = toEveryone;
         }
 
-        /** The GUI action that shows it on this line and panel ({@code ...authorization-ui-3#adminAssignOrgMember}). */
+        /**
+         * The GUI action that shows it on this line and panel ({@code ...authorization-ui-3#adminAssignOrgMember}); on
+         * 4.0 the Assign's shows only the header menu's.
+         */
         public String action() {
             return action;
         }
 
         /** Whether the GUI shows the user the button. */
         public boolean shown() {
-            return !actor.naming(action).isEmpty();
+            return toEveryone || !actor.naming(action).isEmpty();
         }
 
         /** The GUI shows the user the button. */
@@ -189,6 +199,11 @@ public final class MembersPanel {
 
         /** The GUI does not show the user the button. */
         public Button isHidden() {
+            if (toEveryone) {
+                throw new AssertionError(actor + " sees " + label + " on " + panel() + ": on " + tester.line()
+                        + " the toolbar's " + label + " is shown to every user (only the header menu's needs "
+                        + fragment(action) + ")");
+            }
             List<String> naming = new ArrayList<>();
             for (AuthorizationType authorization : actor.naming(action)) {
                 naming.add(Actor.describe(authorization));
