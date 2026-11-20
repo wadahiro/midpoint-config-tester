@@ -4,7 +4,8 @@
     runs midPoint with -Dtester.extensionSchemaDir (tester/pom.xml points it here). One string item per use in the
     extension tests: the same items extend users, roles and assignments, so that midPoint's merge of extensions into
     the `assignment` variable of a construction shows which one wins. Users also have items of other types, and
-    structured ones, for the tests that write them; orgs a multi-valued item for the GUI's forms.
+    structured ones, for the tests that write them; orgs a multi-valued item, a boolean and an enumeration for the
+    GUI's forms.
 -->
 <xsd:schema elementFormDefault="qualified"
             targetNamespace="http://example.com/xml/ns/tester-extension"
@@ -85,7 +86,8 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <!-- a multi-valued item of orgs, which the GUI's forms edit in value rows (MultiValuedFormScenarioTest) -->
+    <!-- items of orgs for the GUI's forms: a multi-valued one, which they edit in value rows
+         (MultiValuedFormScenarioTest), a boolean and an enumeration, drop-downs (ChoiceFormScenarioTest) -->
     <xsd:complexType name="OrgExtensionType">
         <xsd:annotation>
             <xsd:appinfo>
@@ -94,6 +96,8 @@
         </xsd:annotation>
         <xsd:sequence>
             <xsd:element name="tags" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="listed" type="xsd:boolean" minOccurs="0"/>
+            <xsd:element name="level" type="tns:LevelType" minOccurs="0"/>
         </xsd:sequence>
     </xsd:complexType>
 

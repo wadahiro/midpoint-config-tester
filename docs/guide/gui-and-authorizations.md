@@ -176,13 +176,19 @@ assertThat(form.canRead("emailAddress")).isTrue();
   relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
   opened by its OID as from a list: the fields show the stored values (`editForm(ref)` takes a generated name,
   `Orgs.SITE_1`, its type from the ref). On either, `.set(item, value)` types a value in first (by path of local
-  names: `identifier`, `extension/site`). A multi-valued item takes several values in one form, as a user enters
-  them in its value rows: `.set(item, listOf(a, b))` makes its values exactly these (the rows of the other values
-  removed by their remove button, a missing value typed into an empty row or a row the item's add button adds, the
-  values already there kept; an empty list removes them all), and on `editForm` `.add(item, value)` and
-  `.remove(item, value)` change one value, the others kept (removals first; removing a value the item does not have
-  fails). The rules of `set` hold for each row: no field, a read-only field (or no add or remove button the user may
-  press) fails the form; several values for a single-valued item fail it too. Then:
+  names: `identifier`, `extension/site`). A drop-down field takes the value as the choice a user picks, on every line:
+  a boolean item's three-state drop-down `true` or `false` (or `"true"`, `"false"`), `null` its undefined choice,
+  which clears the item; an enumeration its XML value (`"enabled"`), its name or the text the drop-down shows. A value
+  no choice has fails the form, naming the choices (`its field has no choice maybe; its choices: [true (...), false
+  (...)]`, with the texts the drop-down shows). A value the field takes without a message that is not in the field
+  afterwards fails the form too (`Typed true into extension/listed, but its field holds no value`), rather than saving
+  without it. A multi-valued item takes several values in one form, as a user enters them in its value rows:
+  `.set(item, listOf(a, b))` makes its values exactly these (the rows of the other values removed by their remove
+  button, a missing value typed into an empty row or a row the item's add button adds, the values already there kept;
+  an empty list removes them all), and on `editForm` `.add(item, value)` and `.remove(item, value)` change one value,
+  the others kept (removals first; removing a value the item does not have fails). The rules of `set` hold for each
+  row: no field, a read-only field (or no add or remove button the user may press) fails the form; several values for
+  a single-valued item fail it too. Then:
   - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
     `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
     `messages()`, `absent()`: why the page has no field to type into).
@@ -249,7 +255,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
   - The first server expression of the item, its output an `OperationResultType`: any status but success rejects. Its
     message is the result's user-friendly message, translated in the JVM's locale, or else its message; an expression
     midPoint cannot make or evaluate rejects with "Cannot make expression: ..." / "Cannot evaluate expression: ...".
-  - A hidden empty field ("show empty fields") is shown before typing into it.
+  - A hidden empty field ("show empty fields") is shown before typing into it. When pressing it opens the GUI's error
+    page instead, the form fails saying so (`pressing "show empty fields" ... opened PageError`): on 4.8.14 for a user
+    who may change only some items, whose read-only reference fields fail to render empty.
 
   The tester brings midPoint's GUI for them, nothing to declare:
   [Classes of the GUI](environment.md#classes-of-the-gui). The GUI's beans load once per JVM, on its first form (not

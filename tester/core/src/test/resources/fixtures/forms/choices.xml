@@ -1,0 +1,41 @@
+<!--
+    An org with a boolean and an enumeration extension item (extension/listed, extension/level), which the GUI's form
+    shows as drop-downs (ChoiceFormScenarioTest): a lister who may change only those items of orgs
+    (choices-old-design.xml: one who sees 4.4's old design of the details pages).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:ext="http://example.com/xml/ns/tester-extension">
+    <org oid="10000000-0000-0000-0000-0000000f0501">
+        <name>form-listed-unit</name>
+        <!-- stored values: their fields are shown without "show empty fields" (which fails on 4.8.14 for a user
+             who may change only some items: the GUI's error page) -->
+        <extension>
+            <ext:listed>false</ext:listed>
+            <ext:level>low</ext:level>
+        </extension>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0502">
+        <name>form-lister-role</name>
+        <authorization>
+            <!-- the GUI's organization pages -->
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <item>extension/ext:listed</item>
+            <item>extension/ext:level</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0503">
+        <name>form-lister</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0502" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

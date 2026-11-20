@@ -15,6 +15,7 @@ import org.apache.wicket.Page;
 import org.apache.wicket.ajax.AbstractAjaxTimerBehavior;
 import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.feedback.FeedbackMessage;
+import org.apache.wicket.markup.html.form.AbstractSingleSelectChoice;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.FormComponent;
 import org.apache.wicket.markup.html.form.IFormSubmittingComponent;
@@ -31,6 +32,7 @@ import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.result.OperationResultStatus;
+import com.evolveum.midpoint.util.DisplayableValue;
 import com.evolveum.midpoint.web.security.MidPointApplication;
 import com.evolveum.midpoint.web.util.OnePageParameterEncoder;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ArchetypeType;
@@ -52,8 +54,10 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
  *   <li>the page is the details page the GUI dispatches the type to, made as the GUI makes it for a new object (the
  *       archetype's and the membership's assignments, an org's parentOrgRef) or opened by the object's OID;</li>
  *   <li>a value is typed into the item's field and the field's change event fires, as leaving the field does (the
- *       field's validator); an item the page does not show until "show empty fields" is pressed gets it pressed; the
- *       values of a multi-valued item into its value rows, which its add and remove buttons make;</li>
+ *       field's validator); a drop-down's choice is picked by its id; a value the field takes without a message is
+ *       then in its model, or the form fails; an item the page does not show until "show empty fields" is pressed
+ *       gets it pressed; the values of a multi-valued item into its value rows, which its add and remove buttons
+ *       make;</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
  *       for, then its progress timer fires once, as the browser's poll;</li>
  *   <li>the tabs are read from the rendered page ({@link GuiLine#tabs}): each as the GUI decided its visibility.</li>
@@ -250,25 +254,45 @@ final class GuiFormsImpl implements GuiForms {
 
     /** The item's panel as the page shows it, "show empty fields" pressed when the page does not show it. */
     private static Found shown(WicketTester tester, String item) {
-        Found found = find(tester.getLastRenderedPage(), item);
+        Page page = tester.getLastRenderedPage();
+        Found found = find(page, item);
         if (found.input == null && found.panel == null) {
             showEmpty(tester);
+            if (tester.getLastRenderedPage().getClass() != page.getClass()) {
+                // the GUI failed to render the fields it shows (its error page): not a page without the item
+                throw new AssertionError("Cannot fill in " + item + ": pressing \"show empty fields\" to show its"
+                        + " field opened " + tester.getLastRenderedPage().getClass().getSimpleName() + " instead of "
+                        + page.getClass().getSimpleName() + " (the GUI failed rendering the empty fields; its log"
+                        + " has the exception)");
+            }
             found = find(tester.getLastRenderedPage(), item);
         }
         return found;
     }
 
-    /** Types the value into the input and leaves it: the messages the item's panel shows then. */
+    /**
+     * Types the value into the input and leaves it: the messages the item's panel shows then. A value the field takes
+     * without a message is in the field's model then, or the form fails: a drop-down's the choice typed, a text
+     * field's a value (not nothing).
+     */
     private static List<String> enter(WicketTester tester, String item, FormComponent<?> input, Object value) {
         Form<?> form = form(tester.getLastRenderedPage());
         String relative = input.getPageRelativePath().substring(form.getPageRelativePath().length() + 1);
         tester.getSession().getFeedbackMessages().clear();
+        // a drop-down (a three-state boolean, an enumeration) sends the id of its choice, not the value
+        Choice choice = input instanceof AbstractSingleSelectChoice
+                ? choice(item, (AbstractSingleSelectChoice<?>) input, value) : null;
+        String raw = choice != null ? choice.id : value == null ? "" : String.valueOf(value);
         // a browser sends the field's value with each of its change behaviors (4.0 has two); WicketTester's
         // executeAjaxEvent with the first only
+        List<AjaxEventBehavior> changes = WicketTesterHelper.findAjaxEventBehaviors(input, "change");
+        if (changes.isEmpty()) {
+            throw new AssertionError("Cannot fill in " + item + ": its field (" + kind(input)
+                    + ") has no change event to type " + raw + " into");
+        }
         List<String> messages = new ArrayList<>();
-        for (AjaxEventBehavior change : WicketTesterHelper.findAjaxEventBehaviors(input, "change")) {
-            tester.newFormTester(form.getPageRelativePath(), false)
-                    .setValue(relative, value == null ? "" : String.valueOf(value));
+        for (AjaxEventBehavior change : changes) {
+            tester.newFormTester(form.getPageRelativePath(), false).setValue(relative, raw);
             tester.executeBehavior(change);
             Component panel = find(tester.getLastRenderedPage(), item).panel;
             for (FeedbackMessage message : tester.getFeedbackMessages(m -> m.getLevel() >= FeedbackMessage.ERROR)) {
@@ -279,7 +303,126 @@ final class GuiFormsImpl implements GuiForms {
                 }
             }
         }
+        if (messages.isEmpty()) {
+            landed(item, input, value, choice);
+        }
         return messages;
+    }
+
+    /**
+     * The value is in the field's model after the field took it without a message: a drop-down holds the choice
+     * typed (none for null), a text field a value when one was typed. Not: a value the GUI dropped silently.
+     */
+    private static void landed(String item, FormComponent<?> input, Object value, Choice choice) {
+        Object held = input.getDefaultModelObject();
+        if (choice != null) {
+            // an enumeration's choice may be a displayable value of the value the model holds
+            boolean same = choice.option == null ? held == null
+                    : choice.option.equals(held) || choiceNames(choice.option).equals(choiceNames(held));
+            if (!same) {
+                throw new AssertionError("Typed " + value + " into " + item + ", but its field holds "
+                        + (held == null ? "no value" : String.valueOf(held)) + " (" + kind(input) + ")");
+            }
+        } else if (value != null && !String.valueOf(value).isEmpty()
+                && (held == null || String.valueOf(held).isEmpty())) {
+            throw new AssertionError("Typed " + value + " into " + item + ", but its field holds no value ("
+                    + kind(input) + ")");
+        }
+    }
+
+    /** The input's class as named in a message: an anonymous one by the class it extends. */
+    private static String kind(Object input) {
+        Class<?> type = input.getClass();
+        while (type.isAnonymousClass()) {
+            type = type.getSuperclass();
+        }
+        return type.getSimpleName();
+    }
+
+    /** A drop-down's choice: what the browser sends (its id), and the choice itself (null: the null choice). */
+    private static final class Choice {
+        final String id;
+        final Object option;
+
+        Choice(String id, Object option) {
+            this.id = id;
+            this.option = option;
+        }
+    }
+
+    /**
+     * The drop-down's choice of the value: the choice that is the value, or whose value, text or display text is it
+     * (a boolean as {@code true} or {@code "true"}, an enumeration by its XML value or its name, case-insensitive);
+     * none (null or empty): the null choice. A value no choice has fails, naming the choices, rather than leaving the
+     * field empty.
+     */
+    private static Choice choice(String item, AbstractSingleSelectChoice<?> input, Object value) {
+        @SuppressWarnings("unchecked")
+        AbstractSingleSelectChoice<Object> select = (AbstractSingleSelectChoice<Object>) input;
+        List<?> choices = select.getChoices();
+        boolean none = value == null || String.valueOf(value).isEmpty();
+        String wanted = String.valueOf(value);
+        List<String> offered = new ArrayList<>();
+        for (int i = 0; i < choices.size(); i++) {
+            Object option = choices.get(i);
+            if (option == null) {
+                // a null among the choices (a three-state boolean's "undefined"): its id is its index
+                if (none) {
+                    return new Choice(select.getChoiceRenderer().getIdValue(null, i), null);
+                }
+                continue;
+            }
+            Object display = select.getChoiceRenderer().getDisplayValue(option);
+            String text = display == null ? "" : String.valueOf(display);
+            List<String> names = choiceNames(option);
+            if (!none && (option.equals(value) || text.equals(wanted)
+                    || names.stream().anyMatch(name -> name.equalsIgnoreCase(wanted)))) {
+                return new Choice(select.getChoiceRenderer().getIdValue(option, i), option);
+            }
+            String name = names.isEmpty() ? String.valueOf(option) : names.get(0);
+            offered.add(name + (text.isEmpty() || text.equals(name) ? "" : " (" + text + ")"));
+        }
+        if (none) {
+            // the drop-down's own null option (nullValid, or "Choose one")
+            return new Choice("", null);
+        }
+        throw new AssertionError("Cannot fill in " + item + ": its field has no choice " + value + "; its choices: "
+                + offered);
+    }
+
+    /**
+     * The texts a choice is typed by: a displayable value's value, an enumeration's XML value ({@code value()}) and
+     * its name, else its text.
+     */
+    private static List<String> choiceNames(Object option) {
+        List<String> out = new ArrayList<>();
+        if (option == null) {
+            return out;
+        }
+        Object real = option instanceof DisplayableValue ? ((DisplayableValue<?>) option).getValue() : option;
+        if (real instanceof Enum) {
+            try {
+                Object xml = real.getClass().getMethod("value").invoke(real);
+                if (xml != null) {
+                    out.add(String.valueOf(xml));
+                }
+            } catch (ReflectiveOperationException e) {
+                // an enumeration without an XML value: its name
+            }
+            out.add(((Enum<?>) real).name());
+        } else if (real != null) {
+            out.add(String.valueOf(real));
+        }
+        return out;
+    }
+
+    /** What an input shows as its value: a drop-down its choice (as {@link #choiceNames} types it), else its text. */
+    private static String shownValue(FormComponent<?> input) {
+        if (input instanceof AbstractSingleSelectChoice) {
+            List<String> names = choiceNames(input.getDefaultModelObject());
+            return names.isEmpty() ? "" : names.get(0);
+        }
+        return input.getValue() == null ? "" : input.getValue();
     }
 
     /**
@@ -402,7 +545,7 @@ final class GuiFormsImpl implements GuiForms {
             Row row = new Row();
             row.container = container;
             row.input = first[0].isEnabledInHierarchy() ? first[0] : null;
-            row.value = first[0].getValue() == null ? "" : first[0].getValue();
+            row.value = shownValue(first[0]);
             out.add(row);
         }
         return out;
