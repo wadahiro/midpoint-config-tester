@@ -212,6 +212,8 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
     does not. midPoint only logs a failed post-report script (WARN), so assert the file it should have written
   - a change from a service's channel (a hook that checks it): `t.inChannel(channelUri, () -> ...)`
   - an object collection's list as a user sees it (a "my requests" page): `t.actor(user).collection(name)`
+  - an account's naming attribute and identifier are attributes too: `account(dn).hasAttribute("dn", dn)`, a SCIM
+    user's `hasAttribute("userName", name)` / `hasAttribute("id", id)`
   - a user's own change or deletion in the GUI (a self-service form, deleting from a list):
     `t.actor(user).modify(t.user(x)) { it.set(path, value) }`, `t.actor(user).delete(t.user(x))`. An actor's
     operations run synchronously in a lightweight task of the operation, as the GUI's, in the GUI's channel

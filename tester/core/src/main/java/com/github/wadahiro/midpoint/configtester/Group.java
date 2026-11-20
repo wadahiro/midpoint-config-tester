@@ -78,4 +78,14 @@ public final class Group extends TargetObject {
     List<String> others() {
         return objectClass != null ? resource.system().objectNames(objectClass) : resource.system().groupNames();
     }
+
+    @Override
+    String[] referenceAttributes() {
+        return objectClass != null ? super.referenceAttributes() : resource.system().groupReferenceAttributes();
+    }
+
+    @Override
+    String identifier() {
+        return objectClass != null ? super.identifier() : resource.system().groupIdentifier(name);
+    }
 }

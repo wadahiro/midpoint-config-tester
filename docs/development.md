@@ -219,7 +219,9 @@ input (`effectiveStatus`), no status provisioned without a status outbound, `val
 assignments applied by the validity scanner, a simulated status attribute, disable instead of delete (`disableReason`
 `#deprovision`), the delayed delete's trigger on the shadow and its deletion by the trigger scanner; the JVM's wall
 clock moving with `t.clock()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 17 for 4.4,
-JDK 21 for 4.8 and later).
+JDK 21 for 4.8 and later); the naming attribute and primary identifier of a mirror's class read as attributes, which
+the mirror keeps as the object's name and identifier on every line (`NamingAttributeTest`,
+`MirrorTargetScenarioTest.theNamingAttributeIsTheAccountsName`).
 
 What the tester does differently per line (see also [line-anatomy.md](line-anatomy.md)):
 

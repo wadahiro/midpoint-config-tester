@@ -142,5 +142,13 @@ public interface TargetSystem {
         return new String[] { null, null };
     }
 
+    /**
+     * {@link #accountReferenceAttributes} of the object class (as {@link #find} names it): the attributes of
+     * {@link #find} leave these out too.
+     */
+    default String[] referenceAttributes(String objectClass) {
+        return new String[] { null, null };
+    }
+
     List<String> objectNames(String objectClass);
 }

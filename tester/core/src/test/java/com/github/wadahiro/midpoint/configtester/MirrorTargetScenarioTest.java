@@ -60,6 +60,15 @@ class MirrorTargetScenarioTest {
     }
 
     @Test
+    void theNamingAttributeIsTheAccountsName(MidPointConfigTester t) {
+        // the mirror names the accounts by the manifest's naming attribute, which is not among their attributes
+        t.target(Resources.LDAP).add(JOHN, Map.of("cn", "John Doe", "sn", "Doe"));
+        t.target(Resources.LDAP).account(JOHN).hasAttribute("dn", JOHN).hasAttribute("__NAME__", JOHN)
+                .hasAttribute(LdapAttrs.CN, "John Doe");
+        assertThat(t.target(Resources.LDAP).account(JOHN).attributes()).containsEntry("dn", java.util.List.of(JOHN));
+    }
+
+    @Test
     void anAttributeTheObjectClassDoesNotHaveIsRefused(MidPointConfigTester t) {
         // midPoint would never see it: a typo of the test fails where it is made
         assertThatThrownBy(() -> t.target(Resources.LDAP).add(JOHN, Map.of("cn", "John Doe", "surname", "Doe")))

@@ -66,7 +66,15 @@ public class TargetObject {
         return this;
     }
 
-    /** The attribute has exactly these values, in any order (compared as text); no values: it has none. */
+    /**
+     * The attribute has exactly these values, in any order (compared as text); no values: it has none. The class's
+     * naming attribute ({@code ra:namingAttribute}, ConnId's {@code __NAME__}, e.g. an LDAP account's {@code dn} or a
+     * SCIM user's {@code userName}) is the object's name and its primary identifier ({@code ra:identifier},
+     * {@code __UID__}) its identifier, also where the target system keeps them apart from the other attributes (a
+     * mirror, LDAP's DN and {@code entryUUID}): {@code hasAttribute("userName", "jdoe")}. {@code __NAME__},
+     * {@code icfs:name}, {@code __UID__} and {@code icfs:uid} name them on any target; {@code name} and {@code uid}
+     * too when the class has no attribute of the name.
+     */
     public TargetObject hasAttribute(String attribute, Object... expected) {
         List<String> actual = attributeValues(attribute);
         List<String> wanted = Values.texts(expected);
@@ -98,10 +106,23 @@ public class TargetObject {
         return values.isEmpty() ? null : values.get(0);
     }
 
-    /** All attributes, by name, as text, sorted by name. */
+    /**
+     * All attributes, by name, as text, sorted by name; the naming attribute and the primary identifier too, by the
+     * names the target system gives them (see {@link #hasAttribute}).
+     */
     public Map<String, List<String>> attributes() {
         Map<String, List<String>> out = new TreeMap<>();
         existing().forEach((attribute, values) -> out.put(attribute, Values.texts(values)));
+        String[] reference = referenceAttributes();
+        if (reference[0] != null && !containsIgnoreCase(out, reference[0])) {
+            out.put(reference[0], List.of(name));
+        }
+        if (reference[1] != null && !containsIgnoreCase(out, reference[1])) {
+            String identifier = identifier();
+            if (identifier != null) {
+                out.put(reference[1], List.of(identifier));
+            }
+        }
         return out;
     }
 
@@ -127,6 +148,19 @@ public class TargetObject {
         return resource.system().objectNames(objectClass);
     }
 
+    /**
+     * The names of the class's naming attribute and primary identifier attribute, which the attributes leave out
+     * (null: not told; {@link com.github.wadahiro.midpoint.tester.TargetSystem#referenceAttributes}).
+     */
+    String[] referenceAttributes() {
+        return resource.system().referenceAttributes(objectClass);
+    }
+
+    /** The object's primary identifier, or null if the target system does not tell it. */
+    String identifier() {
+        return resource.system().identifier(objectClass, name);
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     Map<String, List<Object>> existing() {
@@ -146,6 +180,44 @@ public class TargetObject {
     }
 
     private List<String> attributeValues(String attribute) {
-        return Values.texts(existing().get(attribute));
+        Map<String, List<Object>> attributes = existing();
+        List<Object> values = attributes.get(attribute);
+        if (values != null) {
+            return Values.texts(values);
+        }
+        String[] reference = referenceAttributes();
+        if (is(attribute, reference[0], "__NAME__", "icfs:name", "name", attributes)) {
+            return List.of(name);
+        }
+        if (is(attribute, reference[1], "__UID__", "icfs:uid", "uid", attributes)) {
+            String identifier = identifier();
+            return identifier != null ? List.of(identifier) : List.of();
+        }
+        return new java.util.ArrayList<>();
+    }
+
+    /**
+     * Whether the attribute (not among the object's) names the naming attribute or the identifier: the system's name
+     * for it (with or without {@code ri:}), ConnId's, or the local name of ConnId's when the system names it not.
+     */
+    private static boolean is(String attribute, String told, String connId, String icfs, String local,
+            Map<String, List<Object>> attributes) {
+        if (attribute.equals(connId) || attribute.equalsIgnoreCase(icfs)) {
+            return true;
+        }
+        String bare = attribute.startsWith("ri:") ? attribute.substring(3) : attribute;
+        if (told != null) {
+            return bare.equalsIgnoreCase(told);
+        }
+        return bare.equalsIgnoreCase(local) && !attributes.containsKey(local);
+    }
+
+    private static boolean containsIgnoreCase(Map<String, ?> map, String key) {
+        for (String k : map.keySet()) {
+            if (k.equalsIgnoreCase(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

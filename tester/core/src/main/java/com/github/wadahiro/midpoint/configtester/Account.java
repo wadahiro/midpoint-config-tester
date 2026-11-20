@@ -144,6 +144,16 @@ public final class Account extends TargetObject {
         return resource.accounts();
     }
 
+    @Override
+    String[] referenceAttributes() {
+        return resource.system().accountReferenceAttributes();
+    }
+
+    @Override
+    String identifier() {
+        return resource.system().accountIdentifier(name);
+    }
+
     /** Whether the account is a member of the group, as {@link #memberOf} says. */
     boolean isMemberOf(String group) {
         Map<String, List<Object>> account = existing();

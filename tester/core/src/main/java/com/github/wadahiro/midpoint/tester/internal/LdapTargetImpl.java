@@ -482,6 +482,11 @@ final class LdapTargetImpl implements ManagedTarget, RealTarget, LdapDirectory {
     }
 
     @Override
+    public String[] referenceAttributes(String objectClass) {
+        return new String[] { "dn", "entryUUID" };
+    }
+
+    @Override
     public List<String> objectNames(String objectClass) {
         return search("(objectClass=" + objectClass + ")");
     }
