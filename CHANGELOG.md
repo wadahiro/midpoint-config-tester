@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.14.0...v0.15.0) (2026-11-20)
+
+
+### Features
+
+* **gui:** t.actor(u).orgTreeMembersPanel(org), membersPanel(x) and governancePanel(x) are a members panel's Assign and Unassign as the user does them, the way the line's GUI runs them ([a7cfbf1](https://github.com/wadahiro/midpoint-config-tester/commit/a7cfbf13f29aa2b1bd7a07897c4abd33f23e58dc))
+
 # [0.14.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.13.0...v0.14.0) (2026-11-19)
 
 
