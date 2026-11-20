@@ -37,8 +37,9 @@ import com.github.wadahiro.midpoint.tester.internal.TesterTasks;
  *
  * <p>Not among the changes: midPoint's housekeeping ({@code metadata} and {@code operationExecution} at any depth,
  * the modifications of task and node objects, the tasks the tester creates to run something (named
- * {@code ... (tester)}), a shadow's {@code synchronizationTimestamp},
- * {@code fullSynchronizationTimestamp}, {@code synchronizationSituationDescription} and {@code cachingMetadata}). A
+ * {@code ... (tester)}) and the task a members panel's Assign or Unassign starts ({@link MembersPanel}), a
+ * shadow's {@code synchronizationTimestamp}, {@code fullSynchronizationTimestamp},
+ * {@code synchronizationSituationDescription} and {@code cachingMetadata}). A
  * time-triggered follow-up (a trigger, a task's next run) is not part of the block unless the block runs it
  * ({@link TestClock#runDue()}); data a test adds to a source system belongs before the block.</p>
  */
@@ -124,6 +125,9 @@ public final class Effects {
             }
             if ("TaskType".equals(first.type) && TesterTasks.isTesterTask(name)) {
                 continue;   // the tester's own task, as the tester's own calls are not effects
+            }
+            if ("TaskType".equals(first.type) && TesterTasks.isGuiTask(first.oid)) {
+                continue;   // the task a members panel's Assign or Unassign starts: the GUI's vehicle
             }
             out.add(new ObjectChange(first.type, first.oid, name, kind, items));
         }

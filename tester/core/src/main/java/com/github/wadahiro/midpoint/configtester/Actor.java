@@ -31,7 +31,9 @@ import com.github.wadahiro.midpoint.tester.GuiProfile;
  * role's). What the user sees and may do in the GUI is asked the same way, by midPoint's actions: what their searches
  * find ({@link #search}, {@link #canSearch}), what they get ({@link #canGet}), both ({@link #canRead}), which pages
  * open ({@link #canOpen}), what an object's form shows and lets them change ({@link #form}), the "+" of a members
- * panel ({@link #createMemberButton}). When an assertion on these fails, the failure lists the user's authorizations.
+ * panel ({@link #createMemberButton}), a members panel's Assign and Unassign ({@link #membersPanel},
+ * {@link #governancePanel}, {@link #orgTreeMembersPanel}). When an assertion on these fails, the failure lists the
+ * user's authorizations.
  *
  * <pre>{@code
  * t.actor("jack").request().assign("Privileged Access");
@@ -231,6 +233,49 @@ public final class Actor {
     }
 
     /**
+     * The Members panel of the role's, org's or service's details page as the user sees it ({@link MembersPanel}):
+     * whether the GUI shows them its Assign and Unassign, and those operations run as the user, the way the line's
+     * GUI runs them: {@code t.actor("site-admin").membersPanel(t.org("site-1")).assign(Users.JACK)}.
+     */
+    public MembersPanel membersPanel(AbstractRole<?> role) {
+        return new MembersPanel(tester, this, role, MembersPanel.Kind.MEMBERS);
+    }
+
+    /** {@link #membersPanel(AbstractRole)} by the generated name ({@code Orgs.SITE_1}, a role or a service). */
+    public MembersPanel membersPanel(ObjectRef role) {
+        return membersPanel(AbstractRole.of(tester, role));
+    }
+
+    /**
+     * The Governance panel (managers, approvers, owners) of the role's, org's or service's details page as the user
+     * sees it ({@link MembersPanel}): {@code t.actor("site-admin").governancePanel(t.org("site-1"))
+     * .assign(SchemaConstants.ORG_MANAGER, Users.JACK)}.
+     */
+    public MembersPanel governancePanel(AbstractRole<?> role) {
+        return new MembersPanel(tester, this, role, MembersPanel.Kind.GOVERNANCE);
+    }
+
+    /** {@link #governancePanel(AbstractRole)} by the generated name ({@code Orgs.SITE_1}, a role or a service). */
+    public MembersPanel governancePanel(ObjectRef role) {
+        return governancePanel(AbstractRole.of(tester, role));
+    }
+
+    /**
+     * The members panel of the org selected in the organization tree as the user sees it ({@link MembersPanel}): its
+     * relations are the organization's (default, manager, approver, owner), its buttons the org's actions on every
+     * line: {@code t.actor("site-admin").orgTreeMembersPanel(t.org("site-1")).assign(ORG_MANAGER, Users.JACK)}.
+     * Not an org: {@code IllegalArgumentException}.
+     */
+    public MembersPanel orgTreeMembersPanel(AbstractRole<?> org) {
+        return new MembersPanel(tester, this, org, MembersPanel.Kind.ORG_TREE);
+    }
+
+    /** {@link #orgTreeMembersPanel(AbstractRole)} by the generated name ({@code Orgs.SITE_1}). */
+    public MembersPanel orgTreeMembersPanel(ObjectRef org) {
+        return orgTreeMembersPanel(AbstractRole.of(tester, org));
+    }
+
+    /**
      * The GUI's form of an existing object (name or OID) as the user changes it ({@link EditObjectForm}), run by
      * midPoint's GUI with the user logged in, as {@link #newObjectForm}.
      */
@@ -315,6 +360,26 @@ public final class Actor {
             sb.append("\n    ").append(describe(compiled.authorization()));
         }
         return sb.toString();
+    }
+
+    /**
+     * The user's authorizations that name the GUI action, {@code #all} or {@code #guiAll} (4.0: the deprecated one
+     * too), whatever their decision and object: Wicket's roles of the session are every action of the user's
+     * authorizations (MidPointAuthWebSession.getRoles), and the GUI shows a button for any of them
+     * (WebComponentUtil.isAuthorized: hasAnyRole).
+     */
+    List<AuthorizationType> naming(String action) {
+        explainAuthorizations();
+        Set<String> roles = new LinkedHashSet<>(guiAll());
+        roles.add(action);
+        roles.add(AuthorizationConstants.AUTZ_ALL_URL);
+        List<AuthorizationType> out = new ArrayList<>();
+        for (CompiledAuthorization compiled : compiledAuthorizations()) {
+            if (compiled.authorization().getAction().stream().anyMatch(roles::contains)) {
+                out.add(compiled.authorization());
+            }
+        }
+        return out;
     }
 
     /** The user's authorizations as midPoint compiled them at login ({@code Access.authorizations()}). */

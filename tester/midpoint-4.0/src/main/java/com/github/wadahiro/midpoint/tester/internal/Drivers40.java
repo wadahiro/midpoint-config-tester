@@ -569,6 +569,70 @@ final class Drivers40 implements LineDrivers {
     }
 
     @Override
+    public String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception {
+        // MemberOperationsHelper.assignMembersPerformed / unassignMembersPerformed, then
+        // WebComponentUtil.executeMemberOperation (4.0): a task of the GUI (createSimpleTask), owned by the user
+        PrismContext prism = harness.bean(PrismContext.class);
+        com.evolveum.midpoint.task.api.TaskManager taskManager =
+                harness.bean(com.evolveum.midpoint.task.api.TaskManager.class);
+        Task operational = taskManager.createTaskInstance(spec.taskName40());
+        operational.setOwner(com.evolveum.midpoint.security.api.SecurityUtil.getPrincipal().getUser().asPrismObject());
+        operational.setChannel(TaskChannel.current() != null ? TaskChannel.current() : GUI_CHANNEL);
+        com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionExpressionType action =
+                new com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionExpressionType();
+        if (spec.assign) {
+            action.setType("assign");
+            PrismValue role = prism.itemFactory().createReferenceValue(spec.target.getOid(),
+                    spec.target.getDefinition().getTypeName());
+            action.parameter(new com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionParameterValueType()
+                    .name("role").value(new com.evolveum.prism.xml.ns._public.types_3.RawType(role,
+                            ObjectReferenceType.COMPLEX_TYPE, prism)));
+        } else {
+            action.setType("unassign");
+            // the GUI's "hack using fake definition because of type": the OID as a string
+            PrismPropertyDefinition<Object> definition = prism.definitionFactory().createPropertyDefinition(
+                    com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType.F_NAME, DOMUtil.XSD_STRING);
+            PrismValue role = prism.itemFactory().createValue(spec.target.getOid());
+            role.applyDefinition(definition);
+            action.parameter(new com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionParameterValueType()
+                    .name("role").value(new com.evolveum.prism.xml.ns._public.types_3.RawType(role,
+                            DOMUtil.XSD_STRING, prism)));
+        }
+        for (QName relation : spec.relations) {
+            action.parameter(new com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionParameterValueType()
+                    .name("relation").value(com.evolveum.midpoint.util.QNameUtil.qNameToUri(relation)));
+        }
+        ExecuteScriptType script = new ExecuteScriptType();
+        script.setScriptingExpression(new JAXBElement<>(SchemaConstants.S_ACTION,
+                com.evolveum.midpoint.xml.ns._public.model.scripting_3.ActionExpressionType.class, action));
+        operational.setBinding(com.evolveum.midpoint.task.api.TaskBinding.LOOSE);
+        operational.setInitialExecutionStatus(com.evolveum.midpoint.task.api.TaskExecutionStatus.RUNNABLE);
+        operational.setThreadStopAction(
+                com.evolveum.midpoint.xml.ns._public.common.common_3.ThreadStopActionType.RESTART);
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ScheduleType schedule =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.ScheduleType();
+        schedule.setMisfireAction(com.evolveum.midpoint.xml.ns._public.common.common_3.MisfireActionType
+                .EXECUTE_IMMEDIATELY);
+        operational.makeSingle(schedule);
+        operational.setName(new PolyStringType(spec.taskName40()));
+        com.evolveum.midpoint.prism.PrismProperty<com.evolveum.prism.xml.ns._public.query_3.QueryType> query =
+                prism.getSchemaRegistry().<com.evolveum.prism.xml.ns._public.query_3.QueryType>
+                        findPropertyDefinitionByElementName(SchemaConstants.MODEL_EXTENSION_OBJECT_QUERY).instantiate();
+        query.setRealValue(prism.getQueryConverter().createQueryType(spec.memberQuery));
+        operational.addExtensionProperty(query);
+        com.evolveum.midpoint.prism.PrismProperty<QName> type = prism.getSchemaRegistry().<QName>
+                findPropertyDefinitionByElementName(SchemaConstants.MODEL_EXTENSION_OBJECT_TYPE).instantiate();
+        type.setRealValue(spec.memberType);
+        operational.addExtensionProperty(type);
+        // ModelController checks #executeScript before it starts the task (checkScriptingAuthorization)
+        harness.bean(ScriptingService.class).evaluateIterativeExpressionInBackground(script, operational, result);
+        return operational.getOid();
+    }
+
+    /** The user channel of the GUI ({@code SchemaConstants.CHANNEL_GUI_USER_URI}). */
+    private static final String GUI_CHANNEL = "http://midpoint.evolveum.com/xml/ns/public/gui/channels-3#user";
+
+    @Override
     public String initialObjectsPattern() {
         // InitialDataImport.getInitialImportObjects (4.0): the files of initial-objects, no subdirectories
         return "classpath*:tester/initial-objects/*";

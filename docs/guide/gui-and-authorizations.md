@@ -41,7 +41,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
   instead (`PageUsers`: `#usersAll`, `#users`, `#usersView`). Either way the security enforcer decides
   (`decideAccess`): one allowed and none denied. A failed assertion shows what the URL matched and needed. The GUI
   decides some of its buttons by Wicket's roles instead (any authorization naming the action, a deny too): the "+"
-  of a members panel is `createMemberButton`.
+  of a members panel is `createMemberButton`, its Assign and Unassign `membersPanel` and the like (below).
 - The tester knows the line's GUI pages from an index it ships: `canOpen` does not load the GUI.
 - `form(object)` is the object's definition as the GUI's form gets it (`getEditObjectDefinition`, request phase):
   `canRead(path)`, `canModify(path)`, and the top-level `readableItems()` and `modifiableItems()`; `opens()` is false
@@ -84,6 +84,65 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor("site-admin").createMemberButton(t.org("site-1"))
       .click(UserType::class.java, "employee", SchemaConstants.ORG_MANAGER).set("name", "mgr-1").submit().saves()
   ```
+- The Assign and Unassign of a members panel, as a user sees and uses them: `t.actor(user).orgTreeMembersPanel(org)`
+  (the members panel of an org selected in the organization tree), `.membersPanel(x)` and `.governancePanel(x)` (the
+  Members and Governance panels of a role's, org's or service's details page; `x` a `t.org(...)`, a role, a service or
+  a generated name). The three run the same GUI code with different relations and actions (`MembersPanel`):
+  - `relations()`: Members the `ADMINISTRATION` relations without the `GOVERNANCE` ones (`default`), Governance the
+    `GOVERNANCE` ones (`manager, approver, owner`), the organization tree the `ORGANIZATION` ones (`default, manager,
+    approver, owner`), from the deployment's relation definitions, in the GUI's order. `memberTypes()`: the tabs of
+    the Assign popup (User, Role, Org, Service; 4.9 and later Policy).
+  - `assignButton()`, `unassignButton()` (`shown()`, `isShown()`, `isHidden()`, `action()`): shown, as the "+", when
+    an authorization of the user names the panel's action, `#all` or `#guiAll`, whatever its decision and object
+    (Wicket's roles of the session). The action: `#adminAssignOrgMember` / `#adminUnassignOrgMember` on an org's
+    panels, `#adminAssignMember` / `#adminUnassignMember` on a role's or service's; 4.0's Governance panel has its own,
+    `#adminAssignGovernance` / `#adminUnassignGovernance` (4.4 and later: the Members panel's). Unlike the "+", 4.0
+    shows Assign and Unassign only by the action too.
+  - `assign(relation, members...)` (no relation: `default`) is the Assign popup: each member selected on the tab of
+    its type, the relation picked, Add. The GUI starts a task owned by the user per tab, which runs the bulk action
+    `assign` over the selection as the user; the call waits for it. The line checks the task when it starts: 4.0 and
+    4.4 `#executeScript`, 4.8 and later `authorization-bulk-3#assign` (or `authorization-bulk-3#all`, which 4.8 also
+    makes of an `#executeScript`) in the execution phase; the task then needs the model's `#assign` of each member
+    (with the relation) and the execution's `#modify`. 4.11's initial system configuration gives a user's bulk action
+    the `prohibitive` expression profile (`expressions/defaults/principal`): there the task fails on every member
+    ("Access to action 'assign' denied"), unless the deployment's system configuration says otherwise.
+  - `unassign(relation, member)` (no relation: the one the member has in the panel) is a member's row. On 4.4 and
+    later its menu's Unassign, confirmed, deletes the member's assignments to the object through the model as the
+    user, no task: every one of them, unless the member has several memberships (its `roleMembershipRef` as the user
+    reads it) and one of them is the panel's (then that one); when it has several of the panel's relations the GUI
+    asks which and starts a task over the row instead. The row has an Unassign only for a member with an assignment
+    to the object as the user reads it. 4.0 has no row menu on a members panel: the row is selected and the panel's
+    Unassign starts a task with the relation (as `unassignSelected`).
+  - `unassignSelected(relation, members...)` is the panel's Unassign with the rows selected, confirmed: a task over
+    the selection. 4.4 and later unassign every relation of the panel unless one selected member has several of them
+    (then the relation given); 4.0 the dialog's relations (the one given, else every one of the panel).
+    `unassignAll(type, relations...)` is the panel's Unassign with nothing selected: a task over the direct members
+    of the type with an assignment of the relations (no relation: every one of the panel).
+  - Each returns the call's `Effects` (the members' changes, provisioning, mails), without the GUI's task. What
+    midPoint refuses fails the call (`expectFailure`): the task's start (`... failed: Not authorized for operation
+    ...#executeScript`), or the task on a member (`... failed: the task "Add members to Organization site-1" (owned by
+    jdoe) failed: PARTIAL_ERROR ...` and `last failure: jack: ...`). What the GUI does not offer is an
+    `AssertionError`: a hidden button, a relation or type the panel has not, a member the user's search does not find
+    (the popup lists only those; the task searches as the user too), a row Unassign that would delete other
+    relations than the one given.
+  - `t.actor(user).isAuthorized(AUTZ_UI_ADMIN_ASSIGN_ORG_MEMBER_ACTION_URI, ref)` stays the security enforcer's
+    decision with the object: it differs from `assignButton().shown()` for a deny or an object-limited allow naming
+    the action.
+
+  ```kotlin
+  val tree = t.actor("site-admin").orgTreeMembersPanel(t.org("site-1"))
+  tree.assign(SchemaConstants.ORG_MANAGER, t.user("jack"))
+  t.user("jack").hasAssignment("site-1", SchemaConstants.ORG_MANAGER)
+  tree.unassign(SchemaConstants.ORG_MANAGER, t.user("jack"))
+  t.actor("helpdesk").governancePanel(t.org("site-1")).assignButton().isHidden()
+  val uiOnly = t.actor("ui-only").orgTreeMembersPanel(t.org("site-1"))
+  t.expectFailure { uiOnly.assign(SchemaConstants.ORG_MANAGER, t.user("jack")) }
+  ```
+
+  Not modeled: the panel's `searchBoxConfiguration` (4.4 and later; relations and types it may narrow), the Assign
+  popup's relation-specific buttons (an archetype's `assignmentRelation`) and an org's "Other types" tab, indirect
+  members and the organization tree's subtree scope, an approval the task's change triggers (its case is in the
+  effects), 4.4's old design (`useNewDesign` false).
 - `t.newObjectForm(type)` and `t.editForm(type, nameOrOid)` are the object's form in the GUI, **run by the GUI
   itself**: the tester opens the type's details page in the JVM (Wicket's tester: no browser, no web server), types
   the values into its fields and presses Save, as a user does. `newObjectForm` is a new object's page as the GUI opens

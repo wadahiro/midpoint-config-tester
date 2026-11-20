@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.Test;
 
+import com.evolveum.midpoint.schema.constants.SchemaConstants;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 
@@ -63,5 +64,28 @@ class FreshInstallationTest {
                 .isInstanceOf(OperationFailed.class)
                 .hasMessageContaining("Script interpreter for language 'Groovy' is not allowed in expression profile"
                         + " 'configuration'");
+    }
+
+    @Test
+    void aMembersPanelsTaskIsRefusedByTheInitialExpressionProfilesOf411(MidPointConfigTester t) {
+        // the task of a members panel's Assign runs the bulk action assign as the user who started it
+        // (MembersPanelScenarioTest); 4.11's initial system configuration gives it the prohibitive profile, whose
+        // actions profile allows no bulk action (BaseActionExecutor.checkExecutionAllowed): the task fails on each
+        // member. Before 4.11 there is no profile: the task assigns
+        t.midpoint().importObject(new java.io.File(Fixtures.dir("forms"), "member-operations.xml"));
+        com.github.wadahiro.midpoint.configtester.MembersPanel tree = t.actor("mo-site-manager")
+                .orgTreeMembersPanel(t.org("mo-site-1"));
+
+        if (Lines.atLeast(t.midpoint(), "4.11")) {
+            assertThat(t.expectFailure(() -> tree.assign(SchemaConstants.ORG_MANAGER, t.user("mo-jack"))).message())
+                    .contains("failed: the task \"Add members to Organization mo-site-1\" (owned by mo-site-manager)"
+                            + " failed: PARTIAL_ERROR")
+                    .contains("last failure: mo-jack: Access to action 'assign' denied (applied expression profile"
+                            + " 'prohibitive', actions profile 'prohibitive')");
+            t.user("mo-jack").hasNoAssignment("mo-site-1", SchemaConstants.ORG_MANAGER);
+            return;
+        }
+        tree.assign(SchemaConstants.ORG_MANAGER, t.user("mo-jack"));
+        t.user("mo-jack").hasAssignment("mo-site-1", SchemaConstants.ORG_MANAGER);
     }
 }

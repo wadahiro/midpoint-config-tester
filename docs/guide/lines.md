@@ -121,6 +121,15 @@ Other line notes:
   tab is identified by its URI's local name (`focusTabGovernance`), and has no sub-tabs. 4.4 and later: the panels of
   `objectDetails` (identifier `orgGovernance`), shown by their `visibility` and `applicableForOperation`. 4.4 has both
   designs: the old one (`useNewDesign` false) reads `objectForms` as 4.0 does.
+- **4.0**: a members panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the
+  Governance panel's actions are its own (`#adminAssignGovernance`, `#adminUnassignGovernance`; 4.4 and later the
+  Members panel's, `#adminAssignOrgMember`...), a row has no menu (a row's `unassign` is the selection's task, its
+  relation the dialog's), the task is an iterative scripting task (`Add.members`, `Remove.SELECTED.members`) checked
+  for `#executeScript` when it starts. 4.4: an activity task switched to the background, `#executeScript` too; the
+  row's Unassign deletes the assignments through the model, no task. 4.8 and later: the task is submitted
+  (`ModelInteractionService.submit`) after `authorization-bulk-3#assign` or `#unassign` in the execution phase; 4.11
+  gives it the user channel, and a fresh 4.11 system configuration's `prohibitive` profile of a user's bulk actions
+  refuses `assign` and `unassign` on every member.
 - **4.4**: accounts are imported by searching the shadow and `importFromResource`; scanners and report exports are
   tasks switched to the background. `why()` places a mapping by finding its value in its object, so two equal mappings
   in one object are told apart by their name only.

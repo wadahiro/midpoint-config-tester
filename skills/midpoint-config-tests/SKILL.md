@@ -139,7 +139,11 @@ archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberB
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The
 tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")`
 (a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`); a tab's buttons are authorizations,
-`t.actor(u).isAuthorized(action, ref)`.
+`t.actor(u).isAuthorized(action, ref)`. A members panel's Assign and Unassign as the user does them (the GUI's task
+or change, its authorization checks): `t.actor(u).orgTreeMembersPanel(t.org(x)).assign(ORG_MANAGER, t.user(j))`,
+`.unassign(ORG_MANAGER, t.user(j))` (a row), `.unassignSelected(...)`, `.unassignAll(...)`; the same on
+`membersPanel(x)` and `governancePanel(x)` of the details page; `.assignButton().isShown()` / `.isHidden()`; a refusal
+with `t.expectFailure { ... }`.
 
 - **A, scenario**: a midPoint-internal flow (sync, mappings, roles and inducements, lifecycle, tasks, approvals,
   certification, notifications, what is provisioned to a target).

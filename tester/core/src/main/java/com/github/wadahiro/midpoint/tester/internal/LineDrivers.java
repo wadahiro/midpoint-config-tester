@@ -106,6 +106,18 @@ public interface LineDrivers {
 
     BulkActionOutput executeBulkAction(String xml, Task task, OperationResult result) throws Exception;
 
+    /**
+     * Starts the task of a members panel's Assign or Unassign as the line's GUI does, logged in as the user who owns
+     * it, and returns its OID: the line's check at submission (4.0, 4.4: {@code #executeScript}; 4.8+: the bulk
+     * action's {@code authorization-bulk-3} in the execution phase), then the task the GUI builds (4.0: an iterative
+     * scripting task of the action with the {@code role} and {@code relation} parameters; 4.4+: an iterative scripting
+     * activity of {@code assign} with the target reference or {@code unassign} with a filter of the assignments),
+     * submitted as the GUI submits it (4.0: {@code ScriptingService.evaluateIterativeExpressionInBackground}; 4.4:
+     * {@code TaskManager.switchToBackground}; 4.8+: {@code ModelInteractionService.submit}, 4.11 with the user
+     * channel). The task runs in the background.
+     */
+    String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception;
+
     // ---- midPoint's initial import (InitialDataImport of gui/admin-gui), see InitialImport ----------------------
 
     /**

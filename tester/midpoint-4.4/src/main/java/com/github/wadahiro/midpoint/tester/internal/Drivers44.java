@@ -460,6 +460,66 @@ final class Drivers44 implements LineDrivers {
     }
 
     @Override
+    public String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception {
+        // MemberOperationsHelper (gui.impl, 4.4): createAndSubmitAssignMembersTask / createUnassignMembersTask,
+        // createScriptingMemberOperationTask, createTaskForActivity and submitTaskIfPossible
+        PrismContext prism = harness.bean(PrismContext.class);
+        com.evolveum.midpoint.xml.ns._public.model.scripting_3.ExecuteScriptType request =
+                new com.evolveum.midpoint.xml.ns._public.model.scripting_3.ExecuteScriptType();
+        if (spec.assign) {
+            request.setScriptingExpression(new JAXBElement<>(SchemaConstantsGenerated.SC_ASSIGN,
+                    com.evolveum.midpoint.xml.ns._public.model.scripting_3.AssignActionExpressionType.class,
+                    new com.evolveum.midpoint.xml.ns._public.model.scripting_3.AssignActionExpressionType()
+                            .targetRef(com.evolveum.midpoint.schema.util.ObjectTypeUtil.createObjectRef(
+                                    spec.target.asObjectable(), spec.relations.get(0)))));
+        } else {
+            List<com.evolveum.midpoint.prism.PrismReferenceValue> targets = new ArrayList<>();
+            for (QName relation : spec.relations) {
+                targets.add(new ObjectReferenceType().oid(spec.target.getOid()).relation(relation)
+                        .asReferenceValue());
+            }
+            com.evolveum.midpoint.prism.query.ObjectFilter assignments = prism.queryFor(AssignmentType.class)
+                    .item(AssignmentType.F_TARGET_REF).ref(targets, true).buildFilter();
+            request.setScriptingExpression(new JAXBElement<>(SchemaConstantsGenerated.SC_UNASSIGN,
+                    com.evolveum.midpoint.xml.ns._public.model.scripting_3.UnassignActionExpressionType.class,
+                    new com.evolveum.midpoint.xml.ns._public.model.scripting_3.UnassignActionExpressionType()
+                            .filter(prism.getQueryConverter().createSearchFilterType(assignments))));
+        }
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ActivityDefinitionType activity =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.ActivityDefinitionType(prism)
+                        .work(new com.evolveum.midpoint.xml.ns._public.common.common_3.WorkDefinitionsType(prism)
+                                .iterativeScripting(new com.evolveum.midpoint.xml.ns._public.common.common_3
+                                        .IterativeScriptingWorkDefinitionType(prism)
+                                        .objects(new com.evolveum.midpoint.xml.ns._public.common.common_3
+                                                .ObjectSetType(prism)
+                                                .type(spec.memberType)
+                                                .query(prism.getQueryConverter().createQueryType(spec.memberQuery)))
+                                        .scriptExecutionRequest(request)));
+        com.evolveum.midpoint.task.api.TaskManager taskManager =
+                harness.bean(com.evolveum.midpoint.task.api.TaskManager.class);
+        // the GUI's createSimpleTask: a task owned by the user, in the user channel
+        Task operational = taskManager.createTaskInstance(spec.taskName());
+        operational.setChannel(TaskChannel.current() != null ? TaskChannel.current() : GUI_CHANNEL);
+        operational.setName(new PolyStringType(spec.taskName()));
+        operational.setOwner(com.evolveum.midpoint.security.api.SecurityUtil.getPrincipal().getFocus()
+                .asPrismObject());
+        operational.setInitiallyRunnable();
+        operational.setThreadStopAction(
+                com.evolveum.midpoint.xml.ns._public.common.common_3.ThreadStopActionType.RESTART);
+        operational.setSchedule(new com.evolveum.midpoint.xml.ns._public.common.common_3.ScheduleType(prism)
+                .misfireAction(com.evolveum.midpoint.xml.ns._public.common.common_3.MisfireActionType
+                        .EXECUTE_IMMEDIATELY));
+        operational.setRootActivityDefinition(activity);
+        harness.bean(SecurityEnforcer.class).authorize(ModelAuthorizationAction.EXECUTE_SCRIPT.getUrl(), null,
+                AuthorizationParameters.EMPTY, null, operational, operational.getResult());
+        taskManager.switchToBackground(operational, result);
+        return operational.getOid();
+    }
+
+    /** The user channel of the GUI ({@code SchemaConstants.CHANNEL_USER_URI}). */
+    private static final String GUI_CHANNEL = "http://midpoint.evolveum.com/xml/ns/public/gui/channels-3#user";
+
+    @Override
     public String initialObjectsPattern() {
         // InitialDataImport (4.4): classpath*:/initial-objects/*, here as unpacked from the GUI module
         return "classpath*:tester/initial-objects/*";

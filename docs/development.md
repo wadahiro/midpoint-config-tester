@@ -171,6 +171,7 @@ porting expectations between lines. The test of each row:
 | prism's message for an item without a definition | `StaticCheckTest.schema` |
 | The members panel's "+": shown to every user (4.0); midPoint's assignment holder specification without an archetype (4.0: no relations, 4.4+: none); the org of a new member in `parentOrgRef` (4.0: any relation) | `CreateMemberButtonScenarioTest`, `NewMemberOffersScenarioTest` |
 | A new object without a name saved by a user who may not add it (4.0: refused for the name first) | `CreateMemberButtonScenarioTest.theModelRefusesAMemberTheUserMayNotAdd` |
+| A members panel's Assign and Unassign: 4.0's Governance actions and no row menu; the task's check when it starts (4.0, 4.4: `#executeScript`; 4.8+: `authorization-bulk-3`); a row's Unassign as a model change (4.4+); a fresh 4.11's `prohibitive` profile of a user's bulk actions | `MembersPanelScenarioTest`, `FreshInstallationTest.aMembersPanelsTaskIsRefusedByTheInitialExpressionProfilesOf411` |
 | The tabs of a details page: hidden by `objectForms` (4.0, 4.4's old design) or by an `objectDetails` panel's `visibility` (4.4+); identifiers (4.0: `focusTabGovernance`, 4.4+: `orgGovernance`); no Governance on a new object's page | `DetailsTabsScenarioTest` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that

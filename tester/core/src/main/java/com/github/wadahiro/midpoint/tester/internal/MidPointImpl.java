@@ -990,6 +990,26 @@ final class MidPointImpl implements MidPoint {
         return task != null ? task.getResultStatus() : null;
     }
 
+    /**
+     * The errors of the task's last run as {@link #taskErrors} gives them, or null if it ended without error or, a
+     * partial error, while partial errors are allowed ({@link #allowingPartialErrors}).
+     */
+    String taskRunErrors(String oid) throws Exception {
+        OperationResultStatusType status = resultStatus(oid);
+        if (status != OperationResultStatusType.FATAL_ERROR && status != OperationResultStatusType.PARTIAL_ERROR
+                || partialErrorsAllowed && status == OperationResultStatusType.PARTIAL_ERROR) {
+            return null;
+        }
+        // the task as stored (a search may leave out its activity state, 4.11), and its result
+        PrismObject<TaskType> stored = harness.bean(RepositoryService.class).getObject(TaskType.class, oid, null,
+                new OperationResult("task"));
+        List<String> failures = TaskFailures.of(prismContext().xmlSerializer().serialize(stored));
+        OperationResult taskResult = harness.bean(TaskManager.class).getTaskWithResult(oid,
+                new OperationResult("task result")).getResult();
+        return status.value().toUpperCase(Locale.ROOT) + (taskResult != null ? " " + firstMessage(taskResult) : "")
+                + (failures.isEmpty() ? "" : "\nlast failure: " + String.join("\nlast failure: ", failures));
+    }
+
     private String taskErrors(String oid, OperationResult result) throws Exception {
         if (oid == null) {
             return null;

@@ -25,7 +25,11 @@
   user's GUI profile (views, features, menu links); not what a page does after it opens or the rest of the menus.
   The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
   (its fields' validations, Save, its tabs); not the browser's side. The "+" of a members panel (`createMemberButton`) is
-  its buttons as the GUI derives them and its visibility by the GUI's rule, not the panel rendered. The web application is not started: its filters
+  its buttons as the GUI derives them and its visibility by the GUI's rule, not the panel rendered; so are a members
+  panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the GUI's rule of the
+  buttons and the task or change the line's GUI makes, not the panel, its popup or its `searchBoxConfiguration`
+  (relations and types it may narrow), the popup's relation-specific buttons and an org's "Other types" tab,
+  indirect members and the subtree scope. The web application is not started: its filters
   (`web.xml`), the GUI's localization and the servers of plugins (gRPC, custom REST endpoints) are not run.
   midPoint's own REST API is called through its authentication, authorizations and controllers on 4.8 and later
   ([midPoint's REST API](environment.md#midpoints-rest-api)), with no HTTP server: TLS, proxies and the network are

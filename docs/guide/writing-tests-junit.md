@@ -57,6 +57,10 @@ analyst.isCancelled();                                             // firstDecid
 request.isApproved();
 t.user("jack").hasAssignment("Privileged Access");
 
+// a manager assigned from the org tree's members panel, as the GUI does it (a task owned by site-admin)
+t.actor("site-admin").orgTreeMembersPanel(t.org("site-1")).assign(SchemaConstants.ORG_MANAGER, t.user("jack"));
+t.user("jack").hasAssignment("site-1", SchemaConstants.ORG_MANAGER);
+
 t.expectFailure(() -> t.user("ann").assign("Auditor")).isPolicyViolation();   // excluded by Accountant
 // the refusal as the GUI shows it to a user of that language (a constraint's presentation/message, else midPoint's text)
 assertThat(t.expectFailure(() -> t.user("ann").assign("Auditor")).userMessage("ja")).contains("Auditor");
@@ -85,8 +89,8 @@ out.hasRows(2).hasRowWith("User", "jack");
 | Call | What it is | Returns, fails with |
 |---|---|---|
 | `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember`, `offersNewMember`, `offersNoNewMember` (also `isShown`, `isHidden`), a form's `tabs().hasTab`, `hasNoTab` | a claim about midPoint now | its subject; `AssertionError` |
-| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown`, a form's `tabs().names()`, `all()`, `tab(tab)` | a read, for AssertJ | the value |
-| `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`... | a verb: midPoint works | `Effects` |
+| `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown`, a form's `tabs().names()`, `all()`, `tab(tab)`, a members panel's `relations()`, `memberTypes()`, `assignButton().action()` | a read, for AssertJ | the value |
+| `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`..., a members panel's `assign`, `unassign`, `unassignSelected`, `unassignAll` | a verb: midPoint works | `Effects` |
 | `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` |
 | `effects.verifyAll(c -> ...)` | a verification: the checks claim, then nothing else may have happened | `Effects`; `AssertionError` |

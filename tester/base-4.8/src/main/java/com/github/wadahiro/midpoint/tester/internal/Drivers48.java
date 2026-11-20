@@ -475,6 +475,57 @@ final class Drivers48 implements LineDrivers {
     }
 
     @Override
+    public String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception {
+        // MemberOperationsTaskCreator (4.8 to 4.11): Assign / Unassign.createAndSubmitTask
+        ModelInteractionService interaction = harness.bean(ModelInteractionService.class);
+        // "the task itself will require both REQUEST and EXECUTION phase authorization"
+        interaction.authorizeBulkActionExecution(spec.assign ? com.evolveum.midpoint.model.api.BulkAction.ASSIGN
+                : com.evolveum.midpoint.model.api.BulkAction.UNASSIGN, AuthorizationPhaseType.EXECUTION, task, result);
+        ExecuteScriptType request = new ExecuteScriptType();
+        if (spec.assign) {
+            request.scriptingExpression(new JAXBElement<>(SchemaConstantsGenerated.SC_ASSIGN,
+                    com.evolveum.midpoint.xml.ns._public.model.scripting_3.AssignActionExpressionType.class,
+                    new com.evolveum.midpoint.xml.ns._public.model.scripting_3.AssignActionExpressionType()
+                            .targetRef(com.evolveum.midpoint.schema.util.ObjectTypeUtil.createObjectRef(
+                                    spec.target.asObjectable(), spec.relations.get(0)))));
+        } else {
+            List<com.evolveum.midpoint.prism.PrismReferenceValue> targets = new ArrayList<>();
+            for (QName relation : spec.relations) {
+                targets.add(new ObjectReferenceType().oid(spec.target.getOid()).relation(relation)
+                        .asReferenceValue());
+            }
+            PrismContext prism = harness.bean(PrismContext.class);
+            com.evolveum.midpoint.prism.query.ObjectFilter assignments = prism.queryFor(AssignmentType.class)
+                    .item(AssignmentType.F_TARGET_REF).ref(targets, true).buildFilter();
+            request.scriptingExpression(new JAXBElement<>(SchemaConstantsGenerated.SC_UNASSIGN,
+                    com.evolveum.midpoint.xml.ns._public.model.scripting_3.UnassignActionExpressionType.class,
+                    new com.evolveum.midpoint.xml.ns._public.model.scripting_3.UnassignActionExpressionType()
+                            .filter(prism.getQueryConverter().createSearchFilterType(assignments))));
+        }
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ActivityDefinitionType activity =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.ActivityDefinitionType()
+                        .work(new com.evolveum.midpoint.xml.ns._public.common.common_3.WorkDefinitionsType()
+                                .iterativeScripting(new com.evolveum.midpoint.xml.ns._public.common.common_3
+                                        .IterativeScriptingWorkDefinitionType()
+                                        .objects(new com.evolveum.midpoint.xml.ns._public.common.common_3
+                                                .ObjectSetType()
+                                                .type(spec.memberType)
+                                                .query(harness.bean(PrismContext.class).getQueryConverter()
+                                                        .createQueryType(spec.memberQuery)))
+                                        .scriptExecutionRequest(request)));
+        com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType template =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType()
+                        .name(new PolyStringType(spec.taskName()));
+        if (LineSupport.LINE.equals("4.11")) {
+            // 4.11: the task template has the user channel (MemberOperationsTaskCreator.createSubmissionOptions)
+            template.channel(SchemaConstants.CHANNEL_USER_URI);
+        }
+        return interaction.submit(activity,
+                com.evolveum.midpoint.model.api.ActivitySubmissionOptions.create().withTaskTemplate(template), task,
+                result);
+    }
+
+    @Override
     public String initialObjectsPattern() {
         // InitialDataImport (4.8): the initial objects of system-init, in subdirectories by type
         return "classpath*:/initial-objects/**/*.xml";

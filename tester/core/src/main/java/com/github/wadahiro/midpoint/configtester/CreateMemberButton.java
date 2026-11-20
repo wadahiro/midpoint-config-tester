@@ -2,7 +2,6 @@ package com.github.wadahiro.midpoint.configtester;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import javax.xml.namespace.QName;
 
 import com.evolveum.midpoint.security.api.AuthorizationConstants;
@@ -10,7 +9,6 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentHolderType
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AuthorizationType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
 import com.github.wadahiro.midpoint.configtester.names.ArchetypeRef;
-import com.github.wadahiro.midpoint.tester.CompiledAuthorization;
 
 /**
  * The "+" of a role's, org's or service's members panel as a user sees it ({@link Actor#createMemberButton}): whether
@@ -195,22 +193,9 @@ public final class CreateMemberButton {
                 : AuthorizationConstants.AUTZ_UI_ADMIN_ADD_MEMBER_ACTION_URI;
     }
 
-    /**
-     * The user's authorizations that name the action, {@code #all} or {@code #guiAll}: Wicket's roles of the session
-     * are every action of the user's authorizations (MidPointAuthWebSession.getRoles), and the GUI asks for any of
-     * the three (WebComponentUtil.isAuthorized: hasAnyRole).
-     */
+    /** The user's authorizations that name the action, {@code #all} or {@code #guiAll} ({@link Actor#naming}). */
     private List<AuthorizationType> naming() {
-        actor.explainAuthorizations();
-        Set<String> roles = Set.of(action(), AuthorizationConstants.AUTZ_ALL_URL,
-                AuthorizationConstants.AUTZ_GUI_ALL_URL);
-        List<AuthorizationType> out = new ArrayList<>();
-        for (CompiledAuthorization compiled : actor.compiledAuthorizations()) {
-            if (compiled.authorization().getAction().stream().anyMatch(roles::contains)) {
-                out.add(compiled.authorization());
-            }
-        }
-        return out;
+        return actor.naming(action());
     }
 
     /** {@code #adminAddOrgMember}. */

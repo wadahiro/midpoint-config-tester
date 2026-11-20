@@ -1,0 +1,228 @@
+<!--
+    The Assign and Unassign of a members panel (MembersPanelScenarioTest): an org and a role whose members users
+    assign and unassign from the org's Members and Governance panels and the organization tree.
+    Users: a site manager (every panel's actions, #executeScript for 4.0 and 4.4, the bulk actions assign and unassign
+    for 4.8 and later, the model's #assign and #unassign of mo-site-1 and mo-team-1); a user with the GUI actions only;
+    a user without the model's #assign and #unassign; a user who reads only mo-ann of the users; a help desk user (no
+    action of a members panel); a user whose only #adminAssignOrgMember is a deny; a user with the org's member actions
+    but not 4.0's governance actions.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <org oid="10000000-0000-0000-0000-0000000f0201">
+        <name>mo-site-1</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0202">
+        <name>mo-team-1</name>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0203">
+        <name>mo-jack</name>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0204">
+        <name>mo-ann</name>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0210">
+        <name>mo-manager-role</name>
+        <!-- the Assign and Unassign of every panel (4.0's Governance panel has its own), the pages -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignGovernance</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignGovernance</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <!-- the task of an Assign or Unassign: 4.0 and 4.4 check #executeScript, 4.8 and later the bulk action -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#executeScript</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#unassign</action>
+        </authorization>
+        <!-- the members' assignments to mo-site-1 and mo-team-1, with any relation -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <target>
+                <type>OrgType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>mo-site-1</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>mo-team-1</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0211">
+        <name>mo-site-manager</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0210" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0212">
+        <name>mo-ui-only-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignGovernance</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignGovernance</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0213">
+        <name>mo-ui-only</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0212" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0214">
+        <name>mo-no-model-assign-role</name>
+        <!-- the GUI actions and the task's authorization, not the model's #assign and #unassign -->
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0212" type="RoleType"/>
+        </inducement>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#executeScript</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#unassign</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0215">
+        <name>mo-no-model-assign</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0214" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0216">
+        <name>mo-cannot-see-jack-role</name>
+        <!-- the site manager's, but of the users only mo-ann and itself are read -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>UserType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>mo-ann</q:value>
+                    </q:equal>
+                </filter>
+            </object>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#executeScript</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-bulk-3#unassign</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <target>
+                <type>OrgType</type>
+            </target>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0217">
+        <name>mo-cannot-see-jack</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0216" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0218">
+        <name>mo-helpdesk-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0219">
+        <name>mo-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0218" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f021a">
+        <name>mo-denied-role</name>
+        <authorization>
+            <name>no-org-members</name>
+            <decision>deny</decision>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignOrgMember</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f021b">
+        <name>mo-denied</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f021a" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f021c">
+        <name>mo-members-only-role</name>
+        <!-- an org's member actions, not 4.0's governance ones -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassignOrgMember</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f021d">
+        <name>mo-members-only</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f021c" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>
