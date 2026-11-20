@@ -140,8 +140,13 @@ boolean's or an enumeration's drop-down takes the choice: `.set("extension/vip",
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The
 tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")`
-(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`); a tab's buttons are authorizations,
-`t.actor(u).isAuthorized(action, ref)`. A members panel's Assign and Unassign as the user does them (the GUI's task
+(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). The rows of its Assignments and
+Inducements tabs as the user sees them, with the rows' Unassign and the "+" (the security enforcer with the object,
+request phase): `t.actor(u).editForm(Roles.TEAM_1).inducements().hasRow(Roles.META_1).row(Roles.META_1).hasUnassign()`,
+`.assignButton().isHidden()`; removing a row and saving as the user does it, refused by the model as an
+unassignment (`#unassign`, an inducement's with `orderConstraints` order 1):
+`t.actor(u).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()` / `.rejectsWith(...)`,
+`.unassign(Orgs.SITE_1)` on the Assignments tab. A members panel's Assign and Unassign as the user does them (the GUI's task
 or change, its authorization checks): `t.actor(u).orgTreeMembersPanel(t.org(x)).assign(ORG_MANAGER, t.user(j))`,
 `.unassign(ORG_MANAGER, t.user(j))` (a row), `.unassignSelected(...)`, `.unassignAll(...)`; the same on
 `membersPanel(x)` and `governancePanel(x)` of the details page; `.assignButton().isShown()` / `.isHidden()`; a refusal

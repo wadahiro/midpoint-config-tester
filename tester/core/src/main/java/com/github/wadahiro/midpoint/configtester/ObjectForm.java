@@ -192,7 +192,7 @@ public abstract class ObjectForm {
         }
 
         /** {@code its tabs: Basic, Members; hidden: Governance (visibility hidden)}. */
-        private String text() {
+        String text() {
             List<String> hidden = new ArrayList<>();
             for (Tab tab : all) {
                 if (!tab.shown()) {

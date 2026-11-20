@@ -135,4 +135,27 @@ final class GuiLineImpl implements GuiLine {
         return LegacyTabs.read(tabbed.getTabs().getObject(), main.getObject().getDefinition().getTypeName()
                 .getLocalPart(), main.getObjectWrapper().getStatus() == ItemStatus.ADDED);
     }
+
+    /**
+     * The tabbed panel's Assignments / Inducements tab clicked ({@code focusTabAssignments} /
+     * {@code focusTabInducements}): its SwitchAssignmentTypePanel opens on All, an AssignmentPanel.
+     */
+    @Override
+    public Component openAssignments(org.apache.wicket.util.tester.WicketTester tester, boolean inducements) {
+        return LegacyTabs.open(tester, this, inducements);
+    }
+
+    /** InlineMenuButtonColumn's AjaxIconButton of the row: its model is its icon (getButtonIconCssClass). */
+    @Override
+    public boolean isUnassignButton(Component component) {
+        return component instanceof com.evolveum.midpoint.web.component.AjaxIconButton
+                && AssignmentTabs.hasClasses(component.getDefaultModelObjectAsString(),
+                        com.evolveum.midpoint.gui.api.GuiStyleConstants.CLASS_DELETE_MENU_ITEM);
+    }
+
+    /** AssignmentPanel.initCustomButtonToolbar: the {@code newItemButton}. */
+    @Override
+    public Component newAssignmentButton(Component panel) {
+        return GuiLine.descendant((MarkupContainer) panel, "newItemButton");
+    }
 }

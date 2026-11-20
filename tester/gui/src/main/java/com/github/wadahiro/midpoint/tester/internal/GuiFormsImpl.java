@@ -101,12 +101,18 @@ final class GuiFormsImpl implements GuiForms {
     @Override
     public Saved save(Spec spec) {
         return run(spec, "save", tester -> {
+            // the page's own default button: a panel's search form made the default later (4.4 and later: the
+            // Assignments tab's) is not the Save
+            IFormSubmittingComponent opened = form(tester.getLastRenderedPage()).getDefaultButton();
             for (Map.Entry<String, Object> item : spec.items.entrySet()) {
                 typeInto(tester, spec.type, item.getKey(), item.getValue(), true);
             }
+            for (GuiForms.Removal removal : spec.removals) {
+                unassign(tester, removal);
+            }
             Page page = tester.getLastRenderedPage();
             Form<?> form = form(page);
-            Component save = saveButton(form);
+            Component save = saveButton(form, opened);
             tester.getSession().getFeedbackMessages().clear();
             tester.executeAjaxEvent(save, "click");
             awaitSaving(tester, page);
@@ -145,6 +151,151 @@ final class GuiFormsImpl implements GuiForms {
     public List<TabInfo> tabs(Spec spec) {
         // the page as opened: the items typed into change no tab
         return run(spec, "tabs", tester -> LINE.tabs(tester.getLastRenderedPage()));
+    }
+
+    @Override
+    public Rows rows(Spec spec, boolean inducements) {
+        return run(spec, inducements ? "inducements" : "assignments", tester -> {
+            Component panel = LINE.openAssignments(tester, inducements);
+            if (panel == null) {
+                return new Rows(false, LINE.tabs(tester.getLastRenderedPage()), List.of(), false, false);
+            }
+            List<RowInfo> rows = new ArrayList<>();
+            for (TableRow row : rowsOf(tester, panel)) {
+                rows.add(row.info);
+            }
+            Component add = LINE.newAssignmentButton(panel);
+            return new Rows(true, List.of(), rows, add != null && add.isVisibleInHierarchy(),
+                    add != null && add.isVisibleInHierarchy() && add.isEnabledInHierarchy());
+        });
+    }
+
+    /** A row of the Assignments or Inducements tab: what it shows, and its Unassign button (null: none). */
+    private static final class TableRow {
+        RowInfo info;
+        Component unassign;
+    }
+
+    /**
+     * The rows of the panel as rendered: the table's row items whose model is an assignment's value wrapper (a value the
+     * user removed is no row: the provider leaves it out), all of them on one page (the table's page size raised and
+     * the page rendered again, as paging through it shows them), each with the button of its menu column that is the
+     * Unassign ({@link GuiLine#isUnassignButton}).
+     */
+    private static List<TableRow> rowsOf(WicketTester tester, Component panel) {
+        List<org.apache.wicket.markup.repeater.AbstractPageableView<?>> tables = new ArrayList<>();
+        ((MarkupContainer) panel).visitChildren(org.apache.wicket.markup.repeater.AbstractPageableView.class,
+                (table, visit) -> {
+                    org.apache.wicket.markup.repeater.AbstractPageableView<?> view =
+                            (org.apache.wicket.markup.repeater.AbstractPageableView<?>) table;
+                    if (view.getItemCount() > view.getItemsPerPage()) {
+                        tables.add(view);
+                    }
+                });
+        if (!tables.isEmpty()) {
+            tables.forEach(view -> view.setItemsPerPage(Math.max(view.getItemCount(), 1)));
+            tester.startPage(tester.getLastRenderedPage());
+        }
+        List<TableRow> out = new ArrayList<>();
+        ((MarkupContainer) panel).visitChildren(org.apache.wicket.markup.repeater.Item.class, (component, visit) -> {
+            Object wrapper = component.getDefaultModelObject();
+            Object value = AssignmentTabs.call(wrapper, "getRealValue");
+            if (!(value instanceof AssignmentType)) {
+                return;
+            }
+            visit.dontGoDeeper();
+            if (!component.isVisibleInHierarchy() || "DELETED".equals(String.valueOf(AssignmentTabs.call(wrapper,
+                    "getStatus")))) {
+                return;
+            }
+            AssignmentType assignment = (AssignmentType) value;
+            ObjectReferenceType target = assignment.getTargetRef();
+            TableRow row = new TableRow();
+            List<Component> unassign = AssignmentTabs.visible((MarkupContainer) component, LINE::isUnassignButton);
+            row.unassign = unassign.isEmpty() ? null : unassign.get(0);
+            row.info = new RowInfo(target == null ? null : target.getOid(), target == null ? null : target.getType(),
+                    target == null ? null : target.getRelation(), assignment, row.unassign != null,
+                    row.unassign != null && row.unassign.isEnabledInHierarchy());
+            out.add(row);
+        });
+        return out;
+    }
+
+    /**
+     * The removal's row of the Assignments or Inducements tab, its Unassign pressed (the GUI's deleteItemPerformed:
+     * the value marked deleted, saved with the page); fails when the user does not see the tab, the row or its
+     * Unassign.
+     */
+    private void unassign(WicketTester tester, GuiForms.Removal removal) {
+        String tab = removal.inducement ? "Inducements" : "Assignments";
+        String relation = relationText(removal.relation);
+        Component panel = LINE.openAssignments(tester, removal.inducement);
+        if (panel == null) {
+            throw new AssertionError("Cannot unassign " + removal.target + " (" + relation + "): the page shows no "
+                    + tab + " tab; " + tabsText(LINE.tabs(tester.getLastRenderedPage())));
+        }
+        List<TableRow> rows = rowsOf(tester, panel);
+        TableRow found = null;
+        for (TableRow row : rows) {
+            if (removal.targetOid.equals(row.info.targetOid) && sameRelation(removal.relation, row.info.relation)) {
+                found = row;
+                break;
+            }
+        }
+        if (found == null) {
+            List<String> shown = new ArrayList<>();
+            rows.forEach(row -> shown.add(rowText(row.info)));
+            throw new AssertionError("Cannot unassign " + removal.target + " (" + relation + "): the " + tab
+                    + " tab shows no row of it; its rows: " + (shown.isEmpty() ? "none" : String.join(", ", shown)));
+        }
+        if (found.unassign == null || !found.unassign.isEnabledInHierarchy()) {
+            throw new AssertionError("Cannot unassign " + removal.target + " (" + relation + "): its row on the " + tab
+                    + " tab has no" + (found.unassign == null ? "" : " enabled") + " Unassign ("
+                    + (found.unassign == null
+                            ? "#adminUnassign is not allowed on the object: the security enforcer, request phase"
+                            : "the changed rows reach roleManagement/assignmentApprovalRequestLimit") + ")");
+        }
+        tester.getSession().getFeedbackMessages().clear();
+        AssignmentTabs.click(tester, found.unassign);
+        String failed = errorPage(tester.getLastRenderedPage());
+        if (failed != null) {
+            throw new AssertionError("Pressing Unassign of " + removal.target + " opened the GUI's error page " + failed);
+        }
+    }
+
+    /** {@code default}, or the relation's local name. */
+    static String relationText(QName relation) {
+        return relation == null ? "default" : relation.getLocalPart();
+    }
+
+    /** The same relation, a relation stored as none being default (the GUI shows both alike). */
+    static boolean sameRelation(QName a, QName b) {
+        QName one = a == null ? com.evolveum.midpoint.schema.constants.SchemaConstants.ORG_DEFAULT : a;
+        QName two = b == null ? com.evolveum.midpoint.schema.constants.SchemaConstants.ORG_DEFAULT : b;
+        return com.evolveum.midpoint.util.QNameUtil.match(one, two);
+    }
+
+    private static String rowText(RowInfo row) {
+        if (row.targetOid == null) {
+            return "(no target)";
+        }
+        return (row.targetType == null ? "" : row.targetType.getLocalPart() + " ") + row.targetOid + " ("
+                + relationText(row.relation) + ")";
+    }
+
+    /** {@code its tabs: Basic, Members; hidden: Governance (visibility hidden)}. */
+    private static String tabsText(List<TabInfo> tabs) {
+        List<String> shown = new ArrayList<>();
+        List<String> hidden = new ArrayList<>();
+        for (TabInfo tab : tabs) {
+            if (tab.shown) {
+                shown.add(tab.label);
+            } else {
+                hidden.add(tab.label + " (" + tab.hiddenBecause + ")");
+            }
+        }
+        return "its tabs: " + (shown.isEmpty() ? "none" : String.join(", ", shown))
+                + (hidden.isEmpty() ? "" : "; hidden: " + String.join(", ", hidden));
     }
 
     private <T> T run(Spec spec, String what, java.util.function.Function<WicketTester, T> action) {
@@ -869,25 +1020,38 @@ final class GuiFormsImpl implements GuiForms {
         return forms.get(0);
     }
 
-    /** The form's default button (Save), or its button "save" (pages without a default button). */
-    private static Component saveButton(Form<?> form) {
-        IFormSubmittingComponent button = form.getDefaultButton();
+    /**
+     * The page's Save: the form's default button as the page opened (a panel's search form makes its search button the
+     * root form's default: the Assignments tab of 4.4 and later), else the form's default button, else its button
+     * {@code save} (pages without a default button).
+     */
+    private static Component saveButton(Form<?> form, IFormSubmittingComponent opened) {
+        IFormSubmittingComponent button = opened instanceof Component && within((Component) opened, form.getPage())
+                ? opened : form.getDefaultButton();
+        Component save = null;
         if (button instanceof Component && ((Component) button).isVisibleInHierarchy()) {
-            return (Component) button;
+            save = (Component) button;
+        } else {
+            List<Component> found = new ArrayList<>();
+            form.visitChildren((component, visit) -> {
+                if ("save".equals(component.getId()) && component instanceof IFormSubmittingComponent
+                        && component.isVisibleInHierarchy()) {
+                    found.add(component);
+                    visit.stop();
+                }
+            });
+            save = found.isEmpty() ? null : found.get(0);
         }
-        List<Component> found = new ArrayList<>();
-        form.visitChildren((component, visit) -> {
-            if ("save".equals(component.getId()) && component instanceof IFormSubmittingComponent
-                    && component.isVisibleInHierarchy()) {
-                found.add(component);
-                visit.stop();
-            }
-        });
-        if (found.isEmpty()) {
+        if (save == null) {
+            // 4.4 and later: hidden from a user without a #modify of the object (AssignmentHolderOperationalButtonsPanel)
             throw new AssertionError("The page shows no Save button (the object is read-only to the user, or the page"
                     + " saves with a preview)");
         }
-        return found.get(0);
+        if (!save.isEnabledInHierarchy()) {
+            // 4.0: shown, disabled for a user who may change nothing of the object
+            throw new AssertionError("The page's Save button is disabled (the object is read-only to the user)");
+        }
+        return save;
     }
 
     /** A save executed in the background: waited for, then the progress timer fires as the browser's poll does. */

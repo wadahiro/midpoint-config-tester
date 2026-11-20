@@ -121,6 +121,11 @@ Other line notes:
   tab is identified by its URI's local name (`focusTabGovernance`), and has no sub-tabs. 4.4 and later: the panels of
   `objectDetails` (identifier `orgGovernance`), shown by their `visibility` and `applicableForOperation`. 4.4 has both
   designs: the old one (`useNewDesign` false) reads `objectForms` as 4.0 does.
+- **4.0**: a details page's Save is shown and disabled for a user without a `#modify` of the object; 4.4 and later
+  hide it (MID-9380). The rows of the Assignments and Inducements tabs (`assignments()`, `inducements()`) are read
+  from the tab itself (its type switch opens on All); 4.4 and later from the `allAssignments` / `allInducements`
+  sub-panel. The rule of a row's Unassign and of the "+" is the same on every line (the security enforcer with the
+  object, request phase).
 - **4.0**: a members panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the
   Governance panel's actions are its own (`#adminAssignGovernance`, `#adminUnassignGovernance`; 4.4 and later the
   Members panel's, `#adminAssignOrgMember`...), the toolbar's Assign (the icon right of the "+") is shown to every user

@@ -28,7 +28,8 @@
   The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
   (its fields' validations, the value typed as each field of the item's type takes it, its drop-downs' choices, the
   value rows of a multi-valued item with their add and
-  remove buttons, Save, its tabs); not the browser's side. The "+" of a members panel (`createMemberButton`) is
+  remove buttons, Save, its tabs, the rows of its Assignments and Inducements tabs with their Unassign and "+"); not
+  the browser's side, nor a new row's popup (`assign` from the tab is not driven). The "+" of a members panel (`createMemberButton`) is
   its buttons as the GUI derives them and its visibility by the GUI's rule, not the panel rendered; so are a members
   panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the GUI's rule of the
   buttons and the task or change the line's GUI makes, not the panel, its popup or its `searchBoxConfiguration`

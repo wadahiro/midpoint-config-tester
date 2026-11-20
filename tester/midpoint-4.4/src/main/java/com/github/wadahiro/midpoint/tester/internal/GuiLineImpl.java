@@ -239,4 +239,53 @@ final class GuiLineImpl implements GuiLine {
         }
         return label.getOrig() != null && !label.getOrig().equals(rendered) ? label.getOrig() : null;
     }
+
+    /**
+     * As {@link #tabs}, by the user's design: the new design's details navigation ({@code assignments} /
+     * {@code inducements}, then {@code allAssignments} / {@code allInducements}: an AbstractAssignmentTypePanel), the
+     * old one's tabbed panel ({@code focusTabAssignments} / {@code focusTabInducements}: an AssignmentPanel).
+     */
+    @Override
+    public Component openAssignments(org.apache.wicket.util.tester.WicketTester tester, boolean inducements) {
+        if (!WebComponentUtil.isNewDesignEnabled()) {
+            return LegacyTabs.open(tester, this, inducements);
+        }
+        if (!AssignmentTabs.navigate(tester, inducements ? "inducements" : "assignments",
+                inducements ? "allInducements" : "allAssignments")) {
+            return null;
+        }
+        return AssignmentTabs.panel(tester.getLastRenderedPage(), "AbstractAssignmentTypePanel");
+    }
+
+    /** InlineMenuButtonColumn's AjaxCompositedIconButton of the row (both designs): its basic icon. */
+    @Override
+    public boolean isUnassignButton(Component component) {
+        if (!(component instanceof com.evolveum.midpoint.gui.impl.component.AjaxCompositedIconButton)) {
+            return false;
+        }
+        Object icon = AssignmentTabs.field(component, "icon");
+        return icon instanceof com.evolveum.midpoint.gui.impl.component.icon.CompositedIcon
+                && AssignmentTabs.hasClasses(
+                        ((com.evolveum.midpoint.gui.impl.component.icon.CompositedIcon) icon).getBasicIcon(),
+                        com.evolveum.midpoint.gui.api.GuiStyleConstants.CLASS_DELETE_MENU_ITEM);
+    }
+
+    /** The old design's {@code newItemButton}, else the toolbar's AjaxIconButton of the assignment icon. */
+    @Override
+    public Component newAssignmentButton(Component panel) {
+        Component item = GuiLine.descendant((MarkupContainer) panel, "newItemButton");
+        if (item != null) {
+            return item;
+        }
+        Component[] found = new Component[1];
+        ((MarkupContainer) panel).visitChildren(com.evolveum.midpoint.web.component.AjaxIconButton.class,
+                (button, visit) -> {
+                    if (com.evolveum.midpoint.gui.api.GuiStyleConstants.EVO_ASSIGNMENT_ICON
+                            .equals(button.getDefaultModelObject())) {
+                        found[0] = button;
+                        visit.stop();
+                    }
+                });
+        return found[0];
+    }
 }

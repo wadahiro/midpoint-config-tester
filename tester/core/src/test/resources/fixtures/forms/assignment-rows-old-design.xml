@@ -1,0 +1,21 @@
+<!--
+    The old design of 4.4's details pages (AssignmentRowsScenarioTest, 4.4 only; imported after assignment-rows.xml): a
+    user with the role admin's authorizations whose other role turns the new design off (useNewDesign).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0720">
+        <name>ar-old-design-role</name>
+        <adminGuiConfiguration>
+            <useNewDesign>false</useNewDesign>
+        </adminGuiConfiguration>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0721">
+        <name>ar-old-design</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0710" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0720" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

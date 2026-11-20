@@ -39,9 +39,17 @@ public interface GuiForms {
         public final String user;
         /** The items typed into, by their paths of local names, in this order. */
         public final Map<String, Object> items;
+        /** The rows of the Assignments and Inducements tabs whose Unassign is pressed before Save, in this order. */
+        public final List<Removal> removals;
 
         public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
                 Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items) {
+            this(type, oid, archetypeOid, memberOid, memberType, relation, user, items, List.of());
+        }
+
+        public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
+                Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items,
+                List<Removal> removals) {
             this.type = type;
             this.oid = oid;
             this.archetypeOid = archetypeOid;
@@ -50,6 +58,71 @@ public interface GuiForms {
             this.relation = relation;
             this.user = user;
             this.items = Collections.unmodifiableMap(new LinkedHashMap<>(items));
+            this.removals = Collections.unmodifiableList(new ArrayList<>(removals));
+        }
+    }
+
+    /**
+     * A row of the Assignments tab (or the Inducements tab) whose Unassign the user presses: the row of the target with
+     * the relation (null: default, which the GUI shows alike for a relation stored as default or as none).
+     */
+    final class Removal {
+        public final boolean inducement;
+        public final String targetOid;
+        /** The target as a failure names it ({@code Role ar-meta-1}). */
+        public final String target;
+        public final QName relation;
+
+        public Removal(boolean inducement, String targetOid, String target, QName relation) {
+            this.inducement = inducement;
+            this.targetOid = targetOid;
+            this.target = target;
+            this.relation = relation;
+        }
+    }
+
+    /** A row of the Assignments or Inducements tab as the GUI renders it for the user. */
+    final class RowInfo {
+        /** The target's OID, or null: a row without a target (a construction, a policy rule...). */
+        public final String targetOid;
+        /** The target's type as the reference has it, or null. */
+        public final QName targetType;
+        /** The relation as stored (null: none). */
+        public final QName relation;
+        /** The assignment as the row holds it (as the user read the object). */
+        public final Object assignment;
+        /** Whether the row shows an Unassign button, and whether it is enabled. */
+        public final boolean unassignShown;
+        public final boolean unassignEnabled;
+
+        public RowInfo(String targetOid, QName targetType, QName relation, Object assignment, boolean unassignShown,
+                boolean unassignEnabled) {
+            this.targetOid = targetOid;
+            this.targetType = targetType;
+            this.relation = relation;
+            this.assignment = assignment;
+            this.unassignShown = unassignShown;
+            this.unassignEnabled = unassignEnabled;
+        }
+    }
+
+    /** The Assignments or Inducements tab as the GUI renders it for the user. */
+    final class Rows {
+        /** Whether the page shows the tab; when not, {@link #tabs} says why and the rest is empty. */
+        public final boolean tabShown;
+        public final List<TabInfo> tabs;
+        public final List<RowInfo> rows;
+        /** Whether the tab shows its "+" (new assignment), and whether it is enabled. */
+        public final boolean assignShown;
+        public final boolean assignEnabled;
+
+        public Rows(boolean tabShown, List<TabInfo> tabs, List<RowInfo> rows, boolean assignShown,
+                boolean assignEnabled) {
+            this.tabShown = tabShown;
+            this.tabs = Collections.unmodifiableList(new ArrayList<>(tabs));
+            this.rows = Collections.unmodifiableList(new ArrayList<>(rows));
+            this.assignShown = assignShown;
+            this.assignEnabled = assignEnabled;
         }
     }
 
@@ -196,6 +269,9 @@ public interface GuiForms {
 
     /** The page opened: its tabs, shown or hidden, in the GUI's order. */
     List<TabInfo> tabs(Spec spec);
+
+    /** The page opened, its Assignments tab (or Inducements tab) opened on its "All" sub-panel: its rows. */
+    Rows rows(Spec spec, boolean inducements);
 
     /** The forms of the deployment's midPoint (one per runtime). */
     static GuiForms of(com.github.wadahiro.midpoint.tester.MidPoint api) {

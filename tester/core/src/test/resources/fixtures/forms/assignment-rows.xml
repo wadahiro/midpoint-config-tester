@@ -1,0 +1,322 @@
+<!--
+    The rows of the Assignments and Inducements tabs (AssignmentRowsScenarioTest): an org, a team role assigned to it
+    with an archetype, inducing two metaroles and a policy rule; a metarole inducing the other; a user with a role and
+    a deputy assignment. The users: a role admin who may unassign the metaroles and the org (#unassign with their
+    targets), a user with the UI action only (no #modify, no #unassign), a help desk user who reads, a user whose
+    #adminUnassign is limited to one metarole, a user who reads only the names of roles.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <archetype oid="10000000-0000-0000-0000-0000000f0700">
+        <name>ar-archetype</name>
+    </archetype>
+    <org oid="10000000-0000-0000-0000-0000000f0701">
+        <name>ar-site-1</name>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0702">
+        <name>ar-meta-1</name>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0703" type="RoleType"/>
+        </inducement>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0703">
+        <name>ar-meta-2</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0704">
+        <name>ar-team-1</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0700" type="ArchetypeType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0701" type="OrgType"/>
+        </assignment>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0702" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0703" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <policyRule>
+                <name>ar-rule</name>
+                <policyConstraints>
+                    <modification>
+                        <name>ar-modification</name>
+                    </modification>
+                </policyConstraints>
+            </policyRule>
+        </inducement>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0705">
+        <name>ar-boss</name>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0706">
+        <name>ar-jack</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0703" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0705" type="UserType"
+                       relation="org:deputy" xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3"/>
+        </assignment>
+    </user>
+
+    <!-- a role inducing more roles than the table shows on a page -->
+    <role oid="10000000-0000-0000-0000-0000000f0731">
+        <name>ar-many-01</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0732">
+        <name>ar-many-02</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0733">
+        <name>ar-many-03</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0734">
+        <name>ar-many-04</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0735">
+        <name>ar-many-05</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0736">
+        <name>ar-many-06</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0737">
+        <name>ar-many-07</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0738">
+        <name>ar-many-08</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0739">
+        <name>ar-many-09</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f073a">
+        <name>ar-many-10</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f073b">
+        <name>ar-many-11</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f073c">
+        <name>ar-many-12</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0740">
+        <name>ar-many</name>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0731" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0732" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0733" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0734" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0735" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0736" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0737" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0738" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0739" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f073a" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f073b" type="RoleType"/>
+        </inducement>
+        <inducement>
+            <targetRef oid="10000000-0000-0000-0000-0000000f073c" type="RoleType"/>
+        </inducement>
+    </role>
+
+    <role oid="10000000-0000-0000-0000-0000000f0710">
+        <name>ar-role-admin-role</name>
+        <!-- the pages of roles and users, their rows' Unassign and "+" -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#usersAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminAssign</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassign</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <!-- the request: the description of roles, and unassigning the metaroles and the org -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>request</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+            <item>description</item>
+        </authorization>
+        <!-- an inducement's target is authorized with order 1 (midPoint's order constraints of an inducement) -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <phase>request</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>ar-meta-1</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>ar-meta-2</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <orderConstraints>
+                <order>1</order>
+            </orderConstraints>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <phase>request</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+            <target>
+                <type>OrgType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>ar-site-1</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0711">
+        <name>ar-role-admin</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0710" type="RoleType"/>
+        </assignment>
+    </user>
+
+    <role oid="10000000-0000-0000-0000-0000000f0712">
+        <name>ar-ui-only-role</name>
+        <!-- the Unassign of the rows, a #modify of the description (4.4 and later show Save only with a #modify; 4.4
+             refuses a change without any request authorization first) and the execution's, but no #unassign -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassign</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>request</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+            <item>description</item>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0713">
+        <name>ar-ui-only</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0712" type="RoleType"/>
+        </assignment>
+    </user>
+
+    <role oid="10000000-0000-0000-0000-0000000f0714">
+        <name>ar-helpdesk-role</name>
+        <!-- the pages of roles; reads everything -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0715">
+        <name>ar-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0714" type="RoleType"/>
+        </assignment>
+    </user>
+
+    <role oid="10000000-0000-0000-0000-0000000f0716">
+        <name>ar-object-limited-role</name>
+        <!-- the Unassign of the rows of ar-meta-1 only -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassign</action>
+            <object>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>name</q:path>
+                        <q:value>ar-meta-1</q:value>
+                    </q:equal>
+                </filter>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0717">
+        <name>ar-object-limited</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0716" type="RoleType"/>
+        </assignment>
+    </user>
+
+    <role oid="10000000-0000-0000-0000-0000000f0718">
+        <name>ar-blind-role</name>
+        <!-- the pages of roles; of a role only its name -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#rolesAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>RoleType</type>
+            </object>
+            <item>name</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0719">
+        <name>ar-blind</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0718" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

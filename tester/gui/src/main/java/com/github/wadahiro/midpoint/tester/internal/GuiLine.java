@@ -75,6 +75,27 @@ interface GuiLine {
      */
     List<GuiForms.TabInfo> tabs(Page page);
 
+    /**
+     * Opens the Assignments tab (inducements: the Inducements tab) of the rendered details page as the user clicks it,
+     * on its "All" sub-panel (4.4 and later: {@code allAssignments} / {@code allInducements}, else the first sub-panel
+     * shown; 4.0 and 4.4's old design: the tab, whose type switch opens on All), and returns the panel of its rows; null
+     * when the page shows the user no such tab.
+     */
+    Component openAssignments(org.apache.wicket.util.tester.WicketTester tester, boolean inducements);
+
+    /**
+     * Whether the component is a row's Unassign button: a button of the row's menu column whose icon is the GUI's
+     * delete icon ({@code GuiStyleConstants.CLASS_DELETE_MENU_ITEM}; 4.0 an AjaxIconButton's icon, 4.4 and later an
+     * AjaxCompositedIconButton's basic icon).
+     */
+    boolean isUnassignButton(Component component);
+
+    /**
+     * The "+" (new assignment) of the panel of the rows, or null: 4.0 and 4.4's old design the {@code newItemButton},
+     * 4.4 and later the toolbar's button with the assignment icon.
+     */
+    Component newAssignmentButton(Component panel);
+
     /** The first descendant of the container with the id, or null. */
     static Component descendant(org.apache.wicket.MarkupContainer container, String id) {
         Component[] found = new Component[1];

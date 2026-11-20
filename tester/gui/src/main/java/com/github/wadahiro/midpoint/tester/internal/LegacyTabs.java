@@ -62,6 +62,33 @@ final class LegacyTabs {
         return out;
     }
 
+    /**
+     * The old design's Assignments / Inducements tab ({@code focusTabAssignments} / {@code focusTabInducements})
+     * clicked as the user clicks it (the link {@code tabs-container:tabs:<index>:link} of the page's tabbed panel,
+     * {@code mainForm:tabPanel} of its AbstractObjectMainPanel); its type switch opens on All: the AssignmentPanel
+     * ({@link AssignmentTabs#panel}), or null when the page shows no such tab.
+     */
+    static org.apache.wicket.Component open(org.apache.wicket.util.tester.WicketTester tester, GuiLine line,
+            boolean inducements) {
+        String wanted = inducements ? "focusTabInducements" : "focusTabAssignments";
+        List<GuiForms.TabInfo> tabs = line.tabs(tester.getLastRenderedPage());
+        for (int i = 0; i < tabs.size(); i++) {
+            GuiForms.TabInfo tab = tabs.get(i);
+            if (!wanted.equals(tab.identifier)) {
+                continue;
+            }
+            if (!tab.shown) {
+                return null;
+            }
+            org.apache.wicket.MarkupContainer main = (org.apache.wicket.MarkupContainer) AssignmentTabs.first(
+                    tester.getLastRenderedPage(), "AbstractObjectMainPanel", false);
+            org.apache.wicket.Component link = main.get("mainForm:tabPanel:tabs-container:tabs:" + i + ":link");
+            AssignmentTabs.click(tester, link);
+            return AssignmentTabs.panel(tester.getLastRenderedPage(), "AssignmentPanel");
+        }
+        return null;
+    }
+
     private static boolean visible(Object behaviour) {
         try {
             // the behaviour may be an anonymous class: its public method is not accessible as it is

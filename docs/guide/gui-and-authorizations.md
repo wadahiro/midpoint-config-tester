@@ -236,11 +236,49 @@ assertThat(form.canRead("emailAddress")).isTrue();
       `title`. No sub-tabs.
     Not authorizations: a tab shown is not a tab whose content the user may change. Whether the configuration hides
     a panel, without opening the page, is `t.actor(user).guiProfile().objectDetails()` (4.4 and later; without the
-    object's archetype's part). A tab's buttons (the assign "+" of Assignments) are not read: the GUI decides them by
-    an authorization, `t.actor(user).isAuthorized(AuthorizationConstants.AUTZ_UI_ADMIN_ASSIGN_ACTION_URI, ref)`, the
-    security enforcer's decision in any phase (4.0's GUI asks it for the request phase: the same unless an
-    authorization is limited to a phase); 4.4 and later show the button for any authorization of the user that names
-    the action, a deny or one limited to some objects too, where `isAuthorized` may be false.
+    object's archetype's part). The rows of the Assignments and Inducements tabs, their Unassign and the tab's "+"
+    are `assignments()` / `inducements()`.
+  - `.assignments()` and `.inducements()` (`editForm` only) read the rows of the page's Assignments or Inducements
+    tab as the GUI renders them for the user (`AssignmentRows`; once, the claims chain on it): the page opened as
+    `tabs()` opens it (the items set and the rows removed on the form are not applied), the tab clicked on its "All"
+    sub-panel (4.4 and later `allAssignments` / `allInducements`, else the first sub-panel shown; 4.0 and 4.4's old
+    design the tab, whose type switch opens on All), the rows of every page of its table. `all()` the rows
+    (`AssignmentRow`: `target()`, null for a row without a target such as a construction or a policy rule; `relation()`
+    as stored; `label()`, the target's name or what the row holds, `Policy rule ar-rule`; `unassignShown()`);
+    `row(target[, relation])`, `hasRow(...)`, `hasNoRow(...)` by the target (a generated name) and relation, none
+    meaning `default` (a relation stored as `default` or as none, which the GUI shows alike); `row.hasUnassign()`,
+    `row.hasNoUnassign()`; `assignButton()` the tab's "+" (`shown()`, `isShown()`, `isHidden()`, `action()`). A row
+    is an assignment as the user reads the object: a user who may not read `assignment` / `inducement` sees no rows,
+    and `hasRow`'s failure lists the rows the administrator sees. Archetype assignments and delegations are no rows
+    (the GUI's query). The page shows no such tab: `AssertionError` with its tabs.
+    - The rule of the row's Unassign and of the "+" is the **security enforcer with the object, request phase**, on
+      every line (`#adminUnassign`, `#adminAssign`; the GUI falls back to Wicket's roles only when that call throws):
+      an authorization limited to some objects shows them on those objects only, not the members panels' rule (any
+      authorization naming the action). `t.actor(user).isAuthorized(action, ref)` asks the enforcer in any phase:
+      the same unless an authorization is limited to a phase. Both are disabled once the changed rows reach
+      `roleManagement/assignmentApprovalRequestLimit`.
+    - `.unassign(target[, relation])` / `.uninduce(target[, relation])` (also `row.unassign()`) press the row's
+      Unassign before Save: recorded on the form like `set`, replayed by `submit()` after the items typed in, then Save
+      (one Save for both, as a user does). The row is marked deleted and Save's delta deletes the whole assignment, so
+      the model authorizes it as an unassignment of the target: `#unassign` with the target and relation in the
+      request phase (an inducement's with `orderConstraints` order 1, midPoint's order of an inducement, unless the
+      authorization has another) or a `#modify` of the item, then the execution's `#modify`. A refusal is the page's
+      message (`rejectsWith(...)`, `saved()` false: `User 'ui-only' not authorized for operation with inducement on
+      role:<oid>(team-1) with target role:<oid>(meta-1)`). `submit()` fails (`AssertionError`) when the page shows
+      the user no such tab, no row of the target (`its rows: ...`) or no Unassign on it (`#adminUnassign is not
+      allowed on the object: the security enforcer, request phase`). Adding a row (the "+" and its popup) is not
+      driven: assign through the model (`t.actor(user).modify(...)`) or a members panel.
+    - Save itself: 4.4 and later show it only to a user with a `#modify` of the object (`The page shows no Save
+      button`, from MID-9380), 4.0 shows it disabled (`The page's Save button is disabled`); a user with only some
+      `#modify` (an item, the execution phase) sees it, and the model decides the rest.
+
+  ```kotlin
+  t.actor(Users.ROLE_ADMIN).editForm(Roles.TEAM_1).inducements().hasRow(Roles.META_1).row(Roles.META_1).hasUnassign()
+  t.actor(Users.ROLE_ADMIN).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()
+  t.actor(Users.ROLE_ADMIN).editForm(Roles.TEAM_1).set("description", "x").unassign(Orgs.SITE_1).submit().saves()
+  t.actor(Users.HELPDESK).editForm(Roles.TEAM_1).assignments().row(Orgs.SITE_1).hasNoUnassign()
+  t.actor(Users.HELPDESK).editForm(Roles.TEAM_1).inducements().assignButton().isHidden()
+  ```
 
   midPoint evaluates an object template's item validation (`item/validation/server`) only in the GUI's form, never in
   the model's operations: an object added through the model API is not validated, so a test of the validation asks
