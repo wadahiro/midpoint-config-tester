@@ -26,7 +26,8 @@
   "My work items" (`workItems()`, the page's query as the user); not what a page does after it opens or the rest of
   the menus.
   The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
-  (its fields' validations, its drop-downs' choices, the value rows of a multi-valued item with their add and
+  (its fields' validations, the value typed as each field of the item's type takes it, its drop-downs' choices, the
+  value rows of a multi-valued item with their add and
   remove buttons, Save, its tabs); not the browser's side. The "+" of a members panel (`createMemberButton`) is
   its buttons as the GUI derives them and its visibility by the GUI's rule, not the panel rendered; so are a members
   panel's Assign and Unassign (`membersPanel`, `governancePanel`, `orgTreeMembersPanel`): the GUI's rule of the

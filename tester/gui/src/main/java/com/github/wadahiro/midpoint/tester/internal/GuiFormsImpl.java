@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.MarkupContainer;
@@ -28,7 +29,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.FilterInvocation;
 
 import com.evolveum.midpoint.gui.api.component.result.OpResult;
+import com.evolveum.midpoint.prism.ItemDefinition;
 import com.evolveum.midpoint.prism.PrismObject;
+import com.evolveum.midpoint.prism.PrismObjectDefinition;
+import com.evolveum.midpoint.prism.PrismReferenceDefinition;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.result.OperationResultStatus;
@@ -41,6 +45,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
+import com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType;
 
 /**
  * The GUI's object forms run by midPoint's GUI ({@link GuiForms}). The GUI's beans are a child of the tester's Spring
@@ -54,10 +59,13 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
  *   <li>the page is the details page the GUI dispatches the type to, made as the GUI makes it for a new object (the
  *       archetype's and the membership's assignments, an org's parentOrgRef) or opened by the object's OID;</li>
  *   <li>a value is typed into the item's field and the field's change event fires, as leaving the field does (the
- *       field's validator); a drop-down's choice is picked by its id; a value the field takes without a message is
- *       then in its model, or the form fails; an item the page does not show until "show empty fields" is pressed
- *       gets it pressed; the values of a multi-valued item into its value rows, which its add and remove buttons
- *       make;</li>
+ *       field's validator); a drop-down's choice is picked by its id, any other value typed as the field's converter
+ *       shows it ({@link FieldValues}: a number, a date, a duration), a date of 4.0's and 4.4's DateInput into its
+ *       date, hours and minutes; a value the field takes without a message is then in its model, or the form fails; a
+ *       reference and a protected string are not typed (the form fails, naming what to use); an item the page does
+ *       not show until "show empty fields" is pressed gets it pressed; the values of a multi-valued item into its
+ *       value rows, which its add and remove buttons make;</li>
+ *   <li>a Save that opens the GUI's error page did not save (the page's exception is a message);</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
  *       for, then its progress timer fires once, as the browser's poll;</li>
  *   <li>the tabs are read from the rendered page ({@link GuiLine#tabs}): each as the GUI decided its visibility.</li>
@@ -83,10 +91,10 @@ final class GuiFormsImpl implements GuiForms {
         return run(spec, "type " + item, tester -> {
             for (Map.Entry<String, Object> other : spec.items.entrySet()) {
                 if (!other.getKey().equals(item)) {
-                    typeInto(tester, other.getKey(), other.getValue(), true);
+                    typeInto(tester, spec.type, other.getKey(), other.getValue(), true);
                 }
             }
-            return typeInto(tester, item, value, false);
+            return typeInto(tester, spec.type, item, value, false);
         });
     }
 
@@ -94,7 +102,7 @@ final class GuiFormsImpl implements GuiForms {
     public Saved save(Spec spec) {
         return run(spec, "save", tester -> {
             for (Map.Entry<String, Object> item : spec.items.entrySet()) {
-                typeInto(tester, item.getKey(), item.getValue(), true);
+                typeInto(tester, spec.type, item.getKey(), item.getValue(), true);
             }
             Page page = tester.getLastRenderedPage();
             Form<?> form = form(page);
@@ -121,6 +129,12 @@ final class GuiFormsImpl implements GuiForms {
                 } else {
                     other.add(text);
                 }
+            }
+            String failed = errorPage(tester.getLastRenderedPage());
+            if (failed != null) {
+                // the GUI failed saving (its error page): not a page left after saving
+                other.add("Saving opened the GUI's error page " + failed);
+                return new Saved(false, fields, other);
             }
             boolean left = tester.getLastRenderedPage().getClass() != page.getClass();
             return new Saved(!errors && (success || left), fields, other);
@@ -234,7 +248,9 @@ final class GuiFormsImpl implements GuiForms {
      * Types the value into the item's field and leaves it (the field's change event); the values of a multi-valued
      * item ({@link GuiForms.ValueRows}) into its value rows.
      */
-    private Field typeInto(WicketTester tester, String item, Object value, boolean filling) {
+    private Field typeInto(WicketTester tester, Class<? extends ObjectType> type, String item, Object value,
+            boolean filling) {
+        refuse(type, item);
         if (value instanceof GuiForms.ValueRows) {
             return typeValues(tester, item, (GuiForms.ValueRows) value);
         }
@@ -243,13 +259,102 @@ final class GuiFormsImpl implements GuiForms {
             String absent = found.panel == null
                     ? "the page shows no field of " + item + " (not an item the user may see or add, or on another"
                             + " panel of the page)"
-                    : "the field of " + item + " is read-only";
+                    : readOnly(item, found.wrapper);
             if (filling) {
                 throw new AssertionError("Cannot fill in " + item + ": " + absent);
             }
             return new Field(found.wrapper != null && LINE.validated(found.wrapper), List.of(), absent);
         }
         return new Field(LINE.validated(found.wrapper), enter(tester, item, found.input, value), null);
+    }
+
+    /**
+     * The items set does not type, failing with what to use instead: a reference (its field is the name of the object
+     * chosen, which the GUI's chooser popup sets: ValueChoosePanel) and a protected string (a password: the GUI types
+     * it in a password panel of its own, twice).
+     */
+    private void refuse(Class<? extends ObjectType> type, String item) {
+        ItemDefinition<?> definition = definition(type, item);
+        if (definition instanceof PrismReferenceDefinition) {
+            throw new AssertionError("Cannot fill in " + item + ": it is a reference, whose field the GUI sets by the"
+                    + " object chosen in its chooser popup (ValueChoosePanel), which set does not drive; change it"
+                    + " through the model instead (t.actor(user).modify(focus, m -> m.set(\"" + item + "\", ...)))");
+        }
+        if (definition != null && ProtectedStringType.COMPLEX_TYPE.equals(definition.getTypeName())) {
+            throw new AssertionError("Cannot fill in " + item + ": it is a protected string (a password), which the"
+                    + " GUI types in a password panel of its own (the value twice), not in a field of the form, and"
+                    + " set does not type; change a password through the model instead (t.actor(user).modify(user,"
+                    + " m -> m.password(\"...\")))");
+        }
+    }
+
+    /**
+     * Why an item's panel has no input to type into: read-only to the user, or (an item the user may change) a type the
+     * line's GUI has no field of (no panel factory: 4.0 and 4.4 show a double as nothing).
+     */
+    private static String readOnly(String item, Object wrapper) {
+        Object readOnly = call(wrapper, "isReadOnly");
+        if (Boolean.FALSE.equals(readOnly)) {
+            return "the GUI shows no input of " + item + ", which the user may change: the line's GUI has no field of"
+                    + " its type (" + call(wrapper, "getTypeName") + ")";
+        }
+        return "the field of " + item + " is read-only";
+    }
+
+    private static Object call(Object target, String method) {
+        try {
+            return target == null ? null : target.getClass().getMethod(method).invoke(target);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** The definition of the item (its path of local names) in the type, or null. */
+    private ItemDefinition<?> definition(Class<? extends ObjectType> type, String item) {
+        PrismObjectDefinition<?> object = mp.prismContext().getSchemaRegistry()
+                .findObjectDefinitionByCompileTimeClass(type);
+        if (object == null) {
+            return null;
+        }
+        List<Object> names = new ArrayList<>();
+        for (String name : item.split("/")) {
+            names.add(new QName(name));
+        }
+        try {
+            return object.findItemDefinition(ItemPath.create(names));
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The GUI's error page as a failure names it (PageError, with the exception it was made for), or null when the page
+     * is not one.
+     */
+    private static String errorPage(Page page) {
+        Class<?> error = null;
+        for (Class<?> c = page.getClass(); c != null; c = c.getSuperclass()) {
+            if (c.getSimpleName().equals("PageError")) {
+                error = c;
+                break;
+            }
+        }
+        if (error == null) {
+            return null;
+        }
+        String exception = "";
+        try {
+            java.lang.reflect.Field exClass = error.getDeclaredField("exClass");
+            java.lang.reflect.Field exMessage = error.getDeclaredField("exMessage");
+            exClass.setAccessible(true);
+            exMessage.setAccessible(true);
+            if (exClass.get(page) != null) {
+                exception = ": " + exClass.get(page) + ": " + exMessage.get(page);
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            // a page without them: its log has the exception
+        }
+        return page.getClass().getSimpleName() + exception + " (the log has its stack trace)";
     }
 
     /** The item's panel as the page shows it, "show empty fields" pressed when the page does not show it. */
@@ -260,10 +365,11 @@ final class GuiFormsImpl implements GuiForms {
             showEmpty(tester);
             if (tester.getLastRenderedPage().getClass() != page.getClass()) {
                 // the GUI failed to render the fields it shows (its error page): not a page without the item
+                String failed = errorPage(tester.getLastRenderedPage());
                 throw new AssertionError("Cannot fill in " + item + ": pressing \"show empty fields\" to show its"
-                        + " field opened " + tester.getLastRenderedPage().getClass().getSimpleName() + " instead of "
-                        + page.getClass().getSimpleName() + " (the GUI failed rendering the empty fields; its log"
-                        + " has the exception)");
+                        + " field opened " + (failed != null ? failed
+                                : tester.getLastRenderedPage().getClass().getSimpleName()) + " instead of "
+                        + page.getClass().getSimpleName() + " (the GUI failed rendering the empty fields)");
             }
             found = find(tester.getLastRenderedPage(), item);
         }
@@ -271,50 +377,108 @@ final class GuiFormsImpl implements GuiForms {
     }
 
     /**
-     * Types the value into the input and leaves it: the messages the item's panel shows then. A value the field takes
-     * without a message is in the field's model then, or the form fails: a drop-down's the choice typed, a text
-     * field's a value (not nothing).
+     * Types the value into the input and leaves it: the messages the item's panel shows then. The value is typed as the
+     * field shows it ({@link #typed}); a value the field takes without a message is in the field's model then, or the
+     * form fails ({@link #landed}).
      */
     private static List<String> enter(WicketTester tester, String item, FormComponent<?> input, Object value) {
         Form<?> form = form(tester.getLastRenderedPage());
-        String relative = input.getPageRelativePath().substring(form.getPageRelativePath().length() + 1);
+        String formPath = form.getPageRelativePath();
+        String inputPath = input.getPageRelativePath();
         tester.getSession().getFeedbackMessages().clear();
-        // a drop-down (a three-state boolean, an enumeration) sends the id of its choice, not the value
-        Choice choice = input instanceof AbstractSingleSelectChoice
-                ? choice(item, (AbstractSingleSelectChoice<?>) input, value) : null;
-        String raw = choice != null ? choice.id : value == null ? "" : String.valueOf(value);
-        // a browser sends the field's value with each of its change behaviors (4.0 has two); WicketTester's
-        // executeAjaxEvent with the first only
-        List<AjaxEventBehavior> changes = WicketTesterHelper.findAjaxEventBehaviors(input, "change");
-        if (changes.isEmpty()) {
-            throw new AssertionError("Cannot fill in " + item + ": its field (" + kind(input)
-                    + ") has no change event to type " + raw + " into");
-        }
+        Typed typed = typed(item, input, value);
         List<String> messages = new ArrayList<>();
-        for (AjaxEventBehavior change : changes) {
-            tester.newFormTester(form.getPageRelativePath(), false).setValue(relative, raw);
-            tester.executeBehavior(change);
-            Component panel = find(tester.getLastRenderedPage(), item).panel;
-            for (FeedbackMessage message : tester.getFeedbackMessages(m -> m.getLevel() >= FeedbackMessage.ERROR)) {
-                String text = text(message.getMessage());
-                if (panel != null && message.getReporter() != null && within(message.getReporter(), panel)
-                        && !messages.contains(text)) {
-                    messages.add(text);
+        for (Map.Entry<String, String> part : typed.parts.entrySet()) {
+            Component field = tester.getLastRenderedPage().get(part.getKey());
+            // a browser sends the field's value with each of its change behaviors (4.0 has two); WicketTester's
+            // executeAjaxEvent with the first only
+            List<AjaxEventBehavior> changes = WicketTesterHelper.findAjaxEventBehaviors(field, "change");
+            if (changes.isEmpty()) {
+                throw new AssertionError("Cannot fill in " + item + ": its field (" + kind(field)
+                        + ") has no change event to type " + part.getValue() + " into");
+            }
+            String relative = part.getKey().substring(formPath.length() + 1);
+            for (AjaxEventBehavior change : changes) {
+                tester.newFormTester(formPath, false).setValue(relative, part.getValue());
+                tester.executeBehavior(change);
+                String failed = errorPage(tester.getLastRenderedPage());
+                if (failed != null) {
+                    // the GUI failed on the value (4.0, 4.4: a duration's text it does not read)
+                    throw new AssertionError("Typing " + part.getValue() + " into " + item + " opened the GUI's error"
+                            + " page " + failed);
+                }
+                Component panel = find(tester.getLastRenderedPage(), item).panel;
+                for (FeedbackMessage message : tester.getFeedbackMessages(m -> m.getLevel() >= FeedbackMessage.ERROR)) {
+                    String text = text(message.getMessage());
+                    if (panel != null && message.getReporter() != null && within(message.getReporter(), panel)
+                            && !messages.contains(text)) {
+                        messages.add(text);
+                    }
                 }
             }
         }
         if (messages.isEmpty()) {
-            landed(item, input, value, choice);
+            Component now = tester.getLastRenderedPage().get(inputPath);
+            landed(item, now instanceof FormComponent ? (FormComponent<?>) now : input, value, typed);
         }
         return messages;
     }
 
     /**
-     * The value is in the field's model after the field took it without a message: a drop-down holds the choice
-     * typed (none for null), a text field a value when one was typed. Not: a value the GUI dropped silently.
+     * A value as the field is typed into: the text of each of its inputs (by page-relative path, in the order typed),
+     * and what the field's model is to hold then (null: not known, the GUI's converter decides; a choice: {@link
+     * #choice}).
      */
-    private static void landed(String item, FormComponent<?> input, Object value, Choice choice) {
+    private static final class Typed {
+        final Map<String, String> parts = new LinkedHashMap<>();
+        Choice choice;
+        Object expected;
+        String text;
+    }
+
+    /**
+     * The texts the value is typed as, as a user types it: a drop-down's choice by its id ({@link #choice}); a date
+     * field of several inputs (4.0, 4.4: DateInput, a DateTimeField) its date, hours and minutes; any other field the
+     * value as its converter shows it ({@link FieldValues#coerce}: a number, a date, a duration from their Java
+     * values or texts), so a date is typed in the field's pattern and the JVM's time zone; a text the converter does
+     * not read is typed as it is (the field's message says what is wrong with it).
+     */
+    private static Typed typed(String item, FormComponent<?> input, Object value) {
+        Typed typed = new Typed();
+        boolean none = value == null || String.valueOf(value).isEmpty();
+        if (input instanceof AbstractSingleSelectChoice) {
+            typed.choice = choice(item, (AbstractSingleSelectChoice<?>) input, value);
+            typed.text = typed.choice.id;
+            typed.parts.put(input.getPageRelativePath(), typed.choice.id);
+            return typed;
+        }
+        if (FieldValues.isDateTimeField(input)) {
+            java.util.Date date = none ? null : FieldValues.date(item, value, true);
+            typed.expected = date;
+            typed.parts.putAll(FieldValues.dateTimeParts(input, date));
+            return typed;
+        }
+        if (none) {
+            typed.text = "";
+            typed.parts.put(input.getPageRelativePath(), "");
+            return typed;
+        }
+        Object coerced = FieldValues.coerce(item, input.getType(), value);
+        typed.expected = coerced;
+        typed.text = coerced == null ? String.valueOf(value) : FieldValues.render(input, coerced);
+        typed.parts.put(input.getPageRelativePath(), typed.text);
+        return typed;
+    }
+
+    /**
+     * The value is in the field's model after the field took it without a message: a drop-down holds the choice
+     * typed (none for null), any other field the value typed (a date to the millisecond, a number by its value; a
+     * text the field's converter read: some value), an emptied field none. Not: a value the GUI dropped or changed
+     * silently.
+     */
+    private static void landed(String item, FormComponent<?> input, Object value, Typed typed) {
         Object held = input.getDefaultModelObject();
+        Choice choice = typed.choice;
         if (choice != null) {
             // an enumeration's choice may be a displayable value of the value the model holds
             boolean same = choice.option == null ? held == null
@@ -323,11 +487,30 @@ final class GuiFormsImpl implements GuiForms {
                 throw new AssertionError("Typed " + value + " into " + item + ", but its field holds "
                         + (held == null ? "no value" : String.valueOf(held)) + " (" + kind(input) + ")");
             }
-        } else if (value != null && !String.valueOf(value).isEmpty()
-                && (held == null || String.valueOf(held).isEmpty())) {
+            return;
+        }
+        boolean none = value == null || String.valueOf(value).isEmpty();
+        if (none) {
+            if (!FieldValues.isEmpty(held)) {
+                throw new AssertionError("Emptied the field of " + item + ", but it holds " + held + " ("
+                        + kind(input) + ")");
+            }
+            return;
+        }
+        if (FieldValues.isEmpty(held)) {
             throw new AssertionError("Typed " + value + " into " + item + ", but its field holds no value ("
                     + kind(input) + ")");
         }
+        if (typed.expected == null || FieldValues.same(typed.expected, held)) {
+            return;
+        }
+        // a field whose converter shows the value as typed (a lookup table's label typed for its key)
+        if (!(typed.expected instanceof java.util.Date) && typed.text != null
+                && typed.text.equals(FieldValues.render(input, held))) {
+            return;
+        }
+        throw new AssertionError("Typed " + value + " into " + item + ", but its field holds "
+                + FieldValues.describe(held) + " (" + kind(input) + ")" + FieldValues.why(typed.expected, held));
     }
 
     /** The input's class as named in a message: an anonymous one by the class it extends. */
@@ -410,6 +593,10 @@ final class GuiFormsImpl implements GuiForms {
                 // an enumeration without an XML value: its name
             }
             out.add(((Enum<?>) real).name());
+        } else if (real instanceof QName) {
+            // an object type's QName also by its local name (UserType)
+            out.add(String.valueOf(real));
+            out.add(((QName) real).getLocalPart());
         } else if (real != null) {
             out.add(String.valueOf(real));
         }
@@ -439,20 +626,24 @@ final class GuiFormsImpl implements GuiForms {
                     + " item the user may see or add, or on another panel of the page)");
         }
         boolean multi = LINE.multiValue(found.wrapper);
-        List<String> wanted = texts(values.exactly != null ? values.exactly : values.added);
+        FormComponent<?> shownInput = found.input;
+        // the values by the text their rows show
+        Map<String, Object> typedAs = texts(item, shownInput, values.exactly != null ? values.exactly : values.added);
+        List<String> wanted = new ArrayList<>(typedAs.keySet());
         if (!multi && (wanted.size() > 1 || values.exactly == null)) {
             throw new AssertionError("Cannot fill in " + item + " " + values + ": " + item + " is single-valued (its"
                     + " field has no add and remove buttons); set(\"" + item + "\", value) types its value");
         }
         if (found.input == null) {
-            throw new AssertionError("Cannot fill in " + item + ": the field of " + item + " is read-only");
+            throw new AssertionError("Cannot fill in " + item + ": " + readOnly(item, found.wrapper));
         }
         if (!multi) {
             // one value or none: the field typed into
             return new Field(LINE.validated(found.wrapper),
-                    enter(tester, item, found.input, wanted.isEmpty() ? "" : wanted.get(0)), null);
+                    enter(tester, item, found.input, wanted.isEmpty() ? "" : typedAs.get(wanted.get(0))), null);
         }
-        List<String> removed = values.exactly != null ? null : texts(values.removed);
+        List<String> removed = values.exactly != null ? null
+                : new ArrayList<>(texts(item, shownInput, values.removed).keySet());
         if (removed != null) {
             List<String> present = values(rows(tester, item));
             for (String value : removed) {
@@ -504,7 +695,7 @@ final class GuiFormsImpl implements GuiForms {
                             + values(rows(tester, item)));
                 }
             }
-            for (String message : enter(tester, item, empty.input, value)) {
+            for (String message : enter(tester, item, empty.input, typedAs.get(value))) {
                 if (!messages.contains(message)) {
                     messages.add(message);
                 }
@@ -557,12 +748,18 @@ final class GuiFormsImpl implements GuiForms {
         return out;
     }
 
-    private static List<String> texts(List<Object> values) {
-        List<String> out = new ArrayList<>();
+    /** The values as the item's rows show them: a text field's as its converter shows them ({@link #typed}). */
+    private static Map<String, Object> texts(String item, FormComponent<?> input, List<Object> values) {
+        Map<String, Object> out = new LinkedHashMap<>();
         for (Object value : values) {
             String text = value == null ? "" : String.valueOf(value);
-            if (!text.isEmpty() && !out.contains(text)) {
-                out.add(text);
+            if (input != null && value != null && !(input instanceof AbstractSingleSelectChoice)
+                    && !FieldValues.isDateTimeField(input)) {
+                Object coerced = FieldValues.coerce(item, input.getType(), value);
+                text = coerced == null ? text : FieldValues.render(input, coerced);
+            }
+            if (!text.isEmpty() && !out.containsKey(text)) {
+                out.put(text, value);
             }
         }
         return out;
@@ -705,8 +902,14 @@ final class GuiFormsImpl implements GuiForms {
                 }
             }
             List<AbstractAjaxTimerBehavior> timers = new ArrayList<>();
-            page.visitChildren((component, visit) -> component.getBehaviors(AbstractAjaxTimerBehavior.class)
-                    .stream().filter(timer -> !timer.isStopped()).forEach(timers::add));
+            // the timers of the components shown (a browser has no script of a hidden one: 4.4's old design hides
+            // its buttons panel, with its refresh timer, while saving)
+            page.visitChildren((component, visit) -> {
+                if (component.isVisibleInHierarchy()) {
+                    component.getBehaviors(AbstractAjaxTimerBehavior.class).stream()
+                            .filter(timer -> !timer.isStopped()).forEach(timers::add);
+                }
+            });
             if (timers.isEmpty()) {
                 return;
             }

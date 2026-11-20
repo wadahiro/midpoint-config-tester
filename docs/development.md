@@ -175,6 +175,7 @@ porting expectations between lines. The test of each row:
 | A members panel's Assign and Unassign: 4.0's toolbar Assign shown to every user, its Governance actions and no row menu; the task's check when it starts (4.0, 4.4: `#executeScript`; 4.8+: `authorization-bulk-3`); a row's Unassign as a model change (4.4+); a fresh 4.11's `prohibitive` profile of a user's bulk actions | `MembersPanelScenarioTest`, `FreshInstallationTest.aMembersPanelsTaskIsRefusedByTheInitialExpressionProfilesOf411` |
 | The tabs of a details page: hidden by `objectForms` (4.0, 4.4's old design) or by an `objectDetails` panel's `visibility` (4.4+); identifiers (4.0: `focusTabGovernance`, 4.4+: `orgGovernance`); no Governance on a new object's page | `DetailsTabsScenarioTest` |
 | A multi-valued item's value rows in a form: the add button on each row (4.0) or the item's header (4.4+) | `MultiValuedFormScenarioTest` |
+| A form's field of an `xsd:double` (none on 4.0, 4.4: no panel factory); of an `xsd:dateTime` (4.0, 4.4: DateInput's date, hours and minutes; 4.8+: the date-time picker's text); a duration's text the converter does not read (4.0, 4.4: the GUI's error page; 4.8+: the field's message); a stored QName no object type is (the Save opens the GUI's error page) | `FieldTypeFormScenarioTest` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
 line and older ones (e.g. resources without `delineation` for 4.4). A configuration you test on several lines
@@ -232,6 +233,9 @@ What the tester does differently per line (see also [line-anatomy.md](line-anato
   button in the row's button container; 4.4 and later the add button is the item's header's (`ItemHeaderPanel`), the
   remove button the value panel's (`PrismValuePanel`). Either way a removed value's row is hidden, and removing the
   last value leaves an empty row (`GuiLine.valueRows`, `addValueButton`, `removeValueButton`).
+- **4.0 / 4.4**: a form's date field is DateInput (wicket-datetime's DateTimeField: a date text field, hours,
+  minutes, AM / PM in a 12-hour locale), which the tester types the date into part by part, the date first
+  (`FieldValues.dateTimeParts`); 4.8 and later it is one text field in the picker's pattern. Neither has seconds.
 - **4.0 / 4.4**: a user's "My work items" (`Approvals.workItemsOf`) is the query of
   `com.evolveum.midpoint.wf.util.QueryUtils.filterForNotClosedStateAndAssignees` with the
   `approvalWorkItems` limitation of a deputy (`OtherPrivilegesLimitationType.F_APPROVAL_WORK_ITEMS`) and the relation

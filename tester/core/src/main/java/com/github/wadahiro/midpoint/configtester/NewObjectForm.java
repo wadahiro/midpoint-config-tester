@@ -95,6 +95,11 @@ public final class NewObjectForm extends ObjectForm {
      * {@code extension/site}), as the user fills in the form before the item validated or saving. A collection is the
      * values of a multi-valued item, each typed into a value row as the item's add button adds them
      * ({@code set("extension/tags", listOf("a", "b"))}).
+     * The value as the item's type has it, typed as the field shows it: a number or its text, a date
+     * ({@code Instant}, {@code ZonedDateTime}, {@code XMLGregorianCalendar}, its ISO text; to the minute), a
+     * duration, a drop-down's choice (a boolean, an enumeration, an object type's QName), a lookup table's key or
+     * label; a reference or a password fails, naming what to use instead
+     * (docs/guide/gui-and-authorizations.md).
      */
     public NewObjectForm set(String item, Object value) {
         return new NewObjectForm(tester, type, archetype, member, memberType, relation, user,

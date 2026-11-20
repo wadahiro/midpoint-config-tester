@@ -1,0 +1,79 @@
+<!--
+    An org with an extension item of each type a form of the GUI has a field of (FieldTypeFormScenarioTest; the items
+    of OrgExtensionType in schema/tester-extension.xsd): numbers, a date, a duration, a QName, a string of a lookup
+    table's values (the table below), a reference to a user; a typist who may change only those items, the org's
+    description and display name; two users a reference can point to.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3"
+         xmlns:ext="http://example.com/xml/ns/tester-extension">
+    <lookupTable oid="10000000-0000-0000-0000-0000000f0601">
+        <name>form-categories</name>
+        <row>
+            <key>north</key>
+            <label>North wing</label>
+        </row>
+        <row>
+            <key>south</key>
+            <label>South wing</label>
+        </row>
+    </lookupTable>
+    <user oid="10000000-0000-0000-0000-0000000f0602">
+        <name>form-contact-1</name>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0603">
+        <name>form-contact-2</name>
+    </user>
+    <org oid="10000000-0000-0000-0000-0000000f0604">
+        <name>form-typed-unit</name>
+        <description>first line</description>
+        <displayName>Typed unit</displayName>
+        <!-- stored values: their fields are shown without "show empty fields" -->
+        <extension>
+            <ext:seats>10</ext:seats>
+            <ext:budget>1000</ext:budget>
+            <ext:ratio>0.5</ext:ratio>
+            <ext:floors>1</ext:floors>
+            <ext:opened>2026-01-05T08:30:00Z</ext:opened>
+            <ext:grace>P1D</ext:grace>
+            <!-- a QName field is a drop-down of the object types (DropDownChoicePanelFactory): a value not among
+                 them fails the page on saving -->
+            <ext:kind xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3">c:RoleType</ext:kind>
+            <ext:category>north</ext:category>
+            <ext:contact oid="10000000-0000-0000-0000-0000000f0602" type="UserType"/>
+        </extension>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0605">
+        <name>form-typist-role</name>
+        <authorization>
+            <!-- the GUI's organization pages -->
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <item>description</item>
+            <item>displayName</item>
+            <item>extension/ext:seats</item>
+            <item>extension/ext:budget</item>
+            <item>extension/ext:ratio</item>
+            <item>extension/ext:floors</item>
+            <item>extension/ext:opened</item>
+            <item>extension/ext:grace</item>
+            <item>extension/ext:kind</item>
+            <item>extension/ext:category</item>
+            <item>extension/ext:contact</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0606">
+        <name>form-typist</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0605" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

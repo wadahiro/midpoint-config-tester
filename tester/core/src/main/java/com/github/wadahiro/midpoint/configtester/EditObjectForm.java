@@ -54,6 +54,11 @@ public final class EditObjectForm extends ObjectForm {
      * collection is the values of a multi-valued item, exactly these: the rows of the values not in it removed, the
      * missing ones typed into an empty row or a row the item's add button adds, the others kept
      * ({@code set("extension/tags", listOf("a", "b"))}); an empty collection removes every value.
+     * The value as the item's type has it, typed as the field shows it: a number or its text, a date
+     * ({@code Instant}, {@code ZonedDateTime}, {@code XMLGregorianCalendar}, its ISO text; to the minute), a
+     * duration, a drop-down's choice (a boolean, an enumeration, an object type's QName), a lookup table's key or
+     * label; a reference or a password fails, naming what to use instead
+     * (docs/guide/gui-and-authorizations.md).
      */
     public EditObjectForm set(String item, Object value) {
         return new EditObjectForm(tester, type, oid, name, user, with(items, item, value));

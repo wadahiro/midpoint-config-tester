@@ -135,7 +135,7 @@ object's: `t.editForm(type, name)`), as the user who fills it in with `t.actor(u
 `actor` and authorizations, and whether they may open the page), the whole form with `.submit().saves()` /
 `.rejects(item)`. Several values of a multi-valued item in one save, as its value rows take them:
 `.set("extension/tags", listOf("a", "b"))` (exactly these), on `editForm` `.add(item, v)` / `.remove(item, v)`. A
-boolean's or an enumeration's drop-down takes the choice: `.set("extension/vip", true)`, `null` clears it. The tester runs the GUI's own page in the JVM, nothing to declare
+boolean's or an enumeration's drop-down takes the choice: `.set("extension/vip", true)`, `null` clears it. Numbers, dates (`Instant`, to the minute), durations, QNames and lookup values are typed as the field takes them; a reference or a password fails `set` (change it through `t.actor(u).modify`). The tester runs the GUI's own page in the JVM, nothing to declare
 (docs/guide/gui-and-authorizations.md). The "+" of a members panel: its buttons by `t.org(x).offersNewMember(type,
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The

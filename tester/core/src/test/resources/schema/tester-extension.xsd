@@ -4,8 +4,7 @@
     runs midPoint with -Dtester.extensionSchemaDir (tester/pom.xml points it here). One string item per use in the
     extension tests: the same items extend users, roles and assignments, so that midPoint's merge of extensions into
     the `assignment` variable of a construction shows which one wins. Users also have items of other types, and
-    structured ones, for the tests that write them; orgs a multi-valued item, a boolean and an enumeration for the
-    GUI's forms.
+    structured ones, for the tests that write them; orgs items of every type the GUI's forms have a field of.
 -->
 <xsd:schema elementFormDefault="qualified"
             targetNamespace="http://example.com/xml/ns/tester-extension"
@@ -87,7 +86,9 @@
     </xsd:complexType>
 
     <!-- items of orgs for the GUI's forms: a multi-valued one, which they edit in value rows
-         (MultiValuedFormScenarioTest), a boolean and an enumeration, drop-downs (ChoiceFormScenarioTest) -->
+         (MultiValuedFormScenarioTest), a boolean and an enumeration, drop-downs (ChoiceFormScenarioTest), and one
+         of each other type a form has a field of (FieldTypeFormScenarioTest): numbers, a date, a duration, a QName,
+         a string of a lookup table's values, a reference -->
     <xsd:complexType name="OrgExtensionType">
         <xsd:annotation>
             <xsd:appinfo>
@@ -98,6 +99,28 @@
             <xsd:element name="tags" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
             <xsd:element name="listed" type="xsd:boolean" minOccurs="0"/>
             <xsd:element name="level" type="tns:LevelType" minOccurs="0"/>
+            <xsd:element name="seats" type="xsd:int" minOccurs="0"/>
+            <xsd:element name="budget" type="xsd:long" minOccurs="0"/>
+            <xsd:element name="ratio" type="xsd:double" minOccurs="0"/>
+            <xsd:element name="floors" type="xsd:int" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="opened" type="xsd:dateTime" minOccurs="0"/>
+            <xsd:element name="grace" type="xsd:duration" minOccurs="0"/>
+            <xsd:element name="kind" type="xsd:QName" minOccurs="0"/>
+            <xsd:element name="category" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <!-- fixtures/forms/field-types.xml -->
+                        <a:valueEnumerationRef oid="10000000-0000-0000-0000-0000000f0601" type="c:LookupTableType"/>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="contact" type="c:ObjectReferenceType" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <a:objectReferenceTargetType>c:UserType</a:objectReferenceTargetType>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

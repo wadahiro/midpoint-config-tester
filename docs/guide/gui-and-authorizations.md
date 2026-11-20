@@ -176,13 +176,32 @@ assertThat(form.canRead("emailAddress")).isTrue();
   relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
   opened by its OID as from a list: the fields show the stored values (`editForm(ref)` takes a generated name,
   `Orgs.SITE_1`, its type from the ref). On either, `.set(item, value)` types a value in first (by path of local
-  names: `identifier`, `extension/site`). A drop-down field takes the value as the choice a user picks, on every line:
-  a boolean item's three-state drop-down `true` or `false` (or `"true"`, `"false"`), `null` its undefined choice,
-  which clears the item; an enumeration its XML value (`"enabled"`), its name or the text the drop-down shows. A value
-  no choice has fails the form, naming the choices (`its field has no choice maybe; its choices: [true (...), false
-  (...)]`, with the texts the drop-down shows). A value the field takes without a message that is not in the field
-  afterwards fails the form too (`Typed true into extension/listed, but its field holds no value`), rather than saving
-  without it. A multi-valued item takes several values in one form, as a user enters them in its value rows:
+  names: `identifier`, `extension/site`). The value is typed as a user types it into the item's field, which the GUI
+  picks by the item's type (its panel factories); a value the field takes without a message that is not in the
+  field's model afterwards fails the form (`Typed 2026-03-05T10:15:30Z into extension/opened, but its field holds
+  2026-03-05T10:15:00Z`), rather than saving without it or with another value, and so does a Save that opens the
+  GUI's error page (`Saving opened the GUI's error page PageError: <exception>`: `saved()` is false; typing a
+  value that opens it fails the form). By the item's
+  type, on every line unless the row says otherwise:
+
+  | Item type | Field | `set` takes | Fails |
+  |---|---|---|---|
+  | string, PolyString (`name`, `displayName`), multi-line text (`description`) | text field, text area | any value as its text; a PolyString or PolyStringType as its orig; `null` empties it | |
+  | `xsd:int`, `xsd:long` | text field | a number or its text (`42`, `"42"`), typed as the field's converter shows it | a fraction (`its field takes a whole number`); a text the field does not read is the field's message (`rejects(item)`) |
+  | `xsd:double` | text field (4.8 and later) | a number or its text | 4.0 and 4.4 have no field of `xsd:double` (`the line's GUI has no field of its type`) |
+  | `xsd:dateTime` (an extension date, 4.0's `activation/validTo`) | 4.8 and later a date-time picker's text field, 4.0 and 4.4 a date field with hours and minutes (`DateInput`) | a `java.util.Date`, `Instant`, `ZonedDateTime`, `OffsetDateTime`, `XMLGregorianCalendar`, `Calendar`, a `LocalDateTime` / `LocalDate` (in the JVM's time zone) or the ISO text of one; typed in the field's pattern in the JVM's time zone, so the stored instant is the one set, whatever its zone; `null` clears it | a time with seconds (`takes a time to the minute, without seconds; pass ...`): the field has none; a value of another type |
+  | `xsd:duration` | text field (`DurationPanel`) | a `javax.xml.datatype.Duration`, a `java.time.Duration` or the ISO text (`"P2D"`) | a text the field does not read is its message; on 4.0 and 4.4 Save opens the GUI's error page (`Saving opened the GUI's error page PageError: java.lang.IllegalArgumentException: soon`) |
+  | boolean | three-state drop-down | `true`, `false` (or `"true"`, `"false"`); `null` its undefined choice, which clears the item | a value no choice has, naming the choices |
+  | enumeration | drop-down | its XML value (`"enabled"`), its name or the text the drop-down shows | as a boolean's |
+  | `xsd:QName` | drop-down of the object types (`DropDownChoicePanelFactory`: any QName item) | an object type's QName, its local name (`"UserType"`) or the text shown (`"User"`) | any other value; a stored value no choice has fails the Save (the GUI's error page) |
+  | string of a lookup table (`valueEnumerationRef`) | autocomplete text field | a row's key (`"south"`) or its label (`"South wing"`): the key is stored | |
+  | reference (`parentOrgRef`, an extension reference) | the chosen object's name and a chooser popup (`ValueChoosePanel`) | | always (`it is a reference, whose field the GUI sets by the object chosen in its chooser popup`): change it through the model, `t.actor(user).modify(...)` |
+  | protected string (`credentials/password/value`) | the GUI's own password panel | | always (`it is a protected string (a password)`): `t.actor(user).modify(user) { it.password("...") }` |
+
+  An item on another panel of the page than the one it opens on (4.4 and later: `activation`, the credentials) has no
+  field (`the page shows no field of activation/validTo`). A drop-down field takes the value as the choice a user
+  picks: a value no choice has fails the form, naming the choices (`its field has no choice maybe; its choices: [true
+  (...), false (...)]`, with the texts the drop-down shows). A multi-valued item takes several values in one form, as a user enters them in its value rows:
   `.set(item, listOf(a, b))` makes its values exactly these (the rows of the other values removed by their remove
   button, a missing value typed into an empty row or a row the item's add button adds, the values already there kept;
   an empty list removes them all), and on `editForm` `.add(item, value)` and `.remove(item, value)` change one value,
