@@ -52,6 +52,14 @@ public interface Approvals {
     /** The open work items of all cases, oldest first. */
     List<WorkItem> workItems();
 
+    /**
+     * The open work items the user (by name) sees in the GUI's "My work items" (PageCaseWorkItemsAllocatedToMe):
+     * searched as the user ({@code ModelService.searchContainers}, so their authorizations apply) with the page's
+     * query, those assigned to the user or to a user whose deputy they are for work items (the deputy assignment's
+     * limitations), not closed; newest first, as the page lists them.
+     */
+    List<WorkItem> workItemsOf(String user);
+
     /** Approves the work item as the administrator. */
     Run approve(WorkItem item);
 

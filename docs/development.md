@@ -219,7 +219,8 @@ input (`effectiveStatus`), no status provisioned without a status outbound, `val
 assignments applied by the validity scanner, a simulated status attribute, disable instead of delete (`disableReason`
 `#deprovision`), the delayed delete's trigger on the shadow and its deletion by the trigger scanner; the JVM's wall
 clock moving with `t.clock()` for scripts and Java code, Quartz on the real time (`ClockTest`, on JDK 17 for 4.4,
-JDK 21 for 4.8 and later); an object a user gets without the items they may not read
+JDK 21 for 4.8 and later); a user's "My work items", a deputy's with those of the user they stand in for, decided as
+the user (`MyWorkItemsScenarioTest`); an object a user gets without the items they may not read
 (`ReadAsUserScenarioTest`); the naming attribute and primary identifier of a mirror's class read as attributes, which
 the mirror keeps as the object's name and identifier on every line (`NamingAttributeTest`,
 `MirrorTargetScenarioTest.theNamingAttributeIsTheAccountsName`).
@@ -230,7 +231,12 @@ What the tester does differently per line (see also [line-anatomy.md](line-anato
   button in the row's button container; 4.4 and later the add button is the item's header's (`ItemHeaderPanel`), the
   remove button the value panel's (`PrismValuePanel`). Either way a removed value's row is hidden, and removing the
   last value leaves an empty row (`GuiLine.valueRows`, `addValueButton`, `removeValueButton`).
-
+- **4.0 / 4.4**: a user's "My work items" (`Approvals.workItemsOf`) is the query of
+  `com.evolveum.midpoint.wf.util.QueryUtils.filterForNotClosedStateAndAssignees` with the
+  `approvalWorkItems` limitation of a deputy (`OtherPrivilegesLimitationType.F_APPROVAL_WORK_ITEMS`) and the relation
+  registry, a work item's case from `CaseWorkItemUtil`; 4.8 and later `cases.api.util.QueryUtils` with
+  `OtherPrivilegesLimitations.Type.CASES`, the case from `cases.CaseTypeUtil` (base-4.0 and base-4.8
+  `ApprovalsImpl`). Both search the work items as the user (`searchContainers`).
 - **4.4**: there is no `ConfigurationItemOrigin`: a mapping is placed by finding its value in the origin object (two
   prism-equivalent mappings in one object fall back to the name or the canonical form).
 - **4.9 / 4.10**: the tester clears a repository cache 4.9+ does not clear after a database rollback

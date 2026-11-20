@@ -395,7 +395,10 @@ public final class MidPointConfigTester {
         return new Actor(this, user);
     }
 
-    /** The open approval work items, to narrow ({@code assignedTo}, {@code forRole}...) and decide. */
+    /**
+     * The open approval work items, read as the administrator, to narrow ({@code assignedTo}, {@code forRole}...) and
+     * decide; those a user sees in their "My work items": {@link Actor#workItems()}.
+     */
     public WorkItems workItems() {
         return new WorkItems(this, (w, c) -> true, "");
     }

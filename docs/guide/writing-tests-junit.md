@@ -55,6 +55,8 @@ WorkItem analyst = t.workItems().assignedTo("sec-analyst").single();
 officer.approve(t.actor("sec-officer"));                           // also reject, delegate, forward, claim, release
 analyst.isCancelled();                                             // firstDecides: closed without a decision
 request.isApproved();
+// a user's own work items, as their "My work items" lists them (searched as the user), decided as that user
+t.actor("role-owner").workItems().forUser("jack").single().approve();
 t.user("jack").hasAssignment("Privileged Access");
 
 // a manager assigned from the org tree's members panel, as the GUI does it (a task owned by site-admin)

@@ -214,6 +214,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - an object collection's list as a user sees it (a "my requests" page): `t.actor(user).collection(name)`
   - an object as a user sees it, the items they may not read removed: `t.actor(user).read(t.user(x))`
     `.hasItem(path, values...)` / `.hasNoItem(path)` / `.values(path)`
+  - an approver's own work items (their "My work items", deputies included), decided as them:
+    `t.actor(approver).workItems().forUser(x).single().approve()`; `t.workItems()` reads every work item as the
+    administrator
   - an account's naming attribute and identifier are attributes too: `account(dn).hasAttribute("dn", dn)`, a SCIM
     user's `hasAttribute("userName", name)` / `hasAttribute("id", id)`
   - a user's own change or deletion in the GUI (a self-service form, deleting from a list):

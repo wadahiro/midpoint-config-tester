@@ -19,10 +19,17 @@ public final class WorkItem {
 
     private final MidPointConfigTester tester;
     private final Approvals.WorkItem item;
+    /** The user whose work items it was found in ({@link Actor#workItems()}), or null. */
+    private final Actor actor;
 
     WorkItem(MidPointConfigTester tester, Approvals.WorkItem item) {
+        this(tester, item, null);
+    }
+
+    WorkItem(MidPointConfigTester tester, Approvals.WorkItem item, Actor actor) {
         this.tester = tester;
         this.item = item;
+        this.actor = actor;
     }
 
     public String name() {
@@ -75,6 +82,44 @@ public final class WorkItem {
     /** Approves as the approver (who must be an assignee, and authorized to complete work items). */
     public Effects approve(Actor approver) {
         return approve(approver, null);
+    }
+
+    /** Approves as the user whose work items it was found in ({@code t.actor(u).workItems()}). */
+    public Effects approve() {
+        return approve(owner(), null);
+    }
+
+    /** Rejects as the user whose work items it was found in ({@code t.actor(u).workItems()}). */
+    public Effects reject() {
+        return reject(owner(), null);
+    }
+
+    /** Forwards as the user whose work items it was found in ({@code t.actor(u).workItems()}). */
+    public Effects forward(UserRef... users) {
+        return forward(owner(), users);
+    }
+
+    /** {@link #forward(UserRef...)} by the users' names. */
+    public Effects forward(String... users) {
+        return forward(owner(), users);
+    }
+
+    /** Delegates as the user whose work items it was found in ({@code t.actor(u).workItems()}). */
+    public Effects delegate(UserRef... users) {
+        return delegate(owner(), users);
+    }
+
+    /** {@link #delegate(UserRef...)} by the users' names. */
+    public Effects delegate(String... users) {
+        return delegate(owner(), users);
+    }
+
+    private Actor owner() {
+        if (actor == null) {
+            throw new IllegalStateException("Work item " + this + " was read as the administrator (t.workItems()):"
+                    + " give the user who decides, approve(t.actor(user)), or find it in t.actor(user).workItems()");
+        }
+        return actor;
     }
 
     public Effects approve(Actor approver, String comment) {

@@ -192,6 +192,16 @@ public final class Actor {
         return new ObjectView(tester, this, type, answer.value());
     }
 
+    /**
+     * The open work items the user sees in the GUI's "My work items": searched as the user with the page's query
+     * (assigned to them, or to a user whose deputy they are for work items), their authorizations applied; newest
+     * first. Narrowed and decided as {@link MidPointConfigTester#workItems()}'s, a decision by default the user's:
+     * {@code t.actor("cc-owner").workItems().forRole("Privileged Access").single().approve()}.
+     */
+    public WorkItems workItems() {
+        return new WorkItems(tester, this, (w, c) -> true, "");
+    }
+
     /** {@link #canGet} and {@link #canSearch}, as {@code #read} allows both. */
     public boolean canRead(ObjectRef object) {
         return canGet(object) && canSearch(object);

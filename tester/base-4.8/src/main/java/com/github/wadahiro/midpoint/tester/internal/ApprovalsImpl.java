@@ -121,6 +121,29 @@ final class ApprovalsImpl implements Approvals {
     }
 
     @Override
+    public List<WorkItem> workItemsOf(String user) {
+        return mp.queryAs(user, null, "work items of " + user, (task, result) -> {
+            // the query of the GUI's "My work items" (PageCaseWorkItemsAllocatedToMe), for the user logged in
+            ObjectQuery query = com.evolveum.midpoint.cases.api.util.QueryUtils.filterForNotClosedStateAndAssignees(
+                    mp.prismContext().queryFor(CaseWorkItemType.class),
+                    com.evolveum.midpoint.security.api.SecurityUtil.getPrincipal(),
+                    com.evolveum.midpoint.security.api.OtherPrivilegesLimitations.Type.CASES)
+                    .desc(CaseWorkItemType.F_CREATE_TIMESTAMP)
+                    .build();
+            List<WorkItem> out = new ArrayList<>();
+            for (CaseWorkItemType bean : mp.bean(ModelService.class).searchContainers(CaseWorkItemType.class, query,
+                    null, task, result)) {
+                CaseType owner = com.evolveum.midpoint.schema.util.cases.CaseTypeUtil.getCase(bean);
+                if (owner == null) {
+                    throw new IllegalStateException("A work item of the search has no case: " + bean);
+                }
+                out.add(workItem(owner.getOid(), bean));
+            }
+            return out;
+        });
+    }
+
+    @Override
     public Run approve(WorkItem item) {
         return complete(item, null, true, null);
     }

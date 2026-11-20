@@ -11,23 +11,33 @@ import com.github.wadahiro.midpoint.configtester.names.UserRef;
 import com.github.wadahiro.midpoint.tester.Approvals;
 
 /**
- * The open approval work items of the scenario ({@link MidPointConfigTester#workItems()}), narrowed by the filters; read when a
- * terminal call ({@link #list()}, {@link #single()}, {@link #exactly}...) is made.
+ * The open approval work items of the scenario ({@link MidPointConfigTester#workItems()}, read as the administrator), or
+ * those a user sees in the GUI's "My work items" ({@link Actor#workItems()}, searched as the user), narrowed by the
+ * filters; read when a terminal call ({@link #list()}, {@link #single()}, {@link #exactly}...) is made.
  *
  * <pre>{@code
  * t.workItems().assignedTo("cc-owner").forRole("Privileged Access").single().approve(t.actor("cc-owner"));
  * t.workItems().forUser("jack").none();
+ * t.actor("cc-owner").workItems().forRole("Privileged Access").approve();
  * }</pre>
  */
 public final class WorkItems {
 
     private final MidPointConfigTester tester;
+    /** The user whose "My work items" these are, or null: every open work item, read as the administrator. */
+    private final Actor actor;
     /** The work item, and its case. */
     private final BiPredicate<Approvals.WorkItem, Approvals.Case> filter;
     private final String description;
 
     WorkItems(MidPointConfigTester tester, BiPredicate<Approvals.WorkItem, Approvals.Case> filter, String description) {
+        this(tester, null, filter, description);
+    }
+
+    WorkItems(MidPointConfigTester tester, Actor actor, BiPredicate<Approvals.WorkItem, Approvals.Case> filter,
+            String description) {
         this.tester = tester;
+        this.actor = actor;
         this.filter = filter;
         this.description = description;
     }
@@ -73,7 +83,7 @@ public final class WorkItems {
         List<WorkItem> out = new ArrayList<>();
         for (Map.Entry<Approvals.WorkItem, Approvals.Case> entry : open().entrySet()) {
             if (filter.test(entry.getKey(), entry.getValue())) {
-                out.add(new WorkItem(tester, entry.getKey()));
+                out.add(new WorkItem(tester, entry.getKey(), actor));
             }
         }
         return out;
@@ -86,7 +96,7 @@ public final class WorkItems {
     public WorkItems exactly(int expected) {
         List<WorkItem> found = list();
         if (found.size() != expected) {
-            throw new AssertionError("Expected " + expected + " open work item(s) " + description + ", found "
+            throw new AssertionError("Expected " + expected + " open work item(s) " + what() + ", found "
                     + found.size() + ": " + found + all());
         }
         return this;
@@ -99,7 +109,7 @@ public final class WorkItems {
     public WorkItem single() {
         List<WorkItem> found = list();
         if (found.size() != 1) {
-            throw new AssertionError("Expected one open work item " + description + ", found " + found.size() + ": "
+            throw new AssertionError("Expected one open work item " + what() + ", found " + found.size() + ": "
                     + found + all());
         }
         return found.get(0);
@@ -115,19 +125,53 @@ public final class WorkItems {
         return single().reject(approver);
     }
 
+    /** {@link #single()}, approved by the user whose work items these are ({@link Actor#workItems()}). */
+    public Effects approve() {
+        return single().approve();
+    }
+
+    /** {@link #single()}, rejected by the user whose work items these are ({@link Actor#workItems()}). */
+    public Effects reject() {
+        return single().reject();
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     private WorkItems and(BiPredicate<Approvals.WorkItem, Approvals.Case> more, String what) {
-        return new WorkItems(tester, filter.and(more), description.isEmpty() ? what : description + ", " + what);
+        return new WorkItems(tester, actor, filter.and(more), description.isEmpty() ? what : description + ", " + what);
     }
 
-    /** The open work items, each with its case, in the order of the cases. */
+    /** {@code assigned to cc-owner} with what the items are: {@code in cc-owner's work items, of Privileged Access}. */
+    private String what() {
+        if (actor == null) {
+            return description;
+        }
+        return "in " + actor.name() + "'s work items" + (description.isEmpty() ? "" : ", " + description);
+    }
+
+    /**
+     * The open work items, each with its case (as the administrator reads them): all of them in the order of the
+     * cases, or those the user's "My work items" finds, in its order.
+     */
     private Map<Approvals.WorkItem, Approvals.Case> open() {
-        Map<Approvals.WorkItem, Approvals.Case> out = new java.util.LinkedHashMap<>();
-        for (Approvals.Case c : tester.deployment().api().approvals().cases()) {
+        Map<Approvals.WorkItem, Approvals.Case> all = new java.util.LinkedHashMap<>();
+        List<Approvals.Case> cases = tester.deployment().api().approvals().cases();
+        for (Approvals.Case c : cases) {
             for (Approvals.WorkItem w : c.workItems()) {
                 if (w.isOpen()) {
-                    out.put(w, c);
+                    all.put(w, c);
+                }
+            }
+        }
+        if (actor == null) {
+            return all;
+        }
+        actor.explainAuthorizations();
+        Map<Approvals.WorkItem, Approvals.Case> out = new java.util.LinkedHashMap<>();
+        for (Approvals.WorkItem seen : tester.deployment().api().approvals().workItemsOf(actor.name())) {
+            for (Map.Entry<Approvals.WorkItem, Approvals.Case> entry : all.entrySet()) {
+                if (entry.getKey().caseOid().equals(seen.caseOid()) && entry.getKey().id() == seen.id()) {
+                    out.put(entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -135,7 +179,9 @@ public final class WorkItems {
     }
 
     private String all() {
-        return "; all open work items: " + open().keySet().stream().map(w -> new WorkItem(tester, w).toString())
+        Map<Approvals.WorkItem, Approvals.Case> all = actor == null ? open()
+                : new WorkItems(tester, null, (w, c) -> true, "").open();
+        return "; all open work items: " + all.keySet().stream().map(w -> new WorkItem(tester, w, null).toString())
                 .collect(Collectors.toList());
     }
 }

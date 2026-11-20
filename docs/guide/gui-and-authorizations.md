@@ -22,6 +22,9 @@ assertThat(t.actor(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_
 // the object as the user gets it: the items they may not read are not there
 t.actor("name-reader").read(t.user("jack")).hasItem("givenName", "Jack").hasNoItem("costCenter");
 
+// the work items of their "My work items", decided as them
+t.actor(Users.ROLE_OWNER).workItems().forUser(Users.JACK).single().approve();
+
 // an object's form: what it shows and what it lets the user change
 Form form = t.actor(Users.HELPDESK).form(Users.JACK);
 assertThat(form.modifiableItems()).containsExactly("telephoneNumber");
@@ -40,6 +43,13 @@ assertThat(form.canRead("emailAddress")).isTrue();
   has for the administrator; a user who may not get the object at all fails `read` (`canGet` false). Every
   authorization that lets the user get the object adds its items: midPoint's End user role (below) lets them get
   every user with all items.
+- `workItems()` are the work items the user's "My work items" lists: the page's query (assigned to the user, or to a
+  user whose deputy they are with work items not excluded by the deputy assignment's limitations; not closed) searched
+  as the user (`ModelService.searchContainers`), so their authorizations apply; newest first. Narrowed and claimed as
+  `t.workItems()`'s (`forUser`, `forRole`, `inStage`, `single()`, `none()`), each item read as the administrator
+  (assignees, stage); `approve()`, `reject()`, `forward(users)` and `delegate(users)` of an item (or of `single()`)
+  found there decide as that user. A failure lists every open work item. Not the page itself: its columns, filters
+  and the GUI's claimable items ("Work items to claim") are not read.
 - `collection(name)` is an object collection's list as the user sees it (a "my requests" page): the collection's
   definition read and compiled privileged, as the GUI does, its filter's expressions evaluated for the user
   (`midpoint.principalOid`), its base collection, then searched as the user.
