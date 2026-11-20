@@ -1,3 +1,17 @@
+# [0.16.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.15.1...v0.16.0) (2026-11-20)
+
+
+### Bug Fixes
+
+* **target:** an object's naming attribute and identifier are attributes it has ([0b4541e](https://github.com/wadahiro/midpoint-config-tester/commit/0b4541eecab16ee3a4573596f04e78f0127abaa7))
+
+
+### Features
+
+* **actor:** t.actor(u).read(x) is an object as the user gets it, its items as they see them ([9966e84](https://github.com/wadahiro/midpoint-config-tester/commit/9966e844e4fed6ef86efc7730473a3fb1197b498))
+* **actor:** t.actor(u).workItems() are the work items of the user's "My work items" ([79104f0](https://github.com/wadahiro/midpoint-config-tester/commit/79104f08f9992518e0f2861b539633cdaf32c89b))
+* **gui:** a form types several values into a multi-valued item's value rows ([47ca0a3](https://github.com/wadahiro/midpoint-config-tester/commit/47ca0a3e4840287b079fbaeb9c1b7c9c9659fbba))
+
 ## [0.15.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.15.0...v0.15.1) (2026-11-20)
 
 
