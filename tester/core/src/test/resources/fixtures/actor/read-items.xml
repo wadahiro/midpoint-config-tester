@@ -1,0 +1,39 @@
+<!--
+    A user whose role lets them read some items of users (ReadAsUserScenarioTest): their names and the site, not the
+    cost center or the telephone number; a user to read, and one who may read no user.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:ext="http://example.com/xml/ns/tester-extension">
+    <role oid="10000000-0000-0000-0000-0000000f0401">
+        <name>view-names-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>UserType</type>
+            </object>
+            <item>name</item>
+            <item>givenName</item>
+            <item>familyName</item>
+            <item>extension/ext:site</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0402">
+        <name>view-reader</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0401" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0403">
+        <name>view-target</name>
+        <extension>
+            <ext:site>Prague</ext:site>
+        </extension>
+        <givenName>Vic</givenName>
+        <familyName>Target</familyName>
+        <costCenter>CC-7</costCenter>
+        <telephoneNumber>+1 555 0199</telephoneNumber>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0404">
+        <name>view-nobody</name>
+    </user>
+</objects>

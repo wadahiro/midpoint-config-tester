@@ -4,16 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.xml.namespace.QName;
 
-import com.evolveum.midpoint.prism.Item;
-import com.evolveum.midpoint.prism.PrismObject;
-import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AssignmentType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.FocusType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectReferenceType;
 import com.github.wadahiro.midpoint.configtester.names.AssignableRef;
 import com.github.wadahiro.midpoint.configtester.names.ItemRef;
 import com.github.wadahiro.midpoint.configtester.names.ResourceRef;
-import com.github.wadahiro.midpoint.tester.internal.ItemValues;
 
 /**
  * A focus of the scenario by name or OID: a {@link User}, {@link Role}, {@link Org} or {@link Service}, read anew by
@@ -110,30 +106,9 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         return self();
     }
 
-    /**
-     * The expected values as the item's type has them, so that they compare as midPoint's values do ({@code "5"} and
-     * {@code 5}, a date with an offset and the same instant); as given when the path has no definition.
-     */
+    /** The expected values as the item's type has them ({@link ItemReading#expected}). */
     private Object[] expected(String path, Object[] expected) {
-        com.evolveum.midpoint.prism.ItemDefinition<?> definition;
-        try {
-            definition = ItemValues.locate(tester.deployment().api().prismContext().getSchemaRegistry()
-                    .findObjectDefinitionByCompileTimeClass(type), path, type.getSimpleName()).definition;
-        } catch (IllegalArgumentException e) {
-            return expected;
-        }
-        boolean structured = definition instanceof com.evolveum.midpoint.prism.PrismContainerDefinition
-                && ((com.evolveum.midpoint.prism.PrismContainerDefinition<?>) definition).getCompileTimeClass() == null;
-        if (!(definition instanceof com.evolveum.midpoint.prism.PrismPropertyDefinition) && !structured) {
-            return expected;
-        }
-        List<Object> out = new ArrayList<>();
-        for (Object value : expected) {
-            for (Object one : value instanceof java.util.Collection ? (java.util.Collection<?>) value : List.of(value)) {
-                out.add(Struct.values(tester.deployment().api().prismContext(), path, definition, one)[0]);
-            }
-        }
-        return out.toArray();
+        return ItemReading.expected(tester.deployment().api().prismContext(), type, path, expected);
     }
 
     /** The values of the item as text (see {@link #hasItem}). */
@@ -165,36 +140,9 @@ public abstract class Focus<SELF extends Focus<SELF>> {
         return Values.texts(realValues(path));
     }
 
-    /** The real values at the path, through every value of a multi-valued container on the way ({@code assignment}). */
+    /** The real values at the path ({@link ItemReading#realValues}). */
     private java.util.Collection<?> realValues(String path) {
-        PrismObject<? extends FocusType> focus = existing().asPrismObject();
-        List<com.evolveum.midpoint.prism.PrismContainerValue<?>> containers = new ArrayList<>();
-        containers.add(focus.getValue());
-        String[] segments = path.split("/");
-        List<Object> out = new ArrayList<>();
-        for (int i = 0; i < segments.length; i++) {
-            List<com.evolveum.midpoint.prism.PrismContainerValue<?>> next = new ArrayList<>();
-            for (com.evolveum.midpoint.prism.PrismContainerValue<?> container : containers) {
-                Item<?, ?> item = container.findItem(ItemPath.create(new QName(segments[i])));
-                if (item == null) {
-                    continue;
-                }
-                if (i == segments.length - 1) {
-                    // a structured item of the extension schema has no Java class to give its values as
-                    out.addAll(item instanceof com.evolveum.midpoint.prism.PrismContainer
-                            && ((com.evolveum.midpoint.prism.PrismContainer<?>) item).getCompileTimeClass() == null
-                            ? item.getValues() : item.getRealValues());
-                } else {
-                    for (Object value : item.getValues()) {
-                        if (value instanceof com.evolveum.midpoint.prism.PrismContainerValue) {
-                            next.add((com.evolveum.midpoint.prism.PrismContainerValue<?>) value);
-                        }
-                    }
-                }
-            }
-            containers = next;
-        }
-        return out;
+        return ItemReading.realValues(existing().asPrismObject(), path);
     }
 
     /** {@link #hasItem(String, Object...)} by the generated item ({@code UserExtension.SITE}). */

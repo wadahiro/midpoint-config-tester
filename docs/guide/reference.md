@@ -22,7 +22,8 @@
 - **Little GUI.** Drivers call the services the GUI calls; GUI-only logic (wizards, the request access shopping
   cart) is not run. What the GUI shows a user is asked of the services it calls
   ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, the
-  user's GUI profile (views, features, menu links); not what a page does after it opens or the rest of the menus.
+  user's GUI profile (views, features, menu links), an object as the user gets it (`read`); not what a page does after it
+  opens or the rest of the menus.
   The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
   (its fields' validations, the value rows of a multi-valued item with their add and remove buttons, Save, its
   tabs); not the browser's side. The "+" of a members panel (`createMemberButton`) is

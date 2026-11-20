@@ -161,6 +161,37 @@ public final class Actor {
                 key(target), relation).value();
     }
 
+    /**
+     * The object as the user gets it, its items as they see them: midPoint's {@code ModelService.getObject} logged in
+     * as the user, which removes the items their authorizations do not let them read, as the GUI's details page shows
+     * them ({@code read(Users.JACK).hasItem("telephoneNumber", "+1 555 0100").hasNoItem("costCenter")}). Fails when
+     * the user may not get the object at all ({@link #canGet} false).
+     */
+    public ObjectView read(ObjectRef object) {
+        return read(typeOf(object), key(object));
+    }
+
+    /** {@link #read(ObjectRef)} of a focus of the scenario ({@code t.user("jack")}). */
+    public ObjectView read(Focus<?> focus) {
+        return read(focus.type, focus.oid());
+    }
+
+    /** {@link #read(ObjectRef)} by the type and the object's name or OID. */
+    public ObjectView read(Class<? extends ObjectType> type, String nameOrOid) {
+        explainAuthorizations();
+        return view(type, nameOrOid);
+    }
+
+    private <O extends ObjectType> ObjectView view(Class<O> type, String nameOrOid) {
+        Answer<O> answer = tester.midpoint().actor(name).get(type, nameOrOid);
+        if (answer.value() == null) {
+            Throwable failure = answer.run().failure();
+            throw new AssertionError(name + " cannot get " + type.getSimpleName() + " " + nameOrOid
+                    + (failure != null ? ": " + failure.getMessage() : ""));
+        }
+        return new ObjectView(tester, this, type, answer.value());
+    }
+
     /** {@link #canGet} and {@link #canSearch}, as {@code #read} allows both. */
     public boolean canRead(ObjectRef object) {
         return canGet(object) && canSearch(object);

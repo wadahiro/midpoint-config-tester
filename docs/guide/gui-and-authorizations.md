@@ -19,6 +19,9 @@ assertThat(t.actor(Users.HELPDESK).canOpen("/admin/user/" + Users.JACK.oid())).i
 assertThat(t.actor(Users.HELPDESK).canOpen(AuthorizationConstants.AUTZ_UI_USERS_ALL_URL,
         AuthorizationConstants.AUTZ_UI_USERS_URL, AuthorizationConstants.AUTZ_UI_USERS_VIEW_URL)).isTrue();
 
+// the object as the user gets it: the items they may not read are not there
+t.actor("name-reader").read(t.user("jack")).hasItem("givenName", "Jack").hasNoItem("costCenter");
+
 // an object's form: what it shows and what it lets the user change
 Form form = t.actor(Users.HELPDESK).form(Users.JACK);
 assertThat(form.modifiableItems()).containsExactly("telephoneNumber");
@@ -29,6 +32,14 @@ assertThat(form.canRead("emailAddress")).isTrue();
   `#read` allows both. `search(type)` searches as the user through `ModelService` (all objects of the type, as the
   GUI's list does before its own filters) and gives typed refs, equal to the generated names; `canSearch(object)`
   is whether it finds the object, `canGet(object)` whether getting it succeeds, `canRead(object)` both.
+- `read(object)` (a typed ref, a focus such as `t.user("jack")`, or a type and a name or OID) is the object as the
+  user gets it: midPoint's `ModelService.getObject` logged in as them, which removes the items their `#read` (or
+  `#get`) authorizations do not let them read, as the GUI's details page has them. `ObjectView` reads it once:
+  `values(item)`, `hasItem(item, values...)` (exactly these, compared as `Focus.hasItem` does), `hasNoItem(item)`
+  (empty, or not readable: the two look the same to the user), `asObject()`. A failed `hasItem` shows what the object
+  has for the administrator; a user who may not get the object at all fails `read` (`canGet` false). Every
+  authorization that lets the user get the object adds its items: midPoint's End user role (below) lets them get
+  every user with all items.
 - `collection(name)` is an object collection's list as the user sees it (a "my requests" page): the collection's
   definition read and compiled privileged, as the GUI does, its filter's expressions evaluated for the user
   (`midpoint.principalOid`), its base collection, then searched as the user.
