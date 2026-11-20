@@ -64,6 +64,18 @@ public final class AccessRequestModel {
         /** The type the entry lists and its filter (null: all of the type); null type: roles of a teammate. */
         public Class<? extends AbstractRoleType> type;
         public ObjectFilter filter;
+        /**
+         * An org folder's place in the tree: its level (4.8+: the menu's, the catalog org's children 1; 4.0, 4.4: the
+         * tree's, the catalog org 0) and the deepest level the page shows (4.8+: {@code roleCatalogDepth}; 4.0, 4.4:
+         * null, the tree has no limit).
+         */
+        public int level;
+        public Integer maxLevel;
+        /**
+         * The sub-folders, read when first asked ({@link AccessRequests#children}): the GUI reads a folder's children
+         * when the user expands it (4.0, 4.4: OrgTreeProvider.getChildren; 4.8+: the menu item's LoadableModel).
+         */
         public final List<Entry> children = new ArrayList<>();
+        public boolean childrenRead;
     }
 }

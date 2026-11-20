@@ -46,8 +46,10 @@ import com.github.wadahiro.midpoint.tester.internal.AccessRequests;
  * Every entry's list is its query AND what the requester may assign to the target with the relation
  * ({@code getAssignableRoleSpecification}), searched as the requester. A role held already is still listed; its add is
  * disabled as the line and {@code roleManagement/defaultAssignmentConstraints} say ({@link #offers}). An org folder
- * lists the objects of the search panel's type, roles first ({@link #withType}). A failed claim says which step hides
- * the role; the requester's authorizations follow. Immutable.
+ * lists the objects of the search panel's type, roles first ({@link #withType}). The catalog's tree and lists are read
+ * across all of the GUI's pages (the GUI pages them 20 at a time; paging involves no authorization), a folder's
+ * children when first asked, as the user expands it. A failed claim says which step hides the role; the requester's
+ * authorizations follow. Immutable.
  */
 public final class RequestAccessPage {
 
@@ -272,16 +274,42 @@ public final class RequestAccessPage {
 
     /**
      * An entry, at any depth, by its label as shown, its org's or collection's name, or its key ({@code allRoles},
-     * {@code roleCatalog}); none: IllegalArgumentException naming the entries.
+     * {@code roleCatalog}): the first found, the shallowest level first, in the page's order, the folders read only as
+     * far as the search goes (as the user expands them); none: IllegalArgumentException naming the entries.
      */
     public CatalogEntry entry(String name) {
-        for (CatalogEntry entry : all()) {
-            if (name.equals(entry.label()) || name.equals(entry.key()) || name.equals(entry.model.objectName)) {
-                return entry;
-            }
+        CatalogEntry found = find(entries, name);
+        if (found != null) {
+            return found;
         }
         throw new IllegalArgumentException(actor + ": the request-access page has no entry \"" + name
                 + "\"; its entries: " + entriesText());
+    }
+
+    /**
+     * The entry by the name, level by level (every entry of a level before the folders' children), the folders read
+     * only as far as the search goes.
+     */
+    private static CatalogEntry find(List<CatalogEntry> entries, String name) {
+        List<CatalogEntry> level = entries;
+        while (!level.isEmpty()) {
+            for (CatalogEntry entry : level) {
+                if (name.equals(entry.label()) || name.equals(entry.key()) || name.equals(entry.model.objectName)) {
+                    return entry;
+                }
+            }
+            List<CatalogEntry> next = new ArrayList<>();
+            for (CatalogEntry entry : level) {
+                next.addAll(entry.children());
+            }
+            level = next;
+        }
+        return null;
+    }
+
+    /** A folder's children as the requester reads them when expanding it ({@link CatalogEntry#children}). */
+    List<AccessRequestModel.Entry> children(AccessRequestModel.Entry folder) {
+        return AccessRequests.children(tester.midpoint(), actor.name(), folder);
     }
 
     /** Every entry, its children after it. */

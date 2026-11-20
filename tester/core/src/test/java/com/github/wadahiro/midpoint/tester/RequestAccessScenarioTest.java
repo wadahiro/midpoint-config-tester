@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,13 +47,26 @@ class RequestAccessScenarioTest {
     private static final UserRef JACK = new UserRef("rc-jack", null, Lines.ALL);
     private static final UserRef ANN = new UserRef("rc-ann", null, Lines.ALL);
     private static final UserRef BOB = new UserRef("rc-bob", null, Lines.ALL);
+    private static final RoleRef BOTTOM = new RoleRef("rc-bottom", null, Lines.ALL);
+    private static final RoleRef LAST_PAGE = new RoleRef("rc-last-page", null, Lines.ALL);
 
     private static void importFixture(MidPointConfigTester t, AssignmentConstraintsType constraints) {
+        importFixture(t, constraints, "10000000-0000-0000-0000-0000000f0801");
+    }
+
+    /** The fixture and tree.xml, the shopping cart's catalog its rc-tree (4.8 and later: rc-ar-tree's). */
+    private static void importTree(MidPointConfigTester t) {
+        t.midpoint().importObject(new File(Fixtures.dir("request-access"), "tree.xml"));
+        importFixture(t, null, "10000000-0000-0000-0000-0000000f0900");
+    }
+
+    private static void importFixture(MidPointConfigTester t, AssignmentConstraintsType constraints,
+            String catalogOid) {
         t.midpoint().importObject(Fixtures.of(t.midpoint(), new File(Fixtures.dir("request-access"), "config.xml")));
         t.midpoint().importObject(new File(Fixtures.dir("request-access"), "catalog.xml"));
         // the shopping cart's configuration (4.0, 4.4); 4.8 and later do not read roleCatalogRef
         RoleManagementConfigurationType roleManagement = new RoleManagementConfigurationType()
-                .roleCatalogRef(new ObjectReferenceType().oid("10000000-0000-0000-0000-0000000f0801")
+                .roleCatalogRef(new ObjectReferenceType().oid(catalogOid)
                         .type(OrgType.COMPLEX_TYPE))
                 .roleCatalogCollections(new ObjectCollectionsUseType()
                         .collection(new ObjectCollectionUseType().collectionUri(
@@ -231,5 +246,54 @@ class RequestAccessScenarioTest {
         assertThatThrownBy(() -> ann.offersRole(CRM)).isInstanceOf(AssertionError.class)
                 .hasMessageStartingWith("rc-ann: the request-access page for rc-ann (relation default) shows Role"
                         + " rc-crm but does not offer it: rc-ann holds it already (default)");
+    }
+
+    @Test
+    void aRoleAtTheBottomOfADeepTreeIsReachedFolderByFolder(MidPointConfigTester t) {
+        importTree(t);
+
+        RequestAccessPage page = t.actor("rc-tree-user").requestAccess();
+        // 4.8 and later: the menu's first level (rc-ar-tree: roleCatalogDepth 5); 4.0 and 4.4: the tree under the
+        // Role catalog tab's catalog org, at any depth
+        List<CatalogEntry> level = wizard(t) ? page.entries() : page.entry("roleCatalog").children();
+        assertThat(level).filteredOn(e -> e.kind() == CatalogEntry.Kind.ORG_FOLDER).extracting(CatalogEntry::key)
+                .containsExactly("rc-level-1", "rc-many", "rc-wide");
+        CatalogEntry folder = level.get(0);
+        for (int i = 2; i <= 5; i++) {
+            assertThat(folder.children()).extracting(CatalogEntry::key).containsExactly("rc-level-" + i);
+            assertThat(folder.roles()).isEmpty();
+            folder = folder.children().get(0);
+        }
+        assertThat(folder.kind()).isEqualTo(CatalogEntry.Kind.ORG_FOLDER);
+        assertThat(folder.children()).isEmpty();
+        assertThat(folder.roles()).containsExactly(BOTTOM);
+        assertThat(folder.offers(BOTTOM)).isTrue();
+        // by name at any depth, and the page as a whole
+        assertThat(page.entry("rc-level-5").roles()).containsExactly(BOTTOM);
+        page.offersRole(BOTTOM);
+        assertThat(page.explain(BOTTOM).listedIn()).extracting(CatalogEntry::key).contains("rc-level-5");
+    }
+
+    @Test
+    void aFolderWithMoreChildrenOrRolesThanOnePageListsThemAll(MidPointConfigTester t) {
+        importTree(t);
+
+        // the GUI pages a folder's children and a folder's roles 20 at a time; the page reads every page
+        RequestAccessPage page = t.actor("rc-tree-user").requestAccess();
+        List<String> wide = new ArrayList<>();
+        List<RoleRef> many = new ArrayList<>();
+        for (int i = 1; i <= 25; i++) {
+            wide.add(String.format("rc-wide-%02d", i));
+            many.add(new RoleRef(String.format("rc-many-%02d", i), null, Lines.ALL));
+        }
+        assertThat(page.entry("rc-wide").children()).extracting(CatalogEntry::key).containsExactlyElementsOf(wide);
+        // a child past the first page is selected like any other
+        CatalogEntry last = page.entry("rc-wide").children().get(24);
+        assertThat(last.roles()).containsExactly(LAST_PAGE);
+        assertThat(page.entry("rc-wide-25").offers(LAST_PAGE)).isTrue();
+        page.offersRole(LAST_PAGE);
+        // the roles of a folder, in the GUI's order (by name), past the first page too
+        assertThat(page.entry("rc-many").roles()).containsExactlyElementsOf(many);
+        page.offersRole(many.get(24));
     }
 }

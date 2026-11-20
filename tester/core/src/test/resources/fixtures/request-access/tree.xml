@@ -1,0 +1,401 @@
+<!--
+    A role catalog tree for the request-access page (RequestAccessScenarioTest): a chain of folders five levels deep
+    with a role at the bottom, a folder with more children than one of the GUI's pages (20) and a role in the last
+    child, a folder with more roles than one page. rc-tree-user is an end user whose page shows this catalog (4.8 and
+    later: rc-ar-tree of config.xml, roleCatalogDepth 5; 4.0 and 4.4: the test's roleManagement/roleCatalogRef).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <org oid="10000000-0000-0000-0000-0000000f0900">
+        <name>rc-tree</name>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0901">
+        <name>rc-level-1</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0900" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0902">
+        <name>rc-level-2</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0901" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0903">
+        <name>rc-level-3</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0902" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0904">
+        <name>rc-level-4</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0903" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0905">
+        <name>rc-level-5</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0904" type="OrgType"/>
+        </assignment>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0906">
+        <name>rc-bottom</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0905" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <org oid="10000000-0000-0000-0000-0000000f0907">
+        <name>rc-wide</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0900" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0910">
+        <name>rc-wide-01</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0911">
+        <name>rc-wide-02</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0912">
+        <name>rc-wide-03</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0913">
+        <name>rc-wide-04</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0914">
+        <name>rc-wide-05</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0915">
+        <name>rc-wide-06</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0916">
+        <name>rc-wide-07</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0917">
+        <name>rc-wide-08</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0918">
+        <name>rc-wide-09</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0919">
+        <name>rc-wide-10</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091a">
+        <name>rc-wide-11</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091b">
+        <name>rc-wide-12</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091c">
+        <name>rc-wide-13</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091d">
+        <name>rc-wide-14</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091e">
+        <name>rc-wide-15</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f091f">
+        <name>rc-wide-16</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0920">
+        <name>rc-wide-17</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0921">
+        <name>rc-wide-18</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0922">
+        <name>rc-wide-19</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0923">
+        <name>rc-wide-20</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0924">
+        <name>rc-wide-21</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0925">
+        <name>rc-wide-22</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0926">
+        <name>rc-wide-23</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0927">
+        <name>rc-wide-24</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0928">
+        <name>rc-wide-25</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0907" type="OrgType"/>
+        </assignment>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0929">
+        <name>rc-last-page</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0928" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <org oid="10000000-0000-0000-0000-0000000f0930">
+        <name>rc-many</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0900" type="OrgType"/>
+        </assignment>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0931">
+        <name>rc-many-01</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0932">
+        <name>rc-many-02</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0933">
+        <name>rc-many-03</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0934">
+        <name>rc-many-04</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0935">
+        <name>rc-many-05</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0936">
+        <name>rc-many-06</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0937">
+        <name>rc-many-07</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0938">
+        <name>rc-many-08</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0939">
+        <name>rc-many-09</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093a">
+        <name>rc-many-10</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093b">
+        <name>rc-many-11</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093c">
+        <name>rc-many-12</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093d">
+        <name>rc-many-13</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093e">
+        <name>rc-many-14</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f093f">
+        <name>rc-many-15</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0940">
+        <name>rc-many-16</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0941">
+        <name>rc-many-17</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0942">
+        <name>rc-many-18</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0943">
+        <name>rc-many-19</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0944">
+        <name>rc-many-20</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0945">
+        <name>rc-many-21</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0946">
+        <name>rc-many-22</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0947">
+        <name>rc-many-23</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0948">
+        <name>rc-many-24</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0949">
+        <name>rc-many-25</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0930" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0951">
+        <name>rc-tree-user</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0950" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

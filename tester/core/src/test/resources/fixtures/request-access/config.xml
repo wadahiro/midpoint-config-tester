@@ -59,4 +59,15 @@
             </accessRequest>
         </adminGuiConfiguration>
     </role>
+    <role oid="10000000-0000-0000-0000-0000000f0950">
+        <name>rc-ar-tree</name>
+        <adminGuiConfiguration>
+            <accessRequest>
+                <roleCatalog>
+                    <roleCatalogRef oid="10000000-0000-0000-0000-0000000f0900" type="OrgType"/>
+                    <roleCatalogDepth>5</roleCatalogDepth>
+                </roleCatalog>
+            </accessRequest>
+        </adminGuiConfiguration>
+    </role>
 </objects>

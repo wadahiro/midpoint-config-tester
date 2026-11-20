@@ -6,12 +6,21 @@ import java.util.List;
 import com.evolveum.midpoint.model.api.ModelInteractionService;
 import com.evolveum.midpoint.model.api.RoleSelectionSpecification;
 import com.evolveum.midpoint.prism.PrismObject;
+import com.evolveum.midpoint.model.api.ModelService;
+import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.query.ObjectFilter;
+import com.evolveum.midpoint.prism.query.ObjectOrdering;
 import com.evolveum.midpoint.prism.query.ObjectQuery;
+import com.evolveum.midpoint.prism.query.OrderDirection;
+import com.evolveum.midpoint.prism.query.OrgFilter;
+import com.evolveum.midpoint.prism.query.QueryFactory;
 import com.evolveum.midpoint.repo.api.RepositoryService;
 import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.AbstractRoleType;
+import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.RoleType;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.tester.MidPoint;
 
@@ -21,10 +30,99 @@ import com.github.wadahiro.midpoint.tester.MidPoint;
  * ({@code ModelInteractionService.getAssignableRoleSpecification}, the same binary signature on every line), searches
  * as the requester (their {@code #search} / {@code #read} narrow them) and as the administrator (the repository, for
  * the explanation of a failure). A call midPoint refuses the requester is an empty answer, as the GUI shows it.
+ * <p>
+ * The GUI shows its lists a page at a time, {@link #PAGE_SIZE} items, every page reachable (4.0, 4.4: a tree node's
+ * children, MidpointSubtree with OrgTreePagingPanel, ordered by display name then name; the catalog's grid,
+ * GridViewComponent 5 rows of 4 with BoxedPagingPanel, by name; 4.8+: the tiles and the table of RoleCatalogPanel,
+ * the user profile's paging size of PAGE_REQUEST_ACCESS_ROLE_CATALOG, by name; the menu of org folders unpaged, by
+ * display name then name). The searches here read every page with the GUI's ordering, so nothing past the first page
+ * is lost and the order is the GUI's.
  */
 public final class AccessRequests {
 
+    /** The GUI's page of a list: 4.0, 4.4 MidpointSubtree and GridViewComponent, 4.8+ DEFAULT_PAGING_SIZE. */
+    static final int PAGE_SIZE = 20;
+
     private AccessRequests() {
+    }
+
+    /**
+     * The org folders one level under the org, searched with the task's principal (the requester), as the GUI reads
+     * a tree node's or a menu item's children: ordered by display name, then name (4.0, 4.4 OrgTreeProvider
+     * .createPaging; 4.8+ RoleCatalogPanel.loadMenuFromOrgTree), every page. Each lists the roles one level in it;
+     * its own children are read when asked ({@link #children}). Past {@code maxLevel}: none. Refused: none, as the
+     * GUI logs it and shows no folder.
+     */
+    public static List<AccessRequestModel.Entry> folders(ModelService model, PrismContext prism, String parentOid,
+            int level, Integer maxLevel, Task task) {
+        List<AccessRequestModel.Entry> out = new ArrayList<>();
+        if (maxLevel != null && level > maxLevel) {
+            return out;
+        }
+        QueryFactory queries = prism.queryFactory();
+        List<ObjectOrdering> orderings = new ArrayList<>();
+        orderings.add(queries.createOrdering(OrgType.F_DISPLAY_NAME, OrderDirection.ASCENDING));
+        orderings.add(queries.createOrdering(OrgType.F_NAME, OrderDirection.ASCENDING));
+        List<ObjectType> orgs;
+        try {
+            orgs = pages(model, queries, OrgType.class, queries.createOrg(parentOid, OrgFilter.Scope.ONE_LEVEL),
+                    orderings, task);
+        } catch (Exception e) {
+            return out;
+        }
+        for (ObjectType object : orgs) {
+            OrgType org = (OrgType) object;
+            AccessRequestModel.Entry entry = new AccessRequestModel.Entry();
+            entry.kind = "ORG_FOLDER";
+            entry.key = org.getName().getOrig();
+            // WebComponentUtil.getDisplayNameOrName
+            entry.label = org.getDisplayName() != null && org.getDisplayName().getOrig() != null
+                    ? org.getDisplayName().getOrig() : org.getName().getOrig();
+            entry.objectOid = org.getOid();
+            entry.objectType = OrgType.COMPLEX_TYPE;
+            entry.objectName = org.getName().getOrig();
+            // the objects one level in it, of the type the search panel shows (roles first; the page's withType)
+            entry.type = RoleType.class;
+            entry.filter = queries.createOrg(org.getOid(), OrgFilter.Scope.ONE_LEVEL);
+            entry.level = level;
+            entry.maxLevel = maxLevel;
+            out.add(entry);
+        }
+        return out;
+    }
+
+    /** The folder's children, read as the requester the first time they are asked, as the user expands it. */
+    public static List<AccessRequestModel.Entry> children(MidPoint api, String requester,
+            AccessRequestModel.Entry parent) {
+        if (!parent.childrenRead) {
+            MidPointImpl mp = (MidPointImpl) api;
+            List<AccessRequestModel.Entry> children = parent.objectOid == null || !"ORG_FOLDER".equals(parent.kind)
+                    ? List.of()
+                    : mp.queryAs(requester, null, "folders of " + parent.key + " as " + requester,
+                            (task, result) -> folders(mp.model(), mp.prismContext(), parent.objectOid,
+                                    parent.level + 1, parent.maxLevel, task));
+            parent.children.addAll(children);
+            parent.childrenRead = true;
+        }
+        return parent.children;
+    }
+
+    /** Every page of the search, {@link #PAGE_SIZE} at a time with the orderings, as the user pages through it. */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static List<ObjectType> pages(ModelService model, QueryFactory queries, Class<? extends ObjectType> type,
+            ObjectFilter filter, List<ObjectOrdering> orderings, Task task) throws Exception {
+        List<ObjectType> out = new ArrayList<>();
+        for (int offset = 0;; offset += PAGE_SIZE) {
+            ObjectQuery query = queries.createQuery(filter);
+            query.setPaging(queries.createPaging(offset, PAGE_SIZE, orderings));
+            List<?> page = model.searchObjects((Class) type, query, null, task, new OperationResult("search"));
+            for (Object object : page) {
+                out.add((ObjectType) ((PrismObject<?>) object).asObjectable());
+            }
+            if (page.size() < PAGE_SIZE) {
+                return out;
+            }
+        }
     }
 
     /** The page as its configuration makes it for the requester. */
@@ -73,24 +171,22 @@ public final class AccessRequests {
         });
     }
 
-    /** The objects of the type the requester's search with the filter finds (null: all), by name; refused: none. */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    /**
+     * The objects of the type the requester's search with the filter finds (null: all), every page in the GUI's
+     * order (by name: 4.0, 4.4 and 4.8+ the list's default sort of BaseSortableDataProvider); refused: none.
+     */
     public static List<ObjectType> searchAs(MidPoint api, String requester, Class<? extends ObjectType> type,
             ObjectFilter filter) {
         MidPointImpl mp = (MidPointImpl) api;
         return mp.queryAs(requester, null, "search " + type.getSimpleName() + " as " + requester, (task, result) -> {
-            List<ObjectType> out = new ArrayList<>();
-            ObjectQuery query = mp.prismContext().queryFactory().createQuery(filter);
+            QueryFactory queries = mp.prismContext().queryFactory();
+            List<ObjectOrdering> byName = new ArrayList<>();
+            byName.add(queries.createOrdering(ObjectType.F_NAME, OrderDirection.ASCENDING));
             try {
-                for (Object object : mp.model().searchObjects((Class) type, query, null, task,
-                        new OperationResult("search"))) {
-                    out.add((ObjectType) ((PrismObject<?>) object).asObjectable());
-                }
+                return pages(mp.model(), queries, type, filter, byName, task);
             } catch (Exception e) {
-                return out;
+                return new ArrayList<>();
             }
-            out.sort((a, b) -> a.getName().getOrig().compareToIgnoreCase(b.getName().getOrig()));
-            return out;
         });
     }
 

@@ -1,11 +1,8 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
-import java.util.List;
-
 import com.evolveum.midpoint.model.api.ModelService;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.PrismObject;
-import com.evolveum.midpoint.prism.query.ObjectQuery;
 import com.evolveum.midpoint.prism.query.OrgFilter;
 import com.evolveum.midpoint.prism.query.QueryFactory;
 import com.evolveum.midpoint.repo.api.RepositoryService;
@@ -28,16 +25,14 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.SystemConfigurationT
  *       {@code roleCatalogCollections} says), All roles, All organizations, All services, User's assignments, each
  *       shown when {@code roleCatalogCollections} is empty or names its URI;</li>
  *   <li>the role catalog (RoleCatalogTabPanel): the tree of orgs under {@code roleCatalogRef} (OrgTreePanel, searched
- *       as the user), the catalog org selected first; a folder lists the objects one level in it of the type the
+ *       as the user, at any depth, a node's children read when it is expanded: AccessRequests.children; 20 a page,
+ *       MidpointSubtree), the catalog org selected first; a folder lists the objects one level in it of the type the
  *       search panel shows (roles first, switchable);</li>
  *   <li>target users (UserSelectionButton): any user the requester's search finds; the relations and the held check
  *       over the target's assignments (AbstractShoppingCartTabPanel, AssignmentEditorDto.isAssignable).</li>
  * </ul>
  */
 final class ShoppingCartModels {
-
-    /** The tree's depth the tester reads (the GUI's tree has no limit). */
-    private static final int MAX_DEPTH = 10;
 
     private ShoppingCartModels() {
     }
@@ -65,7 +60,6 @@ final class ShoppingCartModels {
             root.label = "Role catalog view";
             PrismObject<OrgType> org = getAsUser(harness, catalog, task, result);
             root.objectName = org != null ? org.getName().getOrig() : null;
-            children(harness, queries, root, 1, task, result);
             model.entries.add(root);
         }
         add(model, roleManagement, SchemaConstants.OBJECT_COLLECTION_ALL_ROLES_URI, "ALL_ROLES", "allRoles",
@@ -96,35 +90,10 @@ final class ShoppingCartModels {
         // the objects one level in it, of the type the search panel shows (roles first; the page's withType)
         entry.type = RoleType.class;
         entry.filter = queries.createOrg(oid, OrgFilter.Scope.ONE_LEVEL);
+        // the tree's root; its children read as the user expands it (AccessRequests.children), at any depth
+        entry.level = 0;
+        entry.maxLevel = null;
         return entry;
-    }
-
-    /** The org tree's children of the folder, searched as the user (OrgTreePanel), by name. */
-    private static void children(Harness harness, QueryFactory queries, AccessRequestModel.Entry parent, int depth,
-            Task task, OperationResult result) throws Exception {
-        if (depth > MAX_DEPTH) {
-            return;
-        }
-        ObjectQuery query = queries.createQuery(queries.createOrg(parent.objectOid, OrgFilter.Scope.ONE_LEVEL));
-        List<PrismObject<OrgType>> orgs;
-        try {
-            orgs = harness.bean(ModelService.class).searchObjects(OrgType.class, query, null, task, new OperationResult("folders"));
-        } catch (Exception e) {
-            return;
-        }
-        orgs.sort((a, b) -> label(a).compareToIgnoreCase(label(b)));
-        for (PrismObject<OrgType> org : orgs) {
-            AccessRequestModel.Entry child = folder(queries, org.getOid(), org.getName().getOrig());
-            child.label = label(org);
-            parent.children.add(child);
-            children(harness, queries, child, depth + 1, task, result);
-        }
-    }
-
-    private static String label(PrismObject<OrgType> org) {
-        OrgType o = org.asObjectable();
-        return o.getDisplayName() != null && o.getDisplayName().getOrig() != null ? o.getDisplayName().getOrig()
-                : o.getName().getOrig();
     }
 
     private static PrismObject<OrgType> getAsUser(Harness harness, String oid, Task task, OperationResult result) {

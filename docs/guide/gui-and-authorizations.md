@@ -62,14 +62,18 @@ assertThat(form.canRead("emailAddress")).isTrue();
   |---|---|---|
   | page | `PageAssignmentShoppingCart`, `/self/assignmentShoppingCart` | the wizard of `PageRequestAccess`, `/self/requestAccess` |
   | configuration | the system configuration's `roleManagement`: `roleCatalogRef`, `roleCatalogCollections` | the requester's compiled GUI profile's `adminGuiConfiguration/accessRequest` (each section replaced whole by the last one merged); `roleManagement/roleCatalogRef` is not read |
-  | entries (`entries()`) | tabs: the role catalog (key `roleCatalog`, the catalog org itself, its org tree below) when `roleCatalogRef` is set; All roles, All organizations, All services, User's assignments (`allRoles`, `allOrgs`, `allServices`, `userAssignments`), each shown when `roleCatalogCollections` is empty or names its URI | the menu: the orgs under `roleCatalog/roleCatalogRef`, one level each, down to `roleCatalogDepth` (default 3); the `collection` items (an object collection, by its type and filter as written, or `allRoles`, `allOrgs`, `allServices`); Roles of teammate unless `showRolesOfTeammate` (`rolesOfTeammate/enabled`) is false |
+  | entries (`entries()`) | tabs: the role catalog (key `roleCatalog`, the catalog org itself, its org tree below at any depth) when `roleCatalogRef` is set; All roles, All organizations, All services, User's assignments (`allRoles`, `allOrgs`, `allServices`, `userAssignments`), each shown when `roleCatalogCollections` is empty or names its URI | the menu: the orgs under `roleCatalog/roleCatalogRef`, one level each, down to `roleCatalogDepth` (default 3; a deeper org is no menu item, its roles not listed); the `collection` items (an object collection, by its type and filter as written, or `allRoles`, `allOrgs`, `allServices`); Roles of teammate unless `showRolesOfTeammate` (`rolesOfTeammate/enabled`) is false |
   | target users (`canRequestFor`) | the requester, or any user their search finds | Myself unless `targetSelection/allowRequestForMyself` is false; another user unless `allowRequestForOthers` is false and when the requester's search with the object part of their `#assign` authorizations finds them; `inGroup(group, user)` a group tile's autocomplete (that filter AND the group's collection, its expressions evaluated) |
   | a role held (`offers`) | the target's assignments (`AssignmentEditorDto.isAssignable`) | the target's `roleMembershipRef` (`canAddTemplateAssignment`) |
 
   Every entry lists its objects AND what the requester may assign to the target with the relation
   (`getAssignableRoleSpecification(target, type, 0)`: `#modify` of the target's assignments allows all, else the
   `#assign` authorizations' global filter OR the filter of the relation), searched as the requester (their `#search`
-  / `#read` narrow it). An org folder lists the objects one level in it of the search panel's type, roles first on
+  / `#read` narrow it). The tree and the lists are read across all of the GUI's pages (it shows 20 at a time by
+  default, by name; a folder's children by display name, then name), a folder's children when first asked, as the
+  user expands it, so `entry(name)` (the shallowest level first) and `children()` reach a folder at any depth the
+  line shows; `roles()`, the claims and `explain` read every folder the line shows (for a large catalog,
+  `entry(name).offers(role)` reads less). An org folder lists the objects one level in it of the search panel's type, roles first on
   every line: `withType(ServiceType::class.java)` (or `OrgType`, `AbstractRoleType`) switches it; collections and
   the fixed entries keep their own type. `withRelation(relation)` picks the relation (default:
   `relationSelection/defaultRelation`, else `default`); `relations()` are the relations of the `#assign`
@@ -100,8 +104,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
 
   An `#assign` authorization's `target` of `AbstractRoleType` with a filter selects nothing for the page's types
   (`RoleType`, `ServiceType`): name the types (`RoleType` and `ServiceType` targets), as midPoint's End user role does.
-  Not modeled: the search box's text and subtree scope, the cart and its conflicts, several targets at once, the
-  4.0 tree's lazy loading (read to 10 levels).
+  Not modeled: the search box's text and subtree scope, the cart and its conflicts, several targets at once.
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings
   (`EndPointsUrlMapping` on 4.8, `PageUrlMapping` on 4.4), the actions of all that match together, with

@@ -10,8 +10,8 @@ import com.github.wadahiro.midpoint.tester.internal.AccessRequestModel;
 /**
  * An entry of the request-access page's catalog ({@link RequestAccessPage#entries}): a folder of the role catalog's
  * org tree (4.8 and later a menu item, 4.0 and 4.4 a node of the Role catalog tab's tree), a collection, a tab (4.0,
- * 4.4: All roles...). Immutable; its roles are searched when asked, as the requester, for the page's target, relation
- * and type.
+ * 4.4: All roles...). Immutable; its children and roles are read when asked, as the requester (for the page's target,
+ * relation and type), across all of the GUI's pages.
  */
 public final class CatalogEntry {
 
@@ -20,14 +20,11 @@ public final class CatalogEntry {
 
     private final RequestAccessPage page;
     final AccessRequestModel.Entry model;
-    private final List<CatalogEntry> children = new ArrayList<>();
+    private List<CatalogEntry> children;
 
     CatalogEntry(RequestAccessPage page, AccessRequestModel.Entry model) {
         this.page = page;
         this.model = model;
-        for (AccessRequestModel.Entry child : model.children) {
-            children.add(new CatalogEntry(page, child));
-        }
     }
 
     public Kind kind() {
@@ -56,13 +53,25 @@ public final class CatalogEntry {
                 model.objectName != null ? model.objectName : model.objectOid, model.objectOid);
     }
 
-    /** The sub-folders (4.8 and later down to {@code roleCatalogDepth}; 4.0 and 4.4 the tree). */
+    /**
+     * The sub-folders, read as the requester when asked, as the GUI reads them when the user expands the folder: 4.8
+     * and later down to {@code roleCatalogDepth} (default 3; a folder at that depth has none), 4.0 and 4.4 the tree
+     * at any depth. Every child, past the GUI's first page too, in the GUI's order (display name, then name).
+     */
     public List<CatalogEntry> children() {
-        return Collections.unmodifiableList(children);
+        if (children == null) {
+            List<CatalogEntry> out = new ArrayList<>();
+            for (AccessRequestModel.Entry child : page.children(model)) {
+                out.add(new CatalogEntry(page, child));
+            }
+            children = Collections.unmodifiableList(out);
+        }
+        return children;
     }
 
     /**
-     * The objects the entry lists for the page's target, relation and type, searched as the requester, by name. Roles
+     * The objects the entry lists for the page's target, relation and type, searched as the requester, every page, in
+     * the GUI's order (by name). Roles
      * of teammate and the user's assignments list nothing without a teammate ({@link #rolesOfTeammate}).
      */
     public List<ObjectRef> roles() {

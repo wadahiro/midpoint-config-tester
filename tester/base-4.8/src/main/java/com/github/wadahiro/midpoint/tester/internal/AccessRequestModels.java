@@ -1,7 +1,5 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
-import java.util.List;
-
 import com.evolveum.midpoint.model.api.ModelInteractionService;
 import com.evolveum.midpoint.model.api.ModelService;
 import com.evolveum.midpoint.model.api.authentication.CompiledGuiProfile;
@@ -10,8 +8,6 @@ import com.evolveum.midpoint.model.api.authentication.GuiProfiledPrincipal;
 import com.evolveum.midpoint.prism.PrismContext;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.query.ObjectFilter;
-import com.evolveum.midpoint.prism.query.ObjectQuery;
-import com.evolveum.midpoint.prism.query.OrgFilter;
 import com.evolveum.midpoint.prism.query.QueryFactory;
 import com.evolveum.midpoint.repo.api.RepositoryService;
 import com.evolveum.midpoint.repo.common.expression.ExpressionFactory;
@@ -49,7 +45,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
  *       (createObjectFilterFromGroupSelection);</li>
  *   <li>relations (RequestAccess.getAvailableRelations, findDefaultRelation): {@code relationSelection};</li>
  *   <li>the menu (RoleCatalogPanel.loadRoleCatalogMenu): the orgs under {@code roleCatalog/roleCatalogRef} one level
- *       at a time down to {@code roleCatalogDepth} (default 3), searched as the user, by display name and name, each
+ *       at a time down to {@code roleCatalogDepth} (default 3), searched as the user, by display name and name, a
+ *       level read when its parent is opened (loadMenuFromOrgTree's LoadableModel: AccessRequests.children), each
  *       listing the objects one level in it of the search panel's type (RoleType first, switchable: refresh); the
  *       {@code collection} items (an object
  *       collection loaded as the user, its type and filter as written, or a static collection); Roles of teammate
@@ -113,7 +110,9 @@ final class AccessRequestModels {
         if (catalog.getRoleCatalogRef() != null && catalog.getRoleCatalogRef().getOid() != null) {
             int depth = catalog.getRoleCatalogDepth() != null ? catalog.getRoleCatalogDepth()
                     : DEFAULT_ROLE_CATALOG_DEPTH;
-            folders(harness, queries, catalog.getRoleCatalogRef().getOid(), model.entries, 1, depth, task, result);
+            // the first level; a folder's children read as the user opens it (AccessRequests.children)
+            model.entries.addAll(AccessRequests.folders(harness.bean(ModelService.class), prism,
+                    catalog.getRoleCatalogRef().getOid(), 1, depth, task));
         }
         for (RoleCollectionViewType collection : catalog.getCollection()) {
             AccessRequestModel.Entry entry = collection(harness, prism, collection, task, result);
@@ -132,46 +131,6 @@ final class AccessRequestModels {
             model.entries.add(entry);
         }
         return model;
-    }
-
-    /** loadMenuFromOrgTree: the orgs one level under the parent, searched as the user, to the depth. */
-    private static void folders(Harness harness, QueryFactory queries, String parent, List<AccessRequestModel.Entry> out,
-            int level, int depth, Task task, OperationResult result) throws Exception {
-        if (level > depth) {
-            return;
-        }
-        ObjectQuery query = queries.createQuery(queries.createOrg(parent, OrgFilter.Scope.ONE_LEVEL));
-        List<PrismObject<OrgType>> orgs;
-        try {
-            orgs = harness.bean(ModelService.class).searchObjects(OrgType.class, query, null, task, new OperationResult("folders"));
-        } catch (com.evolveum.midpoint.util.exception.CommonException e) {
-            // the GUI logs it and shows no folder
-            return;
-        }
-        orgs.sort((a, b) -> {
-            int byDisplay = String.valueOf(display(a)).compareToIgnoreCase(String.valueOf(display(b)));
-            return byDisplay != 0 ? byDisplay : a.getName().getOrig().compareToIgnoreCase(b.getName().getOrig());
-        });
-        for (PrismObject<OrgType> org : orgs) {
-            AccessRequestModel.Entry entry = new AccessRequestModel.Entry();
-            entry.kind = "ORG_FOLDER";
-            entry.key = org.getName().getOrig();
-            entry.label = display(org) != null ? display(org) : org.getName().getOrig();
-            entry.objectOid = org.getOid();
-            entry.objectType = OrgType.COMPLEX_TYPE;
-            entry.objectName = org.getName().getOrig();
-            // createParentRefQuery: the objects one level in it, of the search panel's type (RoleType first,
-            // switchable: the page's withType; the search box's subtree scope not modeled)
-            entry.type = RoleType.class;
-            entry.filter = queries.createOrg(org.getOid(), OrgFilter.Scope.ONE_LEVEL);
-            folders(harness, queries, org.getOid(), entry.children, level + 1, depth, task, result);
-            out.add(entry);
-        }
-    }
-
-    private static String display(PrismObject<OrgType> org) {
-        OrgType o = org.asObjectable();
-        return o.getDisplayName() != null ? o.getDisplayName().getOrig() : null;
     }
 
     /** createMenuFromRoleCollections and updateQueryModel: an object collection (loaded as the user) or a static one. */

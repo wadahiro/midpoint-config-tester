@@ -11,4 +11,7 @@
     <role oid="10000000-0000-0000-0000-0000000f0831">
         <name>rc-ar-narrow</name>
     </role>
+    <role oid="10000000-0000-0000-0000-0000000f0950">
+        <name>rc-ar-tree</name>
+    </role>
 </objects>
