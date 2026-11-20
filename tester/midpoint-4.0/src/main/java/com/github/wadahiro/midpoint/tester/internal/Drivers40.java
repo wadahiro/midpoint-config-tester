@@ -91,6 +91,11 @@ final class Drivers40 implements LineDrivers {
     }
 
     @Override
+    public AccessRequestModel accessRequestModel(Task task, OperationResult result) throws Exception {
+        return ShoppingCartModels.model(harness, task, result);
+    }
+
+    @Override
     public List<PrismObject<? extends ObjectType>> searchCollection(String collectionOid, Task task,
             OperationResult result) throws Exception {
         // as the GUI: the collection's definition read and compiled privileged (the filter's expressions still see the

@@ -121,6 +121,11 @@ Other line notes:
   tab is identified by its URI's local name (`focusTabGovernance`), and has no sub-tabs. 4.4 and later: the panels of
   `objectDetails` (identifier `orgGovernance`), shown by their `visibility` and `applicableForOperation`. 4.4 has both
   designs: the old one (`useNewDesign` false) reads `objectForms` as 4.0 does.
+- **4.0, 4.4**: the request-access page (`requestAccess()`) is the shopping cart of the system configuration's
+  `roleManagement` (its tabs, the role catalog's org tree), any user the requester's search finds may be the target,
+  and a role held is told by the target's assignments. 4.8 and later: the wizard of the GUI profile's
+  `accessRequest` (`roleManagement/roleCatalogRef` is not read), targets narrowed by the object part of the
+  requester's `#assign` authorizations, a role held told by `roleMembershipRef`. 4.4's wizard does not exist (4.6+).
 - **4.0**: a details page's Save is shown and disabled for a user without a `#modify` of the object; 4.4 and later
   hide it (MID-9380). The rows of the Assignments and Inducements tabs (`assignments()`, `inducements()`) are read
   from the tab itself (its type switch opens on All); 4.4 and later from the `allAssignments` / `allInducements`

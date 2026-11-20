@@ -91,6 +91,11 @@ final class Drivers48 implements LineDrivers {
     }
 
     @Override
+    public AccessRequestModel accessRequestModel(Task task, OperationResult result) throws Exception {
+        return AccessRequestModels.model(harness, task, result);
+    }
+
+    @Override
     public List<PrismObject<? extends ObjectType>> searchCollection(String collectionOid, Task task,
             OperationResult result) throws Exception {
         com.evolveum.midpoint.xml.ns._public.common.common_3.CollectionRefSpecificationType spec =

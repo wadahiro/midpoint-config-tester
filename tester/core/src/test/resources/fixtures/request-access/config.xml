@@ -1,0 +1,62 @@
+<!--
+    The configuration roles of the request-access page (RequestAccessScenarioTest), 4.8 and later: the GUI profile's
+    accessRequest. rc-ar-config: the catalog org rc-catalog, the collection rc-requestable and all roles; a group
+    "team" of rc-jack. rc-ar-narrow: the catalog to depth 1, only the default relation, no requests for others.
+    fixtures-4.4 has the 4.0 and 4.4 variant (no accessRequest).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <role oid="10000000-0000-0000-0000-0000000f0830">
+        <name>rc-ar-config</name>
+        <adminGuiConfiguration>
+            <accessRequest>
+                <targetSelection>
+                    <group>
+                        <identifier>team</identifier>
+                        <display>
+                            <label>Team</label>
+                        </display>
+                        <collection>
+                            <filter>
+                                <q:equal>
+                                    <q:path>name</q:path>
+                                    <q:value>rc-jack</q:value>
+                                </q:equal>
+                            </filter>
+                        </collection>
+                    </group>
+                </targetSelection>
+                <roleCatalog>
+                    <roleCatalogRef oid="10000000-0000-0000-0000-0000000f0801" type="OrgType"/>
+                    <collection>
+                        <identifier>requestable</identifier>
+                        <collectionRef oid="10000000-0000-0000-0000-0000000f0816" type="ObjectCollectionType"/>
+                    </collection>
+                    <collection>
+                        <identifier>all-roles</identifier>
+                        <collectionIdentifier>allRoles</collectionIdentifier>
+                    </collection>
+                </roleCatalog>
+            </accessRequest>
+        </adminGuiConfiguration>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0831">
+        <name>rc-ar-narrow</name>
+        <adminGuiConfiguration>
+            <accessRequest>
+                <targetSelection>
+                    <allowRequestForOthers>false</allowRequestForOthers>
+                </targetSelection>
+                <relationSelection>
+                    <allowOtherRelations>false</allowOtherRelations>
+                </relationSelection>
+                <roleCatalog>
+                    <roleCatalogRef oid="10000000-0000-0000-0000-0000000f0801" type="OrgType"/>
+                    <roleCatalogDepth>1</roleCatalogDepth>
+                    <showRolesOfTeammate>false</showRolesOfTeammate>
+                </roleCatalog>
+            </accessRequest>
+        </adminGuiConfiguration>
+    </role>
+</objects>

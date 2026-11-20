@@ -1,0 +1,14 @@
+<!--
+    The configuration roles of the request-access page (RequestAccessScenarioTest) on 4.0 and 4.4: no
+    adminGuiConfiguration/accessRequest (4.6 and later); the page reads the system configuration's roleManagement.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <role oid="10000000-0000-0000-0000-0000000f0830">
+        <name>rc-ar-config</name>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0831">
+        <name>rc-ar-narrow</name>
+    </role>
+</objects>

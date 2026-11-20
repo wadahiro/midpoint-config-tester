@@ -118,6 +118,13 @@ public interface LineDrivers {
      */
     String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception;
 
+    /**
+     * The request-access page as its configuration makes it for the logged-in user ({@link AccessRequestModel}): 4.0
+     * and 4.4 the shopping cart of the system configuration's {@code roleManagement}, 4.8 and later the wizard of
+     * the user's compiled GUI profile's {@code accessRequest}; the org folders and collections read as the user.
+     */
+    AccessRequestModel accessRequestModel(Task task, OperationResult result) throws Exception;
+
     // ---- midPoint's initial import (InitialDataImport of gui/admin-gui), see InitialImport ----------------------
 
     /**

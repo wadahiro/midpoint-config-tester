@@ -146,7 +146,12 @@ request phase): `t.actor(u).editForm(Roles.TEAM_1).inducements().hasRow(Roles.ME
 `.assignButton().isHidden()`; removing a row and saving as the user does it, refused by the model as an
 unassignment (`#unassign`, an inducement's with `orderConstraints` order 1):
 `t.actor(u).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()` / `.rejectsWith(...)`,
-`.unassign(Orgs.SITE_1)` on the Assignments tab. A members panel's Assign and Unassign as the user does them (the GUI's task
+`.unassign(Orgs.SITE_1)` on the Assignments tab. Which roles the request-access page shows a requester (computed
+as the line's GUI computes it: 4.0 / 4.4 `roleManagement`, 4.8+ the GUI profile's `accessRequest`; each entry
+ANDed with what they may assign to the target, searched as them):
+`t.actor(u).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)`, `.requestAccess(Users.JACK)
+.offersTarget(Users.JACK).withRelation(ORG_MANAGER).offersRole(...)`, `.withType(ServiceType::class.java)` for an
+org folder's services, `.explain(role)` for why; then `t.actor(u).request().assign(role)` as its Submit. A members panel's Assign and Unassign as the user does them (the GUI's task
 or change, its authorization checks): `t.actor(u).orgTreeMembersPanel(t.org(x)).assign(ORG_MANAGER, t.user(j))`,
 `.unassign(ORG_MANAGER, t.user(j))` (a row), `.unassignSelected(...)`, `.unassignAll(...)`; the same on
 `membersPanel(x)` and `governancePanel(x)` of the details page; `.assignButton().isShown()` / `.isHidden()`; a refusal

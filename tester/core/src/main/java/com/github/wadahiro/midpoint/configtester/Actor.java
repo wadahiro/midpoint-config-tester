@@ -96,6 +96,26 @@ public final class Actor {
     }
 
     /**
+     * The request-access page ("Request a role" on 4.0 and 4.4, "Request access" on 4.8 and later) as the user opens it
+     * for themselves ({@link RequestAccessPage}): computed as the GUI computes it, logged in as them. Fails when they
+     * may not open it ({@code #selfAll} or {@code #selfRequestAssignments}).
+     * {@code t.actor("jack").requestAccess().offersRole(Roles.VPN)}.
+     */
+    public RequestAccessPage requestAccess() {
+        return new RequestAccessPage(tester, this, name);
+    }
+
+    /** The request-access page with the target user chosen (4.8+: the person of interest; 4.0, 4.4: the target). */
+    public RequestAccessPage requestAccess(String forUser) {
+        return new RequestAccessPage(tester, this, forUser);
+    }
+
+    /** {@link #requestAccess(String)} by a generated name. */
+    public RequestAccessPage requestAccess(UserRef forUser) {
+        return requestAccess(forUser.on(tester.line()));
+    }
+
+    /**
      * The objects of the type a search by the user finds, as the GUI's lists show them (midPoint narrows the search
      * by the user's {@code #search} and {@code #read} authorizations), in no particular order.
      */

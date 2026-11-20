@@ -53,6 +53,55 @@ assertThat(form.canRead("emailAddress")).isTrue();
 - `collection(name)` is an object collection's list as the user sees it (a "my requests" page): the collection's
   definition read and compiled privileged, as the GUI does, its filter's expressions evaluated for the user
   (`midpoint.principalOid`), its base collection, then searched as the user.
+- `requestAccess()` / `requestAccess(forUser)` is the request-access page ("Request a role" on 4.0 and 4.4, "Request
+  access" on 4.8 and later) as the user sees it (`RequestAccessPage`), **computed** as the line's GUI computes it,
+  logged in as them (nothing rendered, nothing requested; a user who may not open the page fails:
+  `jack may not open /self/requestAccess`). The page of the line:
+
+  | | 4.0, 4.4 (both designs) | 4.8 and later |
+  |---|---|---|
+  | page | `PageAssignmentShoppingCart`, `/self/assignmentShoppingCart` | the wizard of `PageRequestAccess`, `/self/requestAccess` |
+  | configuration | the system configuration's `roleManagement`: `roleCatalogRef`, `roleCatalogCollections` | the requester's compiled GUI profile's `adminGuiConfiguration/accessRequest` (each section replaced whole by the last one merged); `roleManagement/roleCatalogRef` is not read |
+  | entries (`entries()`) | tabs: the role catalog (key `roleCatalog`, the catalog org itself, its org tree below) when `roleCatalogRef` is set; All roles, All organizations, All services, User's assignments (`allRoles`, `allOrgs`, `allServices`, `userAssignments`), each shown when `roleCatalogCollections` is empty or names its URI | the menu: the orgs under `roleCatalog/roleCatalogRef`, one level each, down to `roleCatalogDepth` (default 3); the `collection` items (an object collection, by its type and filter as written, or `allRoles`, `allOrgs`, `allServices`); Roles of teammate unless `showRolesOfTeammate` (`rolesOfTeammate/enabled`) is false |
+  | target users (`canRequestFor`) | the requester, or any user their search finds | Myself unless `targetSelection/allowRequestForMyself` is false; another user unless `allowRequestForOthers` is false and when the requester's search with the object part of their `#assign` authorizations finds them; `inGroup(group, user)` a group tile's autocomplete (that filter AND the group's collection, its expressions evaluated) |
+  | a role held (`offers`) | the target's assignments (`AssignmentEditorDto.isAssignable`) | the target's `roleMembershipRef` (`canAddTemplateAssignment`) |
+
+  Every entry lists its objects AND what the requester may assign to the target with the relation
+  (`getAssignableRoleSpecification(target, type, 0)`: `#modify` of the target's assignments allows all, else the
+  `#assign` authorizations' global filter OR the filter of the relation), searched as the requester (their `#search`
+  / `#read` narrow it). An org folder lists the objects one level in it of the search panel's type, roles first on
+  every line: `withType(ServiceType::class.java)` (or `OrgType`, `AbstractRoleType`) switches it; collections and
+  the fixed entries keep their own type. `withRelation(relation)` picks the relation (default:
+  `relationSelection/defaultRelation`, else `default`); `relations()` are the relations of the `#assign`
+  authorizations for the target when none is global, else the self-service relations (4.8+: only the default when
+  `allowOtherRelations` is false). With a relation that neither a global filter nor a relation's filter covers the
+  GUI's query has no assignment filter at all and lists every object (the request is refused at Submit).
+  Claims: `showsRole(role)` / `showsNoRole(role)` (listed, maybe with the add disabled), `offersRole(role)` /
+  `offersNoRole(role)` (listed and its add enabled: a held role is offered again unless
+  `roleManagement/defaultAssignmentConstraints` forbid the same target or relation, on every line by default),
+  `offersTarget(user)` / `offersNoTarget(user)`; reads `roles()` (the union of the entries; roles of teammate only
+  through `entry("rolesOfTeammate").rolesOfTeammate(teammate)`), `entry(name)` (by label, org or collection name, or
+  key), `CatalogEntry.roles()`, `children()`, `explain(role)` (`RoleVisibility`: `listedIn()`, `assignable()`,
+  `foundByRequester()`, `addEnabled()`, `heldAs()`). A failure says which step hides the role: no entry lists it
+  (with the entries and where the line reads its configuration), the requester's `#assign` authorizations do not
+  allow it for the target, or the requester's search does not find it. The request itself is
+  `t.actor(u).request(forUser).assign(role[, relation])`, the model operation of the page's Submit (the page also
+  passes the system configuration's execute options and the comment as the request's business context, which
+  `request()` does not; a role offered may still open a case or be refused by a policy rule at Submit).
+
+  ```kotlin
+  t.actor(Users.JACK).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)
+  t.actor(Users.JACK).requestAccess().entry("it").roles() shouldContain Roles.VPN
+  t.actor(Users.JACK).requestAccess().withType(ServiceType::class.java).entry("it").roles() shouldContain Services.WIKI
+  t.actor(Users.MANAGER).requestAccess(Users.JACK).offersTarget(Users.JACK)
+      .withRelation(SchemaConstants.ORG_MANAGER).offersRole(Roles.PROJECT_X)
+  t.actor(Users.JACK).request().assign(Roles.VPN)
+  ```
+
+  An `#assign` authorization's `target` of `AbstractRoleType` with a filter selects nothing for the page's types
+  (`RoleType`, `ServiceType`): name the types (`RoleType` and `ServiceType` targets), as midPoint's End user role does.
+  Not modeled: the search box's text and subtree scope, the cart and its conflicts, several targets at once, the
+  4.0 tree's lazy loading (read to 10 levels).
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings
   (`EndPointsUrlMapping` on 4.8, `PageUrlMapping` on 4.4), the actions of all that match together, with

@@ -1,0 +1,402 @@
+<!--
+    The request-access page (RequestAccessScenarioTest): a role catalog org with two folders (and a sub-folder), roles
+    in them that are requestable or not, a service, a role outside the catalog; an object collection of the
+    requestable roles; requesters with different authorizations. The page's configuration is the role rc-ar-config
+    (request-access/config.xml: 4.8 and later adminGuiConfiguration/accessRequest; fixtures-4.4: none) and, set by the
+    test, the system configuration's roleManagement (read on 4.0 and 4.4).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+         xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+    <org oid="10000000-0000-0000-0000-0000000f0801">
+        <name>rc-catalog</name>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0802">
+        <name>rc-it</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0801" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0803">
+        <name>rc-sales</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0801" type="OrgType"/>
+        </assignment>
+    </org>
+    <org oid="10000000-0000-0000-0000-0000000f0804">
+        <name>rc-it-sub</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0802" type="OrgType"/>
+        </assignment>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0810">
+        <name>rc-vpn</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0802" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0811">
+        <name>rc-admin-tools</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0802" type="OrgType"/>
+        </assignment>
+        <requestable>false</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0812">
+        <name>rc-crm</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0803" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0813">
+        <name>rc-outside</name>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0814">
+        <name>rc-deep</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0804" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </role>
+    <service oid="10000000-0000-0000-0000-0000000f0815">
+        <name>rc-wiki</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0802" type="OrgType"/>
+        </assignment>
+        <requestable>true</requestable>
+    </service>
+    <objectCollection oid="10000000-0000-0000-0000-0000000f0816">
+        <name>rc-requestable</name>
+        <type>RoleType</type>
+        <filter>
+            <q:equal>
+                <q:path>requestable</q:path>
+                <q:value>true</q:value>
+            </q:equal>
+        </filter>
+    </objectCollection>
+
+    <role oid="10000000-0000-0000-0000-0000000f0820">
+        <name>rc-end-user-role</name>
+        <!-- the page; reads the catalog and themselves; assigns requestable roles and services to themselves
+             (their own execution allowed) -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>execution</phase>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ServiceType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ObjectCollectionType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <object>
+                <special>self</special>
+            </object>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <target>
+                <type>ServiceType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0821">
+        <name>rc-manager-role</name>
+        <!-- the page; reads the catalog and users; assigns any role to rc-jack and rc-bob with relation manager -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ServiceType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ObjectCollectionType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <object>
+                <type>UserType</type>
+                <filter>
+                    <q:or>
+                        <q:equal>
+                            <q:path>name</q:path>
+                            <q:value>rc-jack</q:value>
+                        </q:equal>
+                        <q:equal>
+                            <q:path>name</q:path>
+                            <q:value>rc-bob</q:value>
+                        </q:equal>
+                    </q:or>
+                </filter>
+            </object>
+            <target>
+                <type>RoleType</type>
+            </target>
+            <target>
+                <type>ServiceType</type>
+            </target>
+            <relation>org:manager</relation>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0822">
+        <name>rc-no-search-role</name>
+        <!-- as the end user, but reads no rc-vpn -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <object>
+                <type>ServiceType</type>
+            </object>
+            <object>
+                <type>ObjectCollectionType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>RoleType</type>
+                <filter>
+                    <q:not>
+                        <q:equal>
+                            <q:path>name</q:path>
+                            <q:value>rc-vpn</q:value>
+                        </q:equal>
+                    </q:not>
+                </filter>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#assign</action>
+            <object>
+                <special>self</special>
+            </object>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+            <target>
+                <type>ServiceType</type>
+                <filter>
+                    <q:equal>
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0823">
+        <name>rc-no-page-role</name>
+        <!-- reads the catalog, no page of the self service -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>RoleType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ServiceType</type>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <type>ObjectCollectionType</type>
+            </object>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0824">
+        <name>rc-modify-all-role</name>
+        <!-- the page; reads everything; changes users -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>UserType</type>
+            </object>
+        </authorization>
+    </role>
+
+    <user oid="10000000-0000-0000-0000-0000000f0840">
+        <name>rc-jack</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0841">
+        <name>rc-ann</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0812" type="RoleType" relation="org:default"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0842">
+        <name>rc-bob</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0843">
+        <name>rc-manager</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0821" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0844">
+        <name>rc-no-search</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0822" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0845">
+        <name>rc-no-page</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0823" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0846">
+        <name>rc-modify-all</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0824" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0830" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0847">
+        <name>rc-narrow</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0831" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0848">
+        <name>rc-plain</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0820" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>
