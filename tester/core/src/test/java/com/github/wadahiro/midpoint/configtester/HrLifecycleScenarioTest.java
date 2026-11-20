@@ -148,6 +148,9 @@ class HrLifecycleScenarioTest {
                 .memberOf(SALES)
                 .notMemberOf(IT)
                 .isEnabled();
+        // the real LDAP server's DN and entryUUID are no attributes of the entry: the account's name and identifier
+        t.target(Resources.LDAP).account(JOHN).hasAttribute("dn", JOHN)
+                .hasAttribute("entryUUID", t.target(Resources.LDAP).system().accountIdentifier(JOHN));
         t.mails().to("e1001@example.com").withSubject("Welcome John Doe").exactly(1);
     }
 
