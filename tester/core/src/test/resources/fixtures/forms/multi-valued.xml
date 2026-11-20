@@ -1,0 +1,51 @@
+<!--
+    An org with a multi-valued extension item (extension/tags), which the GUI's form edits in value rows
+    (MultiValuedFormScenarioTest): a tagger who may change only that item of orgs, and a reader who may only read orgs.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:ext="http://example.com/xml/ns/tester-extension">
+    <org oid="10000000-0000-0000-0000-0000000f0301">
+        <name>form-unit</name>
+        <extension>
+            <ext:tags>alpha</ext:tags>
+        </extension>
+    </org>
+    <role oid="10000000-0000-0000-0000-0000000f0302">
+        <name>form-tagger-role</name>
+        <authorization>
+            <!-- the GUI's organization pages -->
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <type>OrgType</type>
+            </object>
+            <item>extension/ext:tags</item>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0303">
+        <name>form-tagger</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0302" type="RoleType"/>
+        </assignment>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000f0304">
+        <name>form-reader-role</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000f0305">
+        <name>form-reader</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0304" type="RoleType"/>
+        </assignment>
+    </user>
+</objects>

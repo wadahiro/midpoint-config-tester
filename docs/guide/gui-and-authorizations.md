@@ -155,7 +155,13 @@ assertThat(form.canRead("emailAddress")).isTrue();
   relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
   opened by its OID as from a list: the fields show the stored values (`editForm(ref)` takes a generated name,
   `Orgs.SITE_1`, its type from the ref). On either, `.set(item, value)` types a value in first (by path of local
-  names: `identifier`, `extension/site`), then:
+  names: `identifier`, `extension/site`). A multi-valued item takes several values in one form, as a user enters
+  them in its value rows: `.set(item, listOf(a, b))` makes its values exactly these (the rows of the other values
+  removed by their remove button, a missing value typed into an empty row or a row the item's add button adds, the
+  values already there kept; an empty list removes them all), and on `editForm` `.add(item, value)` and
+  `.remove(item, value)` change one value, the others kept (removals first; removing a value the item does not have
+  fails). The rules of `set` hold for each row: no field, a read-only field (or no add or remove button the user may
+  press) fails the form; several values for a single-valued item fail it too. Then:
   - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
     `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
     `messages()`, `absent()`: why the page has no field to type into).
@@ -200,6 +206,8 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor("site-admin").newObjectForm(OrgType::class.java).archetype("org-category").parent("site-1")
       .set("name", "cat-1").set("identifier", "CAT1").submit().saves()
   t.editForm(OrgType::class.java, "cat-1").set("costCenter", "CC2").submit().rejects("costCenter")
+  t.actor("tagger").editForm(Orgs.SITE_1).set("extension/tags", listOf("a", "b")).submit().saves()
+  t.actor("tagger").editForm(Orgs.SITE_1).add("extension/tags", "c").remove("extension/tags", "a").submit().saves()
   t.actor(Users.HELPDESK).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("pageRole.governance")
   t.actor("site-admin").newObjectForm(OrgType::class.java).parent("site-1").tabs().hasNoTab("Governance")
   t.editForm(Orgs.SITE_1).tabs().names() shouldContainAll listOf("Basic", "Assignments", "Members", "Governance")

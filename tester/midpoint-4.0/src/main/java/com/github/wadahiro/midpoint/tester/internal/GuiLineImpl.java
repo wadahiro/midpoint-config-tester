@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
+import org.apache.wicket.MarkupContainer;
 import org.apache.wicket.Page;
 
 import com.evolveum.midpoint.gui.api.prism.ItemStatus;
@@ -77,6 +78,40 @@ final class GuiLineImpl implements GuiLine {
     @Override
     public boolean validated(Object wrapper) {
         return ((ItemWrapper<?, ?, ?, ?>) wrapper).getFormComponentValidator() != null;
+    }
+
+    @Override
+    public boolean multiValue(Object wrapper) {
+        return ((ItemWrapper<?, ?, ?, ?>) wrapper).isMultiValue();
+    }
+
+    @Override
+    public List<MarkupContainer> valueRows(Component itemPanel) {
+        List<MarkupContainer> out = new ArrayList<>();
+        Component values = ((MarkupContainer) itemPanel).get("values");
+        if (values instanceof MarkupContainer) {
+            for (Component row : (MarkupContainer) values) {
+                out.add((MarkupContainer) row);
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public Component addValueButton(Component itemPanel) {
+        // each row has one (ItemPanel.createButtons), shown when the item is multi-valued: the first shown row's
+        for (MarkupContainer row : valueRows(itemPanel)) {
+            Component add = row.get("buttonContainer:addButton");
+            if (add != null && add.isVisibleInHierarchy()) {
+                return add;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Component removeValueButton(MarkupContainer row) {
+        return row.get("buttonContainer:removeButton");
     }
 
     @Override

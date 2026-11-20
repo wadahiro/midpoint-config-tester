@@ -92,7 +92,9 @@ public final class NewObjectForm extends ObjectForm {
 
     /**
      * A value typed into the item's field first (its path of local names: {@code identifier},
-     * {@code extension/site}), as the user fills in the form before the item validated or saving.
+     * {@code extension/site}), as the user fills in the form before the item validated or saving. A collection is the
+     * values of a multi-valued item, each typed into a value row as the item's add button adds them
+     * ({@code set("extension/tags", listOf("a", "b"))}).
      */
     public NewObjectForm set(String item, Object value) {
         return new NewObjectForm(tester, type, archetype, member, memberType, relation, user,

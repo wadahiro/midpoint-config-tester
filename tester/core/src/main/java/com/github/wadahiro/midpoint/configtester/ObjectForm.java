@@ -17,6 +17,8 @@ import com.github.wadahiro.midpoint.tester.internal.GuiForms;
  * details page in the GUI (in the JVM, WicketTester: no browser, no web server), as the user, types the values into
  * its fields and saves it:
  * <ul>
+ *   <li>{@code set} types a value into a field, or (a collection) the values into a multi-valued item's value rows,
+ *       as the GUI's add and remove buttons of the item make them;</li>
  *   <li>{@link #validate} types a value into a field and leaves it: what the field's validator says (its
  *       {@code object} is the object before the value: a new object's other items typed in, an existing object's
  *       stored values; 4.0 validates a text field twice, the second time with the value in {@code object});</li>
@@ -59,10 +61,12 @@ public abstract class ObjectForm {
         return name.endsWith("Type") ? name.substring(0, name.length() - 4) : name;
     }
 
+    /** The items with the item's value: a collection is the values of a multi-valued item ({@link GuiForms.ValueRows}). */
     static Map<String, Object> with(Map<String, Object> items, String item, Object value) {
         Map<String, Object> copy = new LinkedHashMap<>(items);
         copy.remove(item);
-        copy.put(item, value);
+        copy.put(item, value instanceof java.util.Collection
+                ? GuiForms.ValueRows.exactly((java.util.Collection<?>) value) : value);
         return copy;
     }
 
@@ -80,6 +84,10 @@ public abstract class ObjectForm {
 
     /** The value typed into the item's field (its path of local names: {@code identifier}, {@code extension/site}). */
     public Check validate(String item, Object value) {
+        if (value instanceof java.util.Collection) {
+            throw new IllegalArgumentException("validate types one value into a field; set(\"" + item
+                    + "\", values) types several into a multi-valued item's rows");
+        }
         return new Check(item, value, gui().type(spec(), item, value));
     }
 

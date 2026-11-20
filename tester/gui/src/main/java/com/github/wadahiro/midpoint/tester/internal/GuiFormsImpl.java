@@ -52,7 +52,8 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.OrgType;
  *   <li>the page is the details page the GUI dispatches the type to, made as the GUI makes it for a new object (the
  *       archetype's and the membership's assignments, an org's parentOrgRef) or opened by the object's OID;</li>
  *   <li>a value is typed into the item's field and the field's change event fires, as leaving the field does (the
- *       field's validator); an item the page does not show until "show empty fields" is pressed gets it pressed;</li>
+ *       field's validator); an item the page does not show until "show empty fields" is pressed gets it pressed; the
+ *       values of a multi-valued item into its value rows, which its add and remove buttons make;</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
  *       for, then its progress timer fires once, as the browser's poll;</li>
  *   <li>the tabs are read from the rendered page ({@link GuiLine#tabs}): each as the GUI decided its visibility.</li>
@@ -225,15 +226,15 @@ final class GuiFormsImpl implements GuiForms {
         return object;
     }
 
-    /** Types the value into the item's field and leaves it (the field's change event). */
+    /**
+     * Types the value into the item's field and leaves it (the field's change event); the values of a multi-valued
+     * item ({@link GuiForms.ValueRows}) into its value rows.
+     */
     private Field typeInto(WicketTester tester, String item, Object value, boolean filling) {
-        Page page = tester.getLastRenderedPage();
-        Found found = find(page, item);
-        if (found.input == null && found.panel == null) {
-            showEmpty(tester);
-            page = tester.getLastRenderedPage();
-            found = find(page, item);
+        if (value instanceof GuiForms.ValueRows) {
+            return typeValues(tester, item, (GuiForms.ValueRows) value);
         }
+        Found found = shown(tester, item);
         if (found.input == null) {
             String absent = found.panel == null
                     ? "the page shows no field of " + item + " (not an item the user may see or add, or on another"
@@ -244,13 +245,28 @@ final class GuiFormsImpl implements GuiForms {
             }
             return new Field(found.wrapper != null && LINE.validated(found.wrapper), List.of(), absent);
         }
-        Form<?> form = form(page);
-        String relative = found.input.getPageRelativePath().substring(form.getPageRelativePath().length() + 1);
+        return new Field(LINE.validated(found.wrapper), enter(tester, item, found.input, value), null);
+    }
+
+    /** The item's panel as the page shows it, "show empty fields" pressed when the page does not show it. */
+    private static Found shown(WicketTester tester, String item) {
+        Found found = find(tester.getLastRenderedPage(), item);
+        if (found.input == null && found.panel == null) {
+            showEmpty(tester);
+            found = find(tester.getLastRenderedPage(), item);
+        }
+        return found;
+    }
+
+    /** Types the value into the input and leaves it: the messages the item's panel shows then. */
+    private static List<String> enter(WicketTester tester, String item, FormComponent<?> input, Object value) {
+        Form<?> form = form(tester.getLastRenderedPage());
+        String relative = input.getPageRelativePath().substring(form.getPageRelativePath().length() + 1);
         tester.getSession().getFeedbackMessages().clear();
         // a browser sends the field's value with each of its change behaviors (4.0 has two); WicketTester's
         // executeAjaxEvent with the first only
         List<String> messages = new ArrayList<>();
-        for (AjaxEventBehavior change : WicketTesterHelper.findAjaxEventBehaviors(found.input, "change")) {
+        for (AjaxEventBehavior change : WicketTesterHelper.findAjaxEventBehaviors(input, "change")) {
             tester.newFormTester(form.getPageRelativePath(), false)
                     .setValue(relative, value == null ? "" : String.valueOf(value));
             tester.executeBehavior(change);
@@ -263,7 +279,150 @@ final class GuiFormsImpl implements GuiForms {
                 }
             }
         }
+        return messages;
+    }
+
+    /**
+     * The values into a multi-valued item's value rows, as the user changes them: the rows of the values to remove
+     * (exact values: of those not wanted) removed by their remove button, then each value to add typed into an empty
+     * row, else into the row the item's add button adds; a value the item has is kept. The page re-renders the item's
+     * panel on every button, so the rows are found anew each time. The item's buttons: {@link GuiLine#addValueButton},
+     * {@link GuiLine#removeValueButton}.
+     */
+    private Field typeValues(WicketTester tester, String item, GuiForms.ValueRows values) {
+        Found found = shown(tester, item);
+        if (found.panel == null) {
+            throw new AssertionError("Cannot fill in " + item + ": the page shows no field of " + item + " (not an"
+                    + " item the user may see or add, or on another panel of the page)");
+        }
+        boolean multi = LINE.multiValue(found.wrapper);
+        List<String> wanted = texts(values.exactly != null ? values.exactly : values.added);
+        if (!multi && (wanted.size() > 1 || values.exactly == null)) {
+            throw new AssertionError("Cannot fill in " + item + " " + values + ": " + item + " is single-valued (its"
+                    + " field has no add and remove buttons); set(\"" + item + "\", value) types its value");
+        }
+        if (found.input == null) {
+            throw new AssertionError("Cannot fill in " + item + ": the field of " + item + " is read-only");
+        }
+        if (!multi) {
+            // one value or none: the field typed into
+            return new Field(LINE.validated(found.wrapper),
+                    enter(tester, item, found.input, wanted.isEmpty() ? "" : wanted.get(0)), null);
+        }
+        List<String> removed = values.exactly != null ? null : texts(values.removed);
+        if (removed != null) {
+            List<String> present = values(rows(tester, item));
+            for (String value : removed) {
+                if (!present.contains(value)) {
+                    throw new AssertionError("Cannot remove " + value + " from " + item + ": it has no such value;"
+                            + " its values: " + present);
+                }
+            }
+        }
+        List<String> messages = new ArrayList<>();
+        // removed first: a row of a value not wanted
+        for (int guard = 0; guard < 100; guard++) {
+            Component remove = null;
+            for (Row row : rows(tester, item)) {
+                boolean drop = removed != null ? removed.contains(row.value)
+                        : !row.value.isEmpty() && !wanted.contains(row.value);
+                if (drop) {
+                    remove = LINE.removeValueButton(row.container);
+                    if (remove == null || !remove.isVisibleInHierarchy() || !remove.isEnabledInHierarchy()) {
+                        throw new AssertionError("Cannot remove " + row.value + " from " + item + ": its row has no"
+                                + " remove button the user may press (read-only)");
+                    }
+                    break;
+                }
+            }
+            if (remove == null) {
+                break;
+            }
+            tester.executeAjaxEvent(remove, "click");
+        }
+        for (String value : wanted) {
+            List<Row> rows = rows(tester, item);
+            if (rows.stream().anyMatch(row -> row.value.equals(value))) {
+                continue;
+            }
+            Row empty = rows.stream().filter(row -> row.value.isEmpty() && row.input != null).findFirst().orElse(null);
+            if (empty == null) {
+                Component add = LINE.addValueButton(shown(tester, item).panel);
+                if (add == null || !add.isVisibleInHierarchy() || !add.isEnabledInHierarchy()) {
+                    throw new AssertionError("Cannot add " + value + " to " + item + ": its field has no add button"
+                            + " the user may press (" + (multi ? "read-only" : "single-valued") + "); its values: "
+                            + values(rows));
+                }
+                tester.executeAjaxEvent(add, "click");
+                empty = rows(tester, item).stream().filter(row -> row.value.isEmpty() && row.input != null)
+                        .reduce((first, second) -> second).orElse(null);
+                if (empty == null) {
+                    throw new AssertionError("The add button of " + item + " added no empty row; its values: "
+                            + values(rows(tester, item)));
+                }
+            }
+            for (String message : enter(tester, item, empty.input, value)) {
+                if (!messages.contains(message)) {
+                    messages.add(message);
+                }
+            }
+        }
         return new Field(LINE.validated(found.wrapper), messages, null);
+    }
+
+    /** A value row of an item's panel: its container, its input (null: read-only), the value it shows. */
+    private static final class Row {
+        MarkupContainer container;
+        FormComponent<?> input;
+        String value;
+    }
+
+    /** The value rows the item's panel shows ({@link GuiLine#valueRows}), with what their inputs show. */
+    private static List<Row> rows(WicketTester tester, String item) {
+        Component panel = find(tester.getLastRenderedPage(), item).panel;
+        List<Row> out = new ArrayList<>();
+        if (panel == null) {
+            return out;
+        }
+        for (MarkupContainer container : LINE.valueRows(panel)) {
+            if (!container.isVisibleInHierarchy()) {
+                continue;
+            }
+            // the row's first input shown (as find takes an item's); disabled: a read-only value
+            FormComponent<?>[] first = new FormComponent<?>[1];
+            container.visitChildren(FormComponent.class, (input, visit) -> {
+                if (input.isVisibleInHierarchy() && !(input instanceof IFormSubmittingComponent)) {
+                    first[0] = (FormComponent<?>) input;
+                    visit.stop();
+                }
+            });
+            if (first[0] == null) {
+                continue;
+            }
+            Row row = new Row();
+            row.container = container;
+            row.input = first[0].isEnabledInHierarchy() ? first[0] : null;
+            row.value = first[0].getValue() == null ? "" : first[0].getValue();
+            out.add(row);
+        }
+        return out;
+    }
+
+    private static List<String> values(List<Row> rows) {
+        List<String> out = new ArrayList<>();
+        rows.forEach(row -> out.add(row.value));
+        return out;
+    }
+
+    private static List<String> texts(List<Object> values) {
+        List<String> out = new ArrayList<>();
+        for (Object value : values) {
+            String text = value == null ? "" : String.valueOf(value);
+            if (!text.isEmpty() && !out.contains(text)) {
+                out.add(text);
+            }
+        }
+        return out;
     }
 
     /** "Show empty fields" of the containers shown. */

@@ -86,6 +86,33 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public boolean multiValue(Object wrapper) {
+        return ((ItemWrapper<?, ?>) wrapper).isMultiValue();
+    }
+
+    @Override
+    public List<MarkupContainer> valueRows(Component itemPanel) {
+        List<MarkupContainer> out = new ArrayList<>();
+        Component values = ((MarkupContainer) itemPanel).get("values");
+        if (values instanceof MarkupContainer) {
+            for (Component row : (MarkupContainer) values) {
+                out.add((MarkupContainer) row);
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public Component addValueButton(Component itemPanel) {
+        return ((MarkupContainer) itemPanel).get("header:add");
+    }
+
+    @Override
+    public Component removeValueButton(MarkupContainer row) {
+        return GuiLine.descendant(row, "removeButton");
+    }
+
+    @Override
     public Future<?> saving(Page page) {
         Future<?>[] found = new Future<?>[1];
         page.visitChildren(ProgressPanel.class, (panel, visit) -> {

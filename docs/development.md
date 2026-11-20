@@ -173,6 +173,7 @@ porting expectations between lines. The test of each row:
 | A new object without a name saved by a user who may not add it (4.0: refused for the name first) | `CreateMemberButtonScenarioTest.theModelRefusesAMemberTheUserMayNotAdd` |
 | A members panel's Assign and Unassign: 4.0's toolbar Assign shown to every user, its Governance actions and no row menu; the task's check when it starts (4.0, 4.4: `#executeScript`; 4.8+: `authorization-bulk-3`); a row's Unassign as a model change (4.4+); a fresh 4.11's `prohibitive` profile of a user's bulk actions | `MembersPanelScenarioTest`, `FreshInstallationTest.aMembersPanelsTaskIsRefusedByTheInitialExpressionProfilesOf411` |
 | The tabs of a details page: hidden by `objectForms` (4.0, 4.4's old design) or by an `objectDetails` panel's `visibility` (4.4+); identifiers (4.0: `focusTabGovernance`, 4.4+: `orgGovernance`); no Governance on a new object's page | `DetailsTabsScenarioTest` |
+| A multi-valued item's value rows in a form: the add button on each row (4.0) or the item's header (4.4+) | `MultiValuedFormScenarioTest` |
 
 Fixtures are written in the newest format; `tester/core/src/test/resources/fixtures-<line>/` holds variants for that
 line and older ones (e.g. resources without `delineation` for 4.4). A configuration you test on several lines
@@ -221,6 +222,11 @@ clock moving with `t.clock()` for scripts and Java code, Quartz on the real time
 JDK 21 for 4.8 and later).
 
 What the tester does differently per line (see also [line-anatomy.md](line-anatomy.md)):
+
+- **4.0**: a multi-valued item's add button is on each of its value rows (`ItemPanel.createButtons`), its remove
+  button in the row's button container; 4.4 and later the add button is the item's header's (`ItemHeaderPanel`), the
+  remove button the value panel's (`PrismValuePanel`). Either way a removed value's row is hidden, and removing the
+  last value leaves an empty row (`GuiLine.valueRows`, `addValueButton`, `removeValueButton`).
 
 - **4.4**: there is no `ConfigurationItemOrigin`: a mapping is placed by finding its value in the origin object (two
   prism-equivalent mappings in one object fall back to the name or the canonical form).

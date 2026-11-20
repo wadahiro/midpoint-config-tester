@@ -133,7 +133,8 @@ only in the GUI's form, never when a test adds the object through the model: tes
 `t.newObjectForm(type).archetype(a).parent(org).validate(item, value).passes()` / `.fails(message)` (an existing
 object's: `t.editForm(type, name)`), as the user who fills it in with `t.actor(user).newObjectForm(type)` (their
 `actor` and authorizations, and whether they may open the page), the whole form with `.submit().saves()` /
-`.rejects(item)`. The tester runs the GUI's own page in the JVM, nothing to declare
+`.rejects(item)`. Several values of a multi-valued item in one save, as its value rows take them:
+`.set("extension/tags", listOf("a", "b"))` (exactly these), on `editForm` `.add(item, v)` / `.remove(item, v)`. The tester runs the GUI's own page in the JVM, nothing to declare
 (docs/guide/gui-and-authorizations.md). The "+" of a members panel: its buttons by `t.org(x).offersNewMember(type,
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The

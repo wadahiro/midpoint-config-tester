@@ -14,6 +14,8 @@ import com.github.wadahiro.midpoint.tester.internal.GuiForms;
  * <pre>{@code
  * t.editForm(OrgType::class.java, "cat-1").validate("costCenter", "CC2").fails("The cost center is set already.")
  * t.actor("site-admin").editForm(OrgType::class.java, "cat-1").set("displayName", "Category 1").submit().saves()
+ * t.actor("site-admin").editForm(Orgs.SITE_1).set("extension/tags", listOf("a", "b")).submit().saves()
+ * t.actor("site-admin").editForm(Orgs.SITE_1).add("extension/tags", "c").remove("extension/tags", "a").submit().saves()
  * t.actor(Users.HELPDESK).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")
  * }</pre>
  */
@@ -47,9 +49,33 @@ public final class EditObjectForm extends ObjectForm {
         return object;
     }
 
-    /** A value typed into the item's field first, as the user changes the form before the item validated or saving. */
+    /**
+     * A value typed into the item's field first, as the user changes the form before the item validated or saving. A
+     * collection is the values of a multi-valued item, exactly these: the rows of the values not in it removed, the
+     * missing ones typed into an empty row or a row the item's add button adds, the others kept
+     * ({@code set("extension/tags", listOf("a", "b"))}); an empty collection removes every value.
+     */
     public EditObjectForm set(String item, Object value) {
         return new EditObjectForm(tester, type, oid, name, user, with(items, item, value));
+    }
+
+    /**
+     * A value added to a multi-valued item, as the user does it: typed into an empty row, else into a row the item's
+     * add button adds; a value the item has already is kept as it is. With {@link #remove} and other {@code add}s of
+     * the item: its values removed first, then those added.
+     */
+    public EditObjectForm add(String item, Object value) {
+        return new EditObjectForm(tester, type, oid, name, user,
+                with(items, item, GuiForms.ValueRows.add(items.get(item), value)));
+    }
+
+    /**
+     * A value of a multi-valued item removed, as the user does it: its row's remove button pressed (the form fails
+     * when the item has no such value).
+     */
+    public EditObjectForm remove(String item, Object value) {
+        return new EditObjectForm(tester, type, oid, name, user,
+                with(items, item, GuiForms.ValueRows.remove(items.get(item), value)));
     }
 
     @Override

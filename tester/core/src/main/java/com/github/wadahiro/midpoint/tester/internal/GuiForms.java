@@ -53,6 +53,81 @@ public interface GuiForms {
         }
     }
 
+    /**
+     * The values of a multi-valued item, as the GUI's value rows change them (an item of {@link Spec#items} whose
+     * value is this): exactly these values ({@link #exactly}, null: not given), or the values removed, then those
+     * added, the others kept.
+     */
+    final class ValueRows {
+        /** The item's values after the change, or null: only {@link #removed} and {@link #added}. */
+        public final List<Object> exactly;
+        public final List<Object> added;
+        public final List<Object> removed;
+
+        private ValueRows(List<Object> exactly, List<Object> added, List<Object> removed) {
+            this.exactly = exactly == null ? null : Collections.unmodifiableList(new ArrayList<>(exactly));
+            this.added = Collections.unmodifiableList(new ArrayList<>(added));
+            this.removed = Collections.unmodifiableList(new ArrayList<>(removed));
+        }
+
+        public static ValueRows exactly(java.util.Collection<?> values) {
+            return new ValueRows(new ArrayList<>(values), List.of(), List.of());
+        }
+
+        /**
+         * This change and a value added: an item typed into before (a single value) is its first value, a list of
+         * exact values gets it, else it is added to the rows (and no longer removed).
+         */
+        public static ValueRows add(Object before, Object value) {
+            ValueRows rows = of(before);
+            if (rows.exactly != null) {
+                List<Object> exactly = new ArrayList<>(rows.exactly);
+                exactly.add(value);
+                return new ValueRows(exactly, List.of(), List.of());
+            }
+            List<Object> added = new ArrayList<>(rows.added);
+            added.add(value);
+            List<Object> removed = new ArrayList<>(rows.removed);
+            removed.remove(value);
+            return new ValueRows(null, added, removed);
+        }
+
+        /** This change and a value removed (see {@link #add}). */
+        public static ValueRows remove(Object before, Object value) {
+            ValueRows rows = of(before);
+            if (rows.exactly != null) {
+                List<Object> exactly = new ArrayList<>(rows.exactly);
+                exactly.remove(value);
+                return new ValueRows(exactly, List.of(), List.of());
+            }
+            List<Object> removed = new ArrayList<>(rows.removed);
+            removed.add(value);
+            List<Object> added = new ArrayList<>(rows.added);
+            added.remove(value);
+            return new ValueRows(null, added, removed);
+        }
+
+        private static ValueRows of(Object before) {
+            if (before == null) {
+                return new ValueRows(null, List.of(), List.of());
+            }
+            if (before instanceof ValueRows) {
+                return (ValueRows) before;
+            }
+            return exactly(before instanceof java.util.Collection ? (java.util.Collection<?>) before
+                    : List.of(before));
+        }
+
+        @Override
+        public String toString() {
+            if (exactly != null) {
+                return String.valueOf(exactly);
+            }
+            return (removed.isEmpty() ? "" : "-" + removed) + (added.isEmpty() ? "" : (removed.isEmpty() ? "" : " ")
+                    + "+" + added);
+        }
+    }
+
     /** What the field shows after a value is typed into it. */
     final class Field {
         /** Whether the item has a validation in the page (an object template's item/validation/server). */
