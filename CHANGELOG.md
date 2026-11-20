@@ -1,3 +1,10 @@
+## [0.15.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.15.0...v0.15.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **gui:** on 4.0 a members panel's toolbar Assign is shown to every user, as its "+" is ([78a28d7](https://github.com/wadahiro/midpoint-config-tester/commit/78a28d7a2b02a99b9639a0b573b5a34a48a5df91))
+
 # [0.15.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.14.0...v0.15.0) (2026-11-20)
 
 
