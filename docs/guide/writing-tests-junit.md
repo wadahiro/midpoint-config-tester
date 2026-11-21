@@ -256,6 +256,7 @@ assertThat(t.workItems().forRole(Roles.PRIVILEGED_ACCESS).single().assignees()).
 | `User`, `Role`, `Org`, `Service` | `asObject()` (the `UserType`...), `values(item)` (an item by path or typed name, e.g. an extension item), `members()`, `parents()` (an org), `newMemberOffers()` (a role, org or service: the buttons of its members panel's "+"), `projections(resource).names()`/`list()`/`count()` |
 | `Account`, `Group`, `TargetObject` | `value(attribute)`, `values(attribute)`, `attributes()` (the class's naming attribute and primary identifier too: an LDAP account's `dn`, a SCIM user's `userName` and `id`, also `__NAME__` and `__UID__`); an account's `groups()`; a group's `members()` |
 | `ObjectView` (`t.actor(u).read(x)`) | `values(item)`, `hasItem(item, values...)`, `hasNoItem(item)`, `asObject()`: the object as the user gets it, the items they may not read removed |
+| `SideMenu` (`t.actor(u).sideMenu()`) | `hasItem(MenuPage.REQUEST_ACCESS)` / `hasItem("/admin/users")` (a page by its line-independent name, URL, label or label key), `hasNoItem(...)`, `hasSection("SELF SERVICE")`, `hasNoSection(...)`, `labels()`, `sectionLabels()`, `items()`, `item(x).url()`/`.label()`/`.section()`: the GUI's side menu as it builds it for the user; pair with `canOpen(url)` |
 | `Mails` | `subjects()`, `bodies()`, `perRecipient()`, `list()`, `count()` |
 | `WorkItem` | `assignees()`, `candidates()`, `stage()`, `escalationLevel()`, `deadline()` |
 

@@ -1,0 +1,108 @@
+<!--
+    The side menu as users see it (SideMenuScenarioTest): roles that give the GUI's actions of a few pages, a deny of
+    one, a GUI profile with an additional menu link and one with the experimental features; a user per combination.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <!-- the whole self-service section, as midPoint's End user role gives it -->
+    <role oid="10000000-0000-0000-0000-0000000f0a01">
+        <name>menu-self-service</name>
+        <authorization>
+            <name>self-service-pages</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+    </role>
+    <!-- two self-service pages only: no request-access page -->
+    <role oid="10000000-0000-0000-0000-0000000f0a02">
+        <name>menu-dashboard-only</name>
+        <authorization>
+            <name>home-and-credentials</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfDashboard</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfCredentials</action>
+        </authorization>
+    </role>
+    <!-- the users list and a user's details, as a help desk has them; no self-service -->
+    <role oid="10000000-0000-0000-0000-0000000f0a03">
+        <name>menu-users</name>
+        <authorization>
+            <name>users-pages</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#users</action>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#userDetails</action>
+        </authorization>
+    </role>
+    <!-- the users list denied: the menu lists a page any authorization names, whatever its decision -->
+    <role oid="10000000-0000-0000-0000-0000000f0a04">
+        <name>menu-deny-users</name>
+        <authorization>
+            <name>deny-users-page</name>
+            <decision>deny</decision>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#users</action>
+        </authorization>
+    </role>
+    <!-- links of the ADDITIONAL section: an external one (no authorization) and one to a GUI page -->
+    <role oid="10000000-0000-0000-0000-0000000f0a05">
+        <name>menu-links</name>
+        <adminGuiConfiguration>
+            <additionalMenuLink>
+                <targetUrl>https://example.com/help</targetUrl>
+                <label>Help pages</label>
+            </additionalMenuLink>
+            <additionalMenuLink>
+                <targetUrl>/self/credentials</targetUrl>
+                <label>My credentials</label>
+            </additionalMenuLink>
+        </adminGuiConfiguration>
+    </role>
+    <!-- the experimental pages (Consents) shown -->
+    <role oid="10000000-0000-0000-0000-0000000f0a06">
+        <name>menu-experimental</name>
+        <adminGuiConfiguration>
+            <enableExperimentalFeatures>true</enableExperimentalFeatures>
+        </adminGuiConfiguration>
+    </role>
+
+    <user oid="10000000-0000-0000-0000-0000000f0a11">
+        <name>menu-end-user</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a01" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a12">
+        <name>menu-viewer</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a02" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a13">
+        <name>menu-helpdesk</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a03" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a14">
+        <name>menu-denied</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a04" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a15">
+        <name>menu-linked</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a01" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a05" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a16">
+        <name>menu-experimenter</name>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a01" type="RoleType"/>
+        </assignment>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000f0a06" type="RoleType"/>
+        </assignment>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000f0a17">
+        <name>menu-nobody</name>
+    </user>
+</objects>

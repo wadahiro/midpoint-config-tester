@@ -261,8 +261,54 @@ public interface GuiForms {
         }
     }
 
+    /**
+     * An entry of the side menu as the GUI built it for the user: a section (SELF SERVICE, ADMINISTRATION...), a main
+     * item of a section (Users, Request access; 4.4 and later a heading without a page when it has sub-items) or a
+     * sub-item (All users, a collection view, Organization tree). 4.4 and later build the menu of what the user may
+     * see (an entry hidden from them is not in it); 4.0 builds every entry and hides at rendering, so its hidden
+     * entries are here with why.
+     */
+    final class MenuInfo {
+        /** The label's localization key, or null: a literal label (a collection view's, an additional link's). */
+        public final String key;
+        /** The label as the GUI renders it, in the session's locale. */
+        public final String label;
+        /** The page it opens (its class name), or null: a section, or a heading of sub-items. */
+        public final String pageClass;
+        /** The page's URL (its first mount URL; an additional link's target URL), or null. */
+        public final String url;
+        /** The actions of the page's descriptor, which the menu asks for with {@code #guiAll} and {@code #all}. */
+        public final List<String> actions;
+        /** The page parameters ({@code collectionName=people}), or null. */
+        public final String params;
+        public final boolean shown;
+        /** Why the GUI hides it (4.0), or null. */
+        public final String hiddenBecause;
+        /** Its entries (a section's main items, a main item's sub-items), in the GUI's order. */
+        public final List<MenuInfo> items;
+
+        public MenuInfo(String key, String label, String pageClass, String url, List<String> actions, String params,
+                boolean shown, String hiddenBecause, List<MenuInfo> items) {
+            this.key = key;
+            this.label = label;
+            this.pageClass = pageClass;
+            this.url = url;
+            this.actions = Collections.unmodifiableList(new ArrayList<>(actions));
+            this.params = params;
+            this.shown = shown;
+            this.hiddenBecause = shown ? null : hiddenBecause;
+            this.items = Collections.unmodifiableList(new ArrayList<>(items));
+        }
+    }
+
     /** The page opened, the items typed into, then the value into the item. */
     Field type(Spec spec, String item, Object value);
+
+    /**
+     * The side menu as the GUI builds it for the user (null: the administrator), read from a page rendered as them:
+     * its sections with their main items and sub-items, in the GUI's order.
+     */
+    List<MenuInfo> menu(String user);
 
     /** The page opened, the items typed into, then Save. */
     Saved save(Spec spec);

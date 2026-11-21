@@ -126,6 +126,20 @@ Other line notes:
   and a role held is told by the target's assignments. 4.8 and later: the wizard of the GUI profile's
   `accessRequest` (`roleManagement/roleCatalogRef` is not read), targets narrowed by the object part of the
   requester's `#assign` authorizations, a role held told by `roleMembershipRef`. 4.4's wizard does not exist (4.6+).
+- **4.0, 4.4**: the side menu (`sideMenu()`) lists "Request a role" (`PageAdmin.menu.request`,
+  `/self/assignmentShoppingCart`); 4.8 and later "Request access" (`PageRequestAccess.title`, `/self/requestAccess`).
+  The configuration section's text is the line's localization's ("Configuration", `CONFIGURATION`: name it by its
+  key `PageAdmin.menu.top.configuration`); 4.0's and 4.4's "Audit Log Viewer" is a sub-item of Reports (4.8+: an item
+  of its own); 4.0 has no Consents item (4.4+: an experimental page, listed with the GUI profile's
+  `enableExperimentalFeatures`). 4.9 and later add Policies, Analytics and Schemas; 4.11 an `INTEGRATION` section
+  (Applications, Resources, Connectors) and Applications under ADMINISTRATION. The rule is the same on every line: an
+  item is listed when any of the user's authorizations names one of its page's actions, `#guiAll` or `#all`, whatever
+  the decision (a denied page is listed and refused, `canOpen` false), except that 4.11 and later first hide an item
+  whose action a `deny` authorization names (`SecurityEnforcer.isAuthorizationDenied`, whatever its object or phase);
+  4.0 decides it when the menu renders (the items the GUI hides are read with why), 4.4 and later when it builds the
+  menu. An `additionalMenuLink` to an external URL is listed on 4.0 and 4.8+, not on 4.4 (its item needs a GUI page);
+  a link to a GUI page needs the page's actions on every line. 4.0 shows "New user" by its page's
+  actions (`#user`, `#usersAll`) and the enforcer's `#add` of a new user; 4.4 and later by the page's actions alone.
 - **4.0**: a details page's Save is shown and disabled for a user without a `#modify` of the object; 4.4 and later
   hide it (MID-9380). The rows of the Assignments and Inducements tabs (`assignments()`, `inducements()`) are read
   from the tab itself (its type switch opens on All); 4.4 and later from the `allAssignments` / `allInducements`

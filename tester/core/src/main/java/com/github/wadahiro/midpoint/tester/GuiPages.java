@@ -136,6 +136,24 @@ public final class GuiPages {
         return out;
     }
 
+    /**
+     * The URLs the page class (its name) is mounted at, as the index has them without the trailing {@code /**}
+     * ({@code /admin}, {@code /admin/dashboard/info} for the info dashboard), in the index's order; empty for a class
+     * the index does not know.
+     */
+    public List<String> urlsOf(String pageClass) {
+        List<String> out = new ArrayList<>();
+        for (String[] row : rows) {
+            if (row[3].equals(pageClass)) {
+                String url = row[1].endsWith("/**") ? row[1].substring(0, row[1].length() - 3) : row[1];
+                if (!out.contains(url)) {
+                    out.add(url);
+                }
+            }
+        }
+        return out;
+    }
+
     private static List<String> actions(String cell) {
         return cell.isEmpty() ? List.of() : Arrays.asList(cell.split(" "));
     }

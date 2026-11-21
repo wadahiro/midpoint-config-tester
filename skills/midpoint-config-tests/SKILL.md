@@ -140,7 +140,11 @@ boolean's or an enumeration's drop-down takes the choice: `.set("extension/vip",
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The
 tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")`
-(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). The rows of its Assignments and
+(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). The side menu as the user sees it,
+built by the GUI (an item listed when any of the user's authorizations names its page's action, whatever the decision;
+pair it with `canOpen(url)`, the enforcer's decision): `t.actor(u).sideMenu().hasItem(MenuPage.REQUEST_ACCESS)
+.hasNoSection("ADMINISTRATION")`, `.hasItem("/admin/users")` / `("All users")`, `.hasNoItem(MenuPage.ROLES)`,
+`.labels()`, `.item(x).url()`. The rows of its Assignments and
 Inducements tabs as the user sees them, with the rows' Unassign and the "+" (the security enforcer with the object,
 request phase): `t.actor(u).editForm(Roles.TEAM_1).inducements().hasRow(Roles.META_1).row(Roles.META_1).hasUnassign()`,
 `.assignButton().isHidden()`; removing a row and saving as the user does it, refused by the model as an

@@ -298,6 +298,23 @@ final class GuiFormsImpl implements GuiForms {
                 + (hidden.isEmpty() ? "" : "; hidden: " + String.join(", ", hidden));
     }
 
+    /**
+     * The side menu as the GUI builds it for the user: the GUI's error page (which any user opens) rendered as them in
+     * a WicketTester of its own, its menu read as the line has it ({@link GuiLine#sideMenu}). The page itself hides the
+     * menu (an error page shows none), but builds it as any page does, for the user logged in.
+     */
+    @Override
+    public List<MenuInfo> menu(String user) {
+        MidPointApplication app = application(mp);
+        return mp.queryAs(user, null, "side menu of " + (user == null ? "the administrator" : user),
+                (task, result) -> {
+                    WicketTester tester = new WicketTester(app, initializer.getServletContext(), false);
+                    tester.getSession().setLocale(Locale.getDefault());
+                    tester.startPage(com.evolveum.midpoint.web.page.error.PageError.class);
+                    return LINE.sideMenu(tester.getLastRenderedPage());
+                });
+    }
+
     private <T> T run(Spec spec, String what, java.util.function.Function<WicketTester, T> action) {
         String label = (spec.oid == null ? "form of a new " : "form of ") + spec.type.getSimpleName()
                 + (spec.oid == null ? "" : " " + spec.oid) + ": " + what;

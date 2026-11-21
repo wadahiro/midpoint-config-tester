@@ -288,4 +288,114 @@ final class GuiLineImpl implements GuiLine {
                 });
         return found[0];
     }
+
+    // ---- the side menu ------------------------------------------------------------------------------------------
+
+    /**
+     * LeftMenuPanel.getItems(): the SideBarMenuItems the GUI built for the user (createMenuItems: a section's main
+     * items added when their page is authorized by the user's roles, SecurityUtils.isMenuAuthorized, the experimental
+     * flag and an empty heading dropped; a sub-item when its page is, LeftMenuAuthzUtil's actions for a type's list and
+     * views; an empty section dropped). The lists of items are private: read by reflection.
+     */
+    @Override
+    public List<GuiForms.MenuInfo> sideMenu(Page page) {
+        com.evolveum.midpoint.gui.impl.component.menu.LeftMenuPanel panel =
+                (com.evolveum.midpoint.gui.impl.component.menu.LeftMenuPanel) page.get("sidebarMenu");
+        if (panel == null) {
+            throw new IllegalStateException(page.getClass().getSimpleName() + " has no side menu");
+        }
+        List<GuiForms.MenuInfo> out = new ArrayList<>();
+        for (com.evolveum.midpoint.web.component.menu.SideBarMenuItem section : panel.getItems()) {
+            List<GuiForms.MenuInfo> mains = new ArrayList<>();
+            for (Object main : menuItems(section)) {
+                com.evolveum.midpoint.web.component.menu.MainMenuItem item =
+                        (com.evolveum.midpoint.web.component.menu.MainMenuItem) main;
+                List<GuiForms.MenuInfo> subs = new ArrayList<>();
+                for (Object sub : menuItems(item)) {
+                    subs.add(menuEntry(page, (com.evolveum.midpoint.web.component.menu.BaseMenuItem) sub, null,
+                            List.of()));
+                }
+                String targetUrl = item instanceof com.evolveum.midpoint.web.component.menu.AdditionalMenuItem
+                        ? ((com.evolveum.midpoint.web.component.menu.AdditionalMenuItem) item).getTargetUrl() : null;
+                mains.add(menuEntry(page, item, targetUrl, subs));
+            }
+            String key = section.getName();
+            out.add(new GuiForms.MenuInfo(key, menuLabel(page, key), null, null, List.of(), null,
+                    menuVisible(section), "the subscription state hides it", mains));
+        }
+        return out;
+    }
+
+    /** A main item or a sub-item: its label, page, URL, the page's actions, parameters. */
+    private GuiForms.MenuInfo menuEntry(Page page, com.evolveum.midpoint.web.component.menu.BaseMenuItem item,
+            String targetUrl, List<GuiForms.MenuInfo> subs) {
+        Class<?> pageClass = item.getPageClass();
+        String key = item.getNameModel();
+        String label = menuLabel(page, key);
+        List<String> actions = new ArrayList<>();
+        if (pageClass != null) {
+            PageDescriptor descriptor = pageClass.getAnnotation(PageDescriptor.class);
+            if (descriptor != null) {
+                for (com.evolveum.midpoint.web.application.AuthorizationAction action
+                        : descriptor.action()) {
+                    actions.add(action.actionUri());
+                }
+            }
+        }
+        String url = targetUrl != null ? targetUrl : pageClass != null ? mountUrl(pageClass) : null;
+        return new GuiForms.MenuInfo(label.equals(key) ? null : key, label,
+                pageClass != null ? pageClass.getName() : null, url, actions, menuParams(item.getParams()),
+                menuVisible(item), "the subscription state hides it", subs);
+    }
+
+    /** The key translated by the page, as SideBarMenuPanel renders it; a literal label (a view's) stays. */
+    private static String menuLabel(Page page, String key) {
+        if (key == null) {
+            return "";
+        }
+        String label = page.getString(key, null, "");
+        return label.isEmpty() ? key : label;
+    }
+
+    private static String menuParams(org.apache.wicket.request.mapper.parameter.PageParameters params) {
+        if (params == null || params.isEmpty()) {
+            return null;
+        }
+        List<String> out = new ArrayList<>();
+        for (String name : params.getNamedKeys()) {
+            out.add(name + "=" + params.get(name).toString());
+        }
+        return String.join("&", out);
+    }
+
+    /** The private {@code items} of a SideBarMenuItem or a MainMenuItem (null: none added). */
+    private static List<?> menuItems(Object holder) {
+        try {
+            java.lang.reflect.Field field = holder.getClass().getDeclaredField("items");
+            field.setAccessible(true);
+            Object value = field.get(holder);
+            return value == null ? List.of() : (List<?>) value;
+        } catch (NoSuchFieldException e) {
+            // a subclass (AdditionalMenuItem, an anonymous MainMenuItem): the field is MainMenuItem's
+            Class<?> type = holder.getClass();
+            while (type != null) {
+                try {
+                    java.lang.reflect.Field field = type.getDeclaredField("items");
+                    field.setAccessible(true);
+                    Object value = field.get(holder);
+                    return value == null ? List.of() : (List<?>) value;
+                } catch (NoSuchFieldException | IllegalAccessException ignored) {
+                    type = type.getSuperclass();
+                }
+            }
+            throw new IllegalStateException("No items in " + holder.getClass().getName());
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** 4.4 renders every entry the panel built (no subscription state). */
+    private static boolean menuVisible(Object entry) {
+        return true;
+    }
 }

@@ -96,6 +96,14 @@ interface GuiLine {
      */
     Component newAssignmentButton(Component panel);
 
+    /**
+     * The side menu of the rendered page as the GUI built it for the logged-in user ({@link GuiForms.MenuInfo}): 4.4
+     * and later the items of its LeftMenuPanel, filtered as the GUI adds them (a page's authorization by the user's
+     * roles, the experimental flag, empty headings and sections dropped); 4.0 the items PageBase builds, each with the
+     * visibility SideBarMenuPanel and MainMenuPanel give it at rendering (the hidden ones too, with why).
+     */
+    List<GuiForms.MenuInfo> sideMenu(Page page);
+
     /** The first descendant of the container with the id, or null. */
     static Component descendant(org.apache.wicket.MarkupContainer container, String id) {
         Component[] found = new Component[1];

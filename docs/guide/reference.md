@@ -24,8 +24,8 @@
   line's GUI computes it, not rendered. What the GUI shows a user is asked of the services it calls
   ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, the
   user's GUI profile (views, features, menu links), an object as the user gets it (`read`), the work items of their
-  "My work items" (`workItems()`, the page's query as the user); not what a page does after it opens or the rest of
-  the menus.
+  "My work items" (`workItems()`, the page's query as the user), the side menu as the GUI builds it for them
+  (`sideMenu()`: its sections and items, run by the GUI's own code in the JVM); not what a page does after it opens.
   The one exception is the objects' details pages: `newObjectForm` and `editForm` run the GUI's own page in the JVM
   (its fields' validations, the value typed as each field of the item's type takes it, its drop-downs' choices, the
   value rows of a multi-valued item with their add and

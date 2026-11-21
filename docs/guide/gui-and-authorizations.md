@@ -446,7 +446,51 @@ assertThat(manager.defaultTimezone()).isEqualTo("Asia/Tokyo");
 - `inMenu()` is whether the line's side menu lists a view under its type, by the line's rule: on 4.8, not the
   default view, not hidden or vacant, for no operation or modify (4.4: the same with a collection, the default view
   too). The menu item's own page
-  (the users list) is `canOpen`. The rest of the menu (which sections and pages it shows) is not modeled.
+  (the users list) is `canOpen`. The rest of the menu (its sections and pages, as the user sees them) is
+  [`sideMenu()`](#the-side-menu).
 - A failed assertion after it shows the user's views, features and links.
+
+### The side menu
+
+`sideMenu()` is the GUI's side menu (the left sidebar) as the user sees it, built by midPoint's GUI itself for the user
+logged in (a page rendered in the JVM, as the forms are: no browser, nothing to declare):
+
+```java
+SideMenu menu = t.actor(Users.JACK).sideMenu();
+menu.hasSection("SELF SERVICE").hasNoSection("ADMINISTRATION")
+        .hasItem(MenuPage.REQUEST_ACCESS)                        // "Request a role" (4.0, 4.4) / "Request access" (4.8+)
+        .hasNoItem(MenuPage.USERS);
+assertThat(menu.labels()).containsExactly("Home", "Profile", "Credentials", "Request access");
+assertThat(menu.item(MenuPage.REQUEST_ACCESS).url()).isEqualTo("/self/requestAccess");
+t.actor(Users.HELPDESK).sideMenu().hasItem("/admin/users").hasNoItem(MenuPage.ROLES);
+assertThat(t.actor(Users.HELPDESK).canOpen("/admin/users")).isTrue();                  // the item's page
+```
+
+- The menu is read as the GUI built it: its sections (`SELF SERVICE`, `ADMINISTRATION`, the configuration section
+  (`Configuration` or `CONFIGURATION`, by the line's texts: name it by its key `PageAdmin.menu.top.configuration`),
+  `ADDITIONAL`; 4.11 `INTEGRATION`), each section's main items ("Users", "Request access") and their sub-items ("All
+  users", a collection view, "Organization tree"), in the GUI's order (`sections()`, `items()`, `labels()`,
+  `section(x).items()`). A section none of whose items the user sees is not shown; a heading whose sub-items are all
+  hidden neither.
+- An item is named by its page, the same name on every line (`MenuPage.REQUEST_ACCESS`: `/self/assignmentShoppingCart`
+  on 4.0 and 4.4, `/self/requestAccess` on 4.8+; `MenuPage.USERS`, `ORG_TREE`, `AUDIT_LOG`...), by any URL its page is
+  mounted at (`/admin/users`), by its label as the GUI renders it in the JVM's locale (`"All users"`) or by its label
+  key (`PageAdmin.menu.top.users.list`). An item has `label()`, `key()`, `url()`, `page()`, `params()` (a collection
+  view's `collectionName`), `actions()`, `section()`, `parent()`, `items()`.
+- **The menu's rule is not `canOpen`'s.** The GUI lists an item when *any* of the user's authorizations names one of
+  its page's actions (the `@PageDescriptor` actions, the users list `#usersAll` or `#users`, a type's views `#usersAll`
+  or `#usersView`), `#guiAll` or `#all`, whatever the authorization's decision, phase or object (Wicket's roles of the
+  session are every action of every authorization). Opening the page is the security enforcer's decision
+  (`canOpen`: one allowed and none denied). So a page a `deny` authorization names is listed and refused; pair
+  `hasItem` with `canOpen`. 4.11 and later first hide an item whose action a `deny` authorization names, whatever
+  its object or phase (`SecurityEnforcer.isAuthorizationDenied`). On every line also: a page an experimental descriptor marks (Consents) needs the GUI
+  profile's `enableExperimentalFeatures` (4.4+; 4.0 has no Consents item); the `ADDITIONAL` section is the profile's
+  `additionalMenuLink`s: a link to a GUI page when the user may open it (the page's actions), an external link to
+  anyone who has it (4.4: never, its item needs a page); the Cases items need the case (workflow) manager enabled; a
+  type's "All users" needs its default view not hidden (4.8+); "New user" needs `#user` or `#usersAll` (4.0: and the
+  enforcer's `#add` of a new user, request phase).
+- A failed claim says why: the page's actions, which of the user's authorizations name one (or that none does), or
+  that the page is not an item of this line's menu, and lists the menu; the test's failure then lists the user's
+  authorizations. [Line notes](lines.md#line-notes) has the lines' labels, URLs and sections.
 
 All of these for kinds of users at once, as a matrix: [An authorization matrix](authz-matrix.md) (experimental).

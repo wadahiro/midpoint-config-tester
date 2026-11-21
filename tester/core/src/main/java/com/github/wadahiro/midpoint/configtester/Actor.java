@@ -258,7 +258,7 @@ public final class Actor {
     }
 
     /** The {@code #guiAll} actions the GUI adds to a page's: 4.0 has a deprecated one too. */
-    private Set<String> guiAll() {
+    Set<String> guiAll() {
         Set<String> out = new LinkedHashSet<>();
         out.add(AuthorizationConstants.AUTZ_GUI_ALL_URL);
         if (tester.line().equals("4.0")) {
@@ -266,6 +266,22 @@ public final class Actor {
             out.add("http://midpoint.evolveum.com/xml/ns/public/security/authorization-3#guiAll");
         }
         return out;
+    }
+
+    /**
+     * The side menu of the GUI as the user sees it ({@link SideMenu}), built by midPoint's GUI for them (a page
+     * rendered in the JVM, as the forms are): its sections, items and sub-items, an item by its page
+     * ({@link MenuPage#REQUEST_ACCESS}, the same name on every line), URL, label or label key. Pair it with
+     * {@link #canOpen}: the menu lists a page when any of the user's authorizations names one of its actions, whatever
+     * its decision; opening it is the security enforcer's decision.
+     * {@code t.actor("jack").sideMenu().hasItem(MenuPage.REQUEST_ACCESS).hasNoItem(MenuPage.USERS)}.
+     */
+    public SideMenu sideMenu() {
+        explainAuthorizations();
+        SideMenu menu = new SideMenu(tester, this,
+                com.github.wadahiro.midpoint.tester.internal.GuiForms.of(tester.deployment().api()).menu(name));
+        tester.read("side menu of " + name, menu::toString);
+        return menu;
     }
 
     /**
@@ -438,6 +454,18 @@ public final class Actor {
         for (CompiledAuthorization compiled : compiledAuthorizations()) {
             if (compiled.authorization().getAction().stream().anyMatch(roles::contains)) {
                 out.add(compiled.authorization());
+            }
+        }
+        return out;
+    }
+
+    /** As {@link #naming}, the authorizations naming any of the actions, with where they come from. */
+    List<CompiledAuthorization> namingAny(java.util.Collection<String> actions) {
+        explainAuthorizations();
+        List<CompiledAuthorization> out = new ArrayList<>();
+        for (CompiledAuthorization compiled : compiledAuthorizations()) {
+            if (compiled.authorization().getAction().stream().anyMatch(actions::contains)) {
+                out.add(compiled);
             }
         }
         return out;

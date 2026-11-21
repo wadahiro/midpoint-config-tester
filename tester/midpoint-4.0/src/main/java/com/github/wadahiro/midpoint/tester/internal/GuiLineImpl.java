@@ -158,4 +158,103 @@ final class GuiLineImpl implements GuiLine {
     public Component newAssignmentButton(Component panel) {
         return GuiLine.descendant((MarkupContainer) panel, "newItemButton");
     }
+
+    // ---- the side menu ------------------------------------------------------------------------------------------
+
+    /**
+     * PageBase.createMenuItems (the model of the page's SideBarMenuPanel): every section with its main items and
+     * sub-items, each as SideBarMenuPanel and MainMenuPanel decide its visibility at rendering, with the GUI's own
+     * predicates: a sub-item when its visible behaviour (an edit item on its own page, a new item by the enforcer's
+     * {@code #add}) and SecurityUtils.isMenuAuthorized (its page's actions among the user's roles) say so; a main item
+     * when isMenuAuthorized and, with sub-items, one of them is authorized; a section when one of its main items is
+     * visible and authorized.
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<GuiForms.MenuInfo> sideMenu(Page page) {
+        Component sidebar = page.get("sidebarMenu");
+        if (sidebar == null) {
+            throw new IllegalStateException(page.getClass().getSimpleName() + " has no side menu");
+        }
+        List<GuiForms.MenuInfo> out = new ArrayList<>();
+        // BasePanel keeps its model in a field of its own, not as the component's default model
+        for (com.evolveum.midpoint.web.component.menu.SideBarMenuItem section
+                : (List<com.evolveum.midpoint.web.component.menu.SideBarMenuItem>)
+                        ((com.evolveum.midpoint.gui.api.component.BasePanel<?>) sidebar).getModelObject()) {
+            List<GuiForms.MenuInfo> mains = new ArrayList<>();
+            boolean sectionShown = false;
+            for (com.evolveum.midpoint.web.component.menu.MainMenuItem main : section.getItems()) {
+                boolean visible = main.getVisibleEnable() == null || main.getVisibleEnable().isVisible();
+                boolean authorized = com.evolveum.midpoint.web.security.SecurityUtils.isMenuAuthorized(main);
+                boolean anySub = main.getItems().isEmpty();
+                List<GuiForms.MenuInfo> subs = new ArrayList<>();
+                for (com.evolveum.midpoint.web.component.menu.MenuItem sub : main.getItems()) {
+                    boolean subVisible = sub.getVisibleEnable() == null || sub.getVisibleEnable().isVisible();
+                    boolean subAuthorized = com.evolveum.midpoint.web.security.SecurityUtils.isMenuAuthorized(sub);
+                    anySub |= subAuthorized;
+                    subs.add(menuEntry(sub, null, subVisible && subAuthorized, !subAuthorized
+                            ? "its page's actions are named by none of the user's authorizations"
+                            : "its visible behaviour hides it (an edit item of another page, a new item without #add)",
+                            List.of()));
+                }
+                // SideBarMenuPanel: the main item's row, then the section
+                boolean mainShown = authorized && anySub;
+                sectionShown |= visible && authorized;
+                String targetUrl = main instanceof com.evolveum.midpoint.web.component.menu.AdditionalMenuItem
+                        ? ((com.evolveum.midpoint.web.component.menu.AdditionalMenuItem) main).getTargetUrl() : null;
+                mains.add(menuEntry(main, targetUrl, mainShown, !authorized
+                        ? "its page's actions are named by none of the user's authorizations"
+                        : "none of its sub-items is authorized", subs));
+            }
+            String label = section.getName() == null ? "" : String.valueOf(section.getName().getObject());
+            out.add(new GuiForms.MenuInfo(menuKey(section.getName()), label, null, null, List.of(), null,
+                    sectionShown, "none of its items is shown", mains));
+        }
+        return out;
+    }
+
+    private GuiForms.MenuInfo menuEntry(com.evolveum.midpoint.web.component.menu.BaseMenuItem item,
+            String targetUrl, boolean shown, String hiddenBecause, List<GuiForms.MenuInfo> subs) {
+        Class<?> pageClass = item.getPageClass();
+        List<String> actions = new ArrayList<>();
+        if (pageClass != null) {
+            PageDescriptor descriptor = pageClass.getAnnotation(PageDescriptor.class);
+            if (descriptor != null) {
+                for (com.evolveum.midpoint.web.application.AuthorizationAction action : descriptor.action()) {
+                    actions.add(action.actionUri());
+                }
+            }
+        }
+        String url = targetUrl != null ? targetUrl : pageClass != null ? mountUrl(pageClass) : null;
+        String label = item.getNameModel() == null ? "" : String.valueOf(item.getNameModel().getObject());
+        return new GuiForms.MenuInfo(menuKey(item.getNameModel()), label,
+                pageClass != null ? pageClass.getName() : null, url, actions, menuParams(item.getParams()), shown,
+                hiddenBecause, subs);
+    }
+
+    /** The key of a StringResourceModel (createStringResource), null for any other label model. */
+    private static String menuKey(org.apache.wicket.model.IModel<String> model) {
+        if (!(model instanceof org.apache.wicket.model.StringResourceModel)) {
+            return null;
+        }
+        try {
+            java.lang.reflect.Field field = org.apache.wicket.model.StringResourceModel.class
+                    .getDeclaredField("resourceKey");
+            field.setAccessible(true);
+            return (String) field.get(model);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    private static String menuParams(org.apache.wicket.request.mapper.parameter.PageParameters params) {
+        if (params == null || params.isEmpty()) {
+            return null;
+        }
+        List<String> out = new ArrayList<>();
+        for (String name : params.getNamedKeys()) {
+            out.add(name + "=" + params.get(name).toString());
+        }
+        return String.join("&", out);
+    }
 }
