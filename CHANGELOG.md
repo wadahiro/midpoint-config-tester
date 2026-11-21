@@ -1,3 +1,11 @@
+# [0.18.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.17.0...v0.18.0) (2026-11-21)
+
+
+### Features
+
+* **gui:** assert a form's refusal or validation message by a part of it ([e6d3312](https://github.com/wadahiro/midpoint-config-tester/commit/e6d3312d308b7f6a895c604e2c4293e3cbe34992))
+* **gui:** the side menu as a user sees it, built by the GUI ([5928676](https://github.com/wadahiro/midpoint-config-tester/commit/592867666a86b48f41d19d4a9e003da3918d1124))
+
 # [0.17.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.16.0...v0.17.0) (2026-11-21)
 
 
