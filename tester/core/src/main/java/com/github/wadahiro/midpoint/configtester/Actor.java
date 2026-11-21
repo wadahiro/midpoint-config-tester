@@ -83,16 +83,32 @@ public final class Actor {
 
     /** A request for the actor themself, as in the GUI's "Request access". */
     public Request request() {
-        return new Request(tester, this, name);
+        return new Request(tester, this, List.of(name));
     }
 
     /** A request for another user (midPoint checks that the actor may assign to them). */
     public Request request(String forUser) {
-        return new Request(tester, this, forUser);
+        return new Request(tester, this, List.of(forUser));
     }
 
     public Request request(UserRef forUser) {
         return request(forUser.on(tester.line()));
+    }
+
+    /**
+     * A request for several users (the page's several targets: the persons of interest on 4.8+, the selected users on
+     * 4.0 and 4.4): its Submit starts a task owned by the actor that changes each of them ({@link Request}).
+     */
+    public Request request(String... forUsers) {
+        return new Request(tester, this, Arrays.asList(forUsers));
+    }
+
+    public Request request(UserRef... forUsers) {
+        List<String> names = new ArrayList<>();
+        for (UserRef forUser : forUsers) {
+            names.add(forUser.on(tester.line()));
+        }
+        return new Request(tester, this, names);
     }
 
     /**

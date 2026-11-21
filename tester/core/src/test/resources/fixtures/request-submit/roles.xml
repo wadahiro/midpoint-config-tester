@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Two requestable roles of the request-access page's Submit (RequestSubmitScenarioTest), imported into
+    scenarios/access: each needs the approval of the role owner (user role-owner of that scenario) in one stage, so a
+    request of both opens two cases decided one at a time. rs-no-task-add denies adding a task (midPoint's End user
+    role allows a self-owned execute-changes task, which the request-access page of 4.0 adds through the model).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0a03">
+        <name>rs-no-task-add</name>
+        <authorization>
+            <name>no-task-add</name>
+            <decision>deny</decision>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#add</action>
+            <object>
+                <type>TaskType</type>
+            </object>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0a01">
+        <name>rs-alpha</name>
+        <requestable>true</requestable>
+        <assignment>
+            <policyRule>
+                <name>approve-alpha</name>
+                <policyConstraints>
+                    <assignment>
+                        <operation>add</operation>
+                    </assignment>
+                </policyConstraints>
+                <policyActions>
+                    <approval>
+                        <approvalSchema>
+                            <stage>
+                                <number>1</number>
+                                <name>owner</name>
+                                <approverRef oid="30000000-0000-0000-0000-00000000e003" type="UserType"/>
+                            </stage>
+                        </approvalSchema>
+                    </approval>
+                </policyActions>
+            </policyRule>
+        </assignment>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0a02">
+        <name>rs-beta</name>
+        <requestable>true</requestable>
+        <assignment>
+            <policyRule>
+                <name>approve-beta</name>
+                <policyConstraints>
+                    <assignment>
+                        <operation>add</operation>
+                    </assignment>
+                </policyConstraints>
+                <policyActions>
+                    <approval>
+                        <approvalSchema>
+                            <stage>
+                                <number>1</number>
+                                <name>owner</name>
+                                <approverRef oid="30000000-0000-0000-0000-00000000e003" type="UserType"/>
+                            </stage>
+                        </approvalSchema>
+                    </approval>
+                </policyActions>
+            </policyRule>
+        </assignment>
+    </role>
+</objects>

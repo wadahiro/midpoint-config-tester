@@ -119,6 +119,33 @@ public interface LineDrivers {
     String submitMemberTask(MemberTask spec, Task task, OperationResult result) throws Exception;
 
     /**
+     * The execute options the request-access page passes with its Submit ({@code ExecuteChangeOptionsDto
+     * .createFromSystemConfiguration().createOptions()} of the line's GUI, then the page's additions): force and
+     * reconcile false, {@code executeImmediatelyAfterApproval} the negation of the system configuration's
+     * {@code roleManagement/defaultExecuteAfterAllApprovals} (null: the DTO's default true, so false; 4.8+ leaves the
+     * option unset, which the model reads the same), the comment as the request's business context (4.0, 4.4 when not
+     * null; 4.8+ when not empty), and {@code initialPartialProcessing} with inbound and projections skipped when asked
+     * (the single-target Submit on every line; the task of several targets on 4.8+ only).
+     */
+    com.evolveum.midpoint.model.api.ModelExecuteOptions accessRequestOptions(String comment,
+            Boolean executeAfterAllApprovals, boolean initialPartialProcessing);
+
+    /**
+     * Starts the task of the request-access page's Submit for several targets as the line's GUI does, logged in as
+     * the user who owns it, and returns its OID: 4.0 an execute-changes task ({@code TaskCategory.EXECUTE_CHANGES}:
+     * the extension's object query of the targets, object type, the one delta of the additions, the execute options)
+     * added through {@code ModelService.executeChanges} as the user, so the user's authorization to add a task applies
+     * ({@code WebModelServiceUtils.runTask}; midPoint's End user role grants {@code #add} of a self-owned
+     * execute-changes task); 4.4 an iterative change execution activity over the targets' query with
+     * the one delta and the options, persisted with {@code TaskManager.switchToBackground} with no check; 4.8+ an
+     * explicit change execution with one request per target (its own delta and options), through {@code
+     * ModelInteractionService.submit}, which runs privileged ({@code runPrivileged} adds {@code #all} to the user's
+     * own authorizations: no allow needed, a deny of theirs still refuses). The task runs in the background as its
+     * owner.
+     */
+    String submitAccessRequestTask(AccessRequest spec, Task task, OperationResult result) throws Exception;
+
+    /**
      * The request-access page as its configuration makes it for the logged-in user ({@link AccessRequestModel}): 4.0
      * and 4.4 the shopping cart of the system configuration's {@code roleManagement}, 4.8 and later the wizard of
      * the user's compiled GUI profile's {@code accessRequest}; the org folders and collections read as the user.

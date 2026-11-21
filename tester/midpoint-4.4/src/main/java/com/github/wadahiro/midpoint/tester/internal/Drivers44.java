@@ -525,6 +525,90 @@ final class Drivers44 implements LineDrivers {
     private static final String GUI_CHANNEL = "http://midpoint.evolveum.com/xml/ns/public/gui/channels-3#user";
 
     @Override
+    public com.evolveum.midpoint.model.api.ModelExecuteOptions accessRequestOptions(String comment,
+            Boolean executeAfterAllApprovals, boolean initialPartialProcessing) {
+        // ExecuteChangeOptionsDto.createFromSystemConfiguration().createOptions(prismContext) (4.4): the DTO's
+        // defaults, with roleManagement/defaultExecuteAfterAllApprovals (default true) negated
+        com.evolveum.midpoint.model.api.ModelExecuteOptions options =
+                new com.evolveum.midpoint.model.api.ModelExecuteOptions(harness.bean(PrismContext.class))
+                        .force(false)
+                        .reconcile(false)
+                        .executeImmediatelyAfterApproval(
+                                !(executeAfterAllApprovals == null || executeAfterAllApprovals))
+                        .tracingProfile(null);
+        // PageAssignmentsList.createOptions: the description as the business context when it is not null
+        options.requestBusinessContext(comment != null
+                ? new com.evolveum.midpoint.xml.ns._public.common.common_3.OperationBusinessContextType()
+                        .comment(comment)
+                : null);
+        if (initialPartialProcessing) {
+            // onSingleUserRequestPerformed
+            options.initialPartialProcessing(
+                    new com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingOptionsType()
+                            .inbound(com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingTypeType.SKIP)
+                            .projection(com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingTypeType
+                                    .SKIP));
+        }
+        return options;
+    }
+
+    @Override
+    public String submitAccessRequestTask(AccessRequest spec, Task task, OperationResult result) throws Exception {
+        // PageAssignmentsList.onMultiUserRequestPerformed (4.4): WebComponentUtil.createIterativeChangeExecutionTask
+        // owned by the user, then WebModelServiceUtils.runTask: TaskManager.switchToBackground, no check
+        PrismContext prism = harness.bean(PrismContext.class);
+        com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType bean =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType(prism);
+        bean.setOwnerRef(new ObjectReferenceType()
+                .oid(com.evolveum.midpoint.security.api.SecurityUtil.getPrincipal().getOid())
+                .type(com.evolveum.midpoint.xml.ns._public.common.common_3.UserType.COMPLEX_TYPE));
+        bean.setBinding(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskBindingType.LOOSE);
+        bean.setExecutionState(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskExecutionStateType.RUNNABLE);
+        bean.setSchedulingState(com.evolveum.midpoint.xml.ns._public.common.common_3.TaskSchedulingStateType.READY);
+        bean.setThreadStopAction(com.evolveum.midpoint.xml.ns._public.common.common_3.ThreadStopActionType.RESTART);
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ScheduleType schedule =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.ScheduleType(prism);
+        schedule.setMisfireAction(com.evolveum.midpoint.xml.ns._public.common.common_3.MisfireActionType
+                .EXECUTE_IMMEDIATELY);
+        bean.setSchedule(schedule);
+        bean.setName(new PolyStringType(AccessRequest.TASK_NAME_40));
+        // the work: the query of the selected users, the type, the one delta of the additions (its OID a placeholder,
+        // the activity sets each user's), the options without the initial partial processing
+        List<String> oids = new ArrayList<>();
+        for (ObjectDelta<? extends ObjectType> delta : spec.deltas) {
+            oids.add(delta.getOid());
+        }
+        com.evolveum.midpoint.prism.query.ObjectQuery query = prism.queryFactory().createQuery(
+                prism.queryFactory().createInOid(oids));
+        ObjectDelta<? extends ObjectType> delta = spec.deltas.get(0).clone();
+        delta.setOid("fakeOid");
+        com.evolveum.midpoint.xml.ns._public.common.common_3.IterativeChangeExecutionWorkDefinitionType work =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.IterativeChangeExecutionWorkDefinitionType(
+                        prism)
+                        .beginObjects()
+                            .type(com.evolveum.midpoint.xml.ns._public.common.common_3.UserType.COMPLEX_TYPE)
+                            .query(prism.getQueryConverter().createQueryType(query))
+                        .<com.evolveum.midpoint.xml.ns._public.common.common_3
+                                .IterativeChangeExecutionWorkDefinitionType>end()
+                        .delta(com.evolveum.midpoint.schema.DeltaConvertor.toObjectDeltaType(delta))
+                        .executionOptions(com.evolveum.midpoint.model.api.ModelExecuteOptions
+                                .toModelExecutionOptionsBean(
+                                        accessRequestOptions(spec.comment, spec.executeAfterAllApprovals, false)));
+        bean.setActivity(new com.evolveum.midpoint.xml.ns._public.common.common_3.ActivityDefinitionType(prism)
+                .beginWork()
+                    .iterativeChangeExecution(work)
+                .end());
+        com.evolveum.midpoint.task.api.TaskManager taskManager =
+                harness.bean(com.evolveum.midpoint.task.api.TaskManager.class);
+        bean.setTaskIdentifier(harness.bean(com.evolveum.midpoint.task.api.LightweightIdentifierGenerator.class)
+                .generate().toString());
+        Task instance = taskManager.createTaskInstance(bean.asPrismObject(), result);
+        instance.setResult(new OperationResult("run"));
+        taskManager.switchToBackground(instance, result);
+        return instance.getOid();
+    }
+
+    @Override
     public String initialObjectsPattern() {
         // InitialDataImport (4.4): classpath*:/initial-objects/*, here as unpacked from the GUI module
         return "classpath*:tester/initial-objects/*";

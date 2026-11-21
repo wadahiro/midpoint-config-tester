@@ -531,6 +531,56 @@ final class Drivers48 implements LineDrivers {
     }
 
     @Override
+    public com.evolveum.midpoint.model.api.ModelExecuteOptions accessRequestOptions(String comment,
+            Boolean executeAfterAllApprovals, boolean initialPartialProcessing) {
+        // RequestAccess.createSubmitModelOptions (4.8 to 4.11): ExecuteChangeOptionsDto.createFromSystemConfiguration()
+        // .createOptions(), the comment as the business context when not empty; then the submit's additions
+        com.evolveum.midpoint.model.api.ModelExecuteOptions options =
+                com.evolveum.midpoint.model.api.ModelExecuteOptions.create()
+                        .force(false)
+                        .reconcile(false)
+                        .tracingProfile(null)
+                        .requestBusinessContext(comment != null && !comment.isEmpty()
+                                ? new com.evolveum.midpoint.xml.ns._public.common.common_3
+                                        .OperationBusinessContextType().comment(comment)
+                                : null);
+        if (initialPartialProcessing) {
+            options.initialPartialProcessing(
+                    new com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingOptionsType()
+                            .inbound(com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingTypeType.SKIP)
+                            .projection(com.evolveum.midpoint.xml.ns._public.common.common_3.PartialProcessingTypeType
+                                    .SKIP));
+        }
+        // isDefaultExecuteAfterAllApprovals: null without roleManagement, which overrides the DTO's false
+        options.executeImmediatelyAfterApproval(executeAfterAllApprovals != null ? !executeAfterAllApprovals : null);
+        return options;
+    }
+
+    @Override
+    public String submitAccessRequestTask(AccessRequest spec, Task task, OperationResult result) throws Exception {
+        // RequestAccess.submitMultiRequest (4.8 to 4.11): an explicit change execution with a request per person of
+        // interest, submitted through ModelInteractionService.submit (privileged), owned by the user
+        com.evolveum.midpoint.xml.ns._public.common.common_3.ExplicitChangeExecutionWorkDefinitionType work =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.ExplicitChangeExecutionWorkDefinitionType();
+        for (int i = 0; i < spec.deltas.size(); i++) {
+            com.evolveum.midpoint.xml.ns._public.common.common_3.ChangeExecutionRequestType request =
+                    new com.evolveum.midpoint.xml.ns._public.common.common_3.ChangeExecutionRequestType();
+            request.setName(AccessRequest.requestName48(spec.targets.get(i)));
+            request.setExecutionOptions(accessRequestOptions(spec.comment, spec.executeAfterAllApprovals, true)
+                    .toModelExecutionOptionsType());
+            request.getDelta().add(com.evolveum.midpoint.schema.DeltaConvertor.toObjectDeltaType(spec.deltas.get(i)));
+            work.getRequest().add(request);
+        }
+        com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType template =
+                new com.evolveum.midpoint.xml.ns._public.common.common_3.TaskType()
+                        .name(new PolyStringType(spec.taskName48()));
+        return harness.bean(ModelInteractionService.class).submit(
+                com.evolveum.midpoint.schema.util.task.ActivityDefinitionBuilder.create(work).build(),
+                com.evolveum.midpoint.model.api.ActivitySubmissionOptions.create().withTaskTemplate(template), task,
+                result);
+    }
+
+    @Override
     public String initialObjectsPattern() {
         // InitialDataImport (4.8): the initial objects of system-init, in subdirectories by type
         return "classpath*:/initial-objects/**/*.xml";

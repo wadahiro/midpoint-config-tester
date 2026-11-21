@@ -126,6 +126,17 @@ Other line notes:
   and a role held is told by the target's assignments. 4.8 and later: the wizard of the GUI profile's
   `accessRequest` (`roleManagement/roleCatalogRef` is not read), targets narrowed by the object part of the
   requester's `#assign` authorizations, a role held told by `roleMembershipRef`. 4.4's wizard does not exist (4.6+).
+- **4.0**: the request-access page's Submit for several targets (`request(user1, user2).assign(role)`) adds its
+  execute-changes task through the model as the requester, who needs `#add` of `TaskType` for it: midPoint's End user
+  role grants it for a self-owned execute-changes task (`self-owned-task-add-execute-changes`); a requester without
+  that (or with a deny) is refused at Submit. 4.4 persists its iterative change execution task with no check; 4.8 and
+  later submit their explicit change execution privileged (`runPrivileged` adds `#all` to the requester's own
+  authorizations: no allow is needed, but a deny of theirs, `#add` of `TaskType`, still refuses the Submit). On every
+  line the task runs as the requester and applies the cart's
+  additions to each target with the page's options (`executeImmediatelyAfterApproval` from
+  `roleManagement/defaultExecuteAfterAllApprovals`, the comment; `initialPartialProcessing` only in 4.8+'s
+  requests), named `com.evolveum.midpoint.web.page.self.PageAssignmentsList.requestAssignments` (4.0, 4.4) or
+  "Requesting access for N users" (4.8+).
 - **4.0, 4.4**: the side menu (`sideMenu()`) lists "Request a role" (`PageAdmin.menu.request`,
   `/self/assignmentShoppingCart`); 4.8 and later "Request access" (`PageRequestAccess.title`, `/self/requestAccess`).
   The configuration section's text is the line's localization's ("Configuration", `CONFIGURATION`: name it by its

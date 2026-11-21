@@ -20,8 +20,9 @@
 - **PostgreSQL 18 in memory.** midPoint runs on pgmem, an in-memory PostgreSQL 18. Repository behaviour specific to other
   databases is not covered.
 - **Little GUI.** Drivers call the services the GUI calls; GUI-only logic (wizards, the request access shopping
-  cart) is not run; the request-access page's catalog (`requestAccess()`) is computed from its configuration as the
-  line's GUI computes it, not rendered. What the GUI shows a user is asked of the services it calls
+  cart's conflict resolution) is not run; the request-access page's catalog (`requestAccess()`) is computed from its
+  configuration as the line's GUI computes it, not rendered, and its Submit (`request()`) is the model call or the
+  task the page makes of the cart, with the page's options. What the GUI shows a user is asked of the services it calls
   ([What the GUI shows a user](gui-and-authorizations.md#what-the-gui-shows-a-user)): searches, pages by URL, the
   user's GUI profile (views, features, menu links), an object as the user gets it (`read`), the work items of their
   "My work items" (`workItems()`, the page's query as the user), the side menu as the GUI builds it for them

@@ -47,6 +47,8 @@ Requests, approvals, certification, reports and refusals, by name:
 
 ```java
 t.actor("jack").request().assign("Privileged Access");             // as jack, through his End user role
+t.actor("jack").request().comment("audit").assign("Auditor", "Wiki"); // two roles in one Submit, the page's comment
+t.actor("manager").request("jack", "bob").assign("Wiki");          // several targets: the page's task, owned by manager
 Case request = t.cases().forUser("jack").forRole("Privileged Access").single();
 request.isOpen().atStage(1);
 t.workItems().assignedTo("role-owner").single().approve(t.actor("role-owner"), "ok");

@@ -43,6 +43,13 @@ public interface Approvals {
     Run request(String requester, ObjectDelta<? extends ObjectType> delta);
 
     /**
+     * Like {@link #request(String, ObjectDelta)} with the model's execute options (the request-access page's:
+     * {@code executeImmediatelyAfterApproval}, the request's business context, the initial partial processing).
+     */
+    Run request(String requester, ObjectDelta<? extends ObjectType> delta,
+            com.evolveum.midpoint.model.api.ModelExecuteOptions options);
+
+    /**
      * The approval cases (one per approval, not the request's root case), oldest first. When only a part of a change
      * needs approval (e.g. a {@code processSpecification} with {@code deltaFrom}), the rest is a case of its own,
      * {@code Changes that do not require approval}, closed at once and executed with the approved parts.

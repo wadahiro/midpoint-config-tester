@@ -157,7 +157,12 @@ as the line's GUI computes it: 4.0 / 4.4 `roleManagement`, 4.8+ the GUI profile'
 ANDed with what they may assign to the target, searched as them):
 `t.actor(u).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)`, `.requestAccess(Users.JACK)
 .offersTarget(Users.JACK).withRelation(ORG_MANAGER).offersRole(...)`, `.withType(ServiceType::class.java)` for an
-org folder's services (4.0 / 4.4: a folder lists roles and services together, `withType` only narrows), `.explain(role)` for why; then `t.actor(u).request().assign(role)` as its Submit. A members panel's Assign and Unassign as the user does them (the GUI's task
+org folder's services (4.0 / 4.4: a folder lists roles and services together, `withType` only narrows), `.explain(role)` for why; then its Submit with the page's options: `t.actor(u).request().assign(role)`, several roles in one Submit
+`.request().comment("why").assign(roleA, roleB)` (one case per role needing approval; `roleManagement/defaultExecuteAfterAllApprovals`
+false applies each role as it is approved, true (default) all together at the end), a cart `.request().submit(c -> c.assign(a).assign(b, x -> x.validTo(end)))`,
+several targets `.request(u1, u2).assign(role)` (the GUI's task owned by the requester, waited for; 4.0 adds it through the
+model, so a requester needs `#add` of `TaskType` as midPoint's End user role grants it, 4.4 starts it unchecked, 4.8+
+privileged, so only a deny of the requester's refuses it; a target refused fails the task on it). A members panel's Assign and Unassign as the user does them (the GUI's task
 or change, its authorization checks): `t.actor(u).orgTreeMembersPanel(t.org(x)).assign(ORG_MANAGER, t.user(j))`,
 `.unassign(ORG_MANAGER, t.user(j))` (a row), `.unassignSelected(...)`, `.unassignAll(...)`; the same on
 `membersPanel(x)` and `governancePanel(x)` of the details page; `.assignButton().isShown()` / `.isHidden()`; a refusal

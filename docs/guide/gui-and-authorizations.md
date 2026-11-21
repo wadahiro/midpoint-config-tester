@@ -89,10 +89,35 @@ assertThat(form.canRead("emailAddress")).isTrue();
   key), `CatalogEntry.roles()`, `children()`, `explain(role)` (`RoleVisibility`: `listedIn()`, `assignable()`,
   `foundByRequester()`, `addEnabled()`, `heldAs()`). A failure says which step hides the role: no entry lists it
   (with the entries and where the line reads its configuration), the requester's `#assign` authorizations do not
-  allow it for the target, or the requester's search does not find it. The request itself is
-  `t.actor(u).request(forUser).assign(role[, relation])`, the model operation of the page's Submit (the page also
-  passes the system configuration's execute options and the comment as the request's business context, which
-  `request()` does not; a role offered may still open a case or be refused by a policy rule at Submit).
+  allow it for the target, or the requester's search does not find it. The request itself is the page's Submit,
+  `t.actor(u).request(forUser).assign(role[, relation])` (a role offered may still open a case or be refused by a
+  policy rule at Submit).
+
+  **The Submit** (`Request`): the cart goes as the line's page submits it, for one target as one change of the user
+  holding all its additions, with the page's execute options; for several targets (`request(user1, user2, ...)`) as
+  the task the page starts, owned by the requester, which the call waits for. One role (`assign(role)`), several in
+  one Submit (`assign(roleA, roleB)`) or a cart with relations and validities (`submit(c -> c.assign(roleA)
+  .assign(roleB, a -> a.validTo(end)))`), and the page's comment (`comment(text)`, the request's business context,
+  kept as the `requestorComment` of the assignments' metadata). The options are the GUI's
+  `ExecuteChangeOptionsDto.createFromSystemConfiguration()` (force and reconcile false) with
+  `executeImmediatelyAfterApproval` the negation of the system configuration's
+  `roleManagement/defaultExecuteAfterAllApprovals` (default true: every role of the Submit, approved or needing no
+  approval, is applied once all its approvals are in; false: each role as soon as it is approved, a role needing no
+  approval at Submit), and inbound and projections skipped in the first pass (`initialPartialProcessing`; the result
+  is the same, the first pass only computes the approvals). The approvals go through `workItems()` as for any request.
+  `unassign(role)` is not the cart's (the GUI's cart only adds): a change of the target as the actor without the
+  page's options, one target only. The task of several targets, per line:
+
+  | | 4.0 | 4.4 | 4.8 and later |
+  |---|---|---|---|
+  | the task | an execute-changes task (`TaskCategory.EXECUTE_CHANGES`): the extension's query of the targets, type, the one delta of the additions, the options | an iterative change execution activity over the targets' query with the one delta and the options | an explicit change execution with one request per target (its delta and options) |
+  | named | `com.evolveum.midpoint.web.page.self.PageAssignmentsList.requestAssignments` (a key no localization has) | the same | "Requesting access for N users"; a target's request "Requesting access for jack" |
+  | started | added through `ModelService.executeChanges` as the requester: `#add` of `TaskType` needed (midPoint's End user role grants it for a self-owned execute-changes task), else refused at Submit | `TaskManager.switchToBackground`: no check | `ModelInteractionService.submit`, which runs privileged: no allow needed, but a deny of the requester's (`#add` of `TaskType`) still refuses the Submit (`runPrivileged` adds `#all` to their own authorizations) |
+  | runs | as its owner, the requester: their `#assign` authorizations decide each target; a target refused fails the task on it, the others go through | the same | the same |
+  | `initialPartialProcessing` | none in the task | none | in each request |
+
+  A refusal at the start fails the call with midPoint's message (`expectFailure(...).isNotAuthorized()`); a task
+  that failed on a target fails it with `the task "<name>" (owned by <requester>) failed: ...` and the last failure.
 
   ```kotlin
   t.actor(Users.JACK).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)
@@ -102,12 +127,17 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor(Users.MANAGER).requestAccess(Users.JACK).offersTarget(Users.JACK)
       .withRelation(SchemaConstants.ORG_MANAGER).offersRole(Roles.PROJECT_X)
   t.actor(Users.JACK).request().assign(Roles.VPN)
+  t.actor(Users.JACK).request().comment("for the project").assign(Roles.VPN, Roles.WIKI)   // one Submit, two cases
+  t.workItems().forRole(Roles.VPN).single().approve(t.actor(Users.OWNER))   // applied at once only with
+  t.user(Users.JACK).hasAssignment(Roles.VPN)                              // defaultExecuteAfterAllApprovals=false
+  t.actor(Users.MANAGER).request(Users.JACK, Users.BOB).assign(Roles.VPN)   // the task owned by the manager
   ```
 
   An `#assign` authorization's `target` of `AbstractRoleType` with a filter selects nothing for the lists searched
   as `RoleType` or `ServiceType` (All roles, All services, 4.8+ folders): name the types (`RoleType` and
   `ServiceType` targets), as midPoint's End user role does.
-  Not modeled: the search box's text and subtree scope, the cart and its conflicts, several targets at once.
+  Not modeled: the search box's text and subtree scope, the cart's conflicts (the Submit's cart is `Request`: the
+  roles, their relations and validities, the comment, several targets).
 - `canOpen(url)` decides a URL as the GUI's authorization evaluator does: the path after the GUI's context, matched
   (case-insensitive Ant patterns) against every page's `@PageDescriptor` and the GUI's own URL mappings
   (`EndPointsUrlMapping` on 4.8, `PageUrlMapping` on 4.4), the actions of all that match together, with

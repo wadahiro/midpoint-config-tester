@@ -86,8 +86,13 @@ final class ApprovalsImpl implements Approvals {
 
     @Override
     public Run request(String requester, ObjectDelta<? extends ObjectType> delta) {
+        return request(requester, delta, null);
+    }
+
+    @Override
+    public Run request(String requester, ObjectDelta<? extends ObjectType> delta, ModelExecuteOptions options) {
         return mp.runAs(requester, "request " + mp.describe(List.of(delta)), (task, result) -> {
-            mp.bean(ModelService.class).executeChanges(List.of(delta), null, task, result);
+            mp.bean(ModelService.class).executeChanges(List.of(delta), options, task, result);
             return new MidPointImpl.Outcome(delta.getOid(), null);
         });
     }
