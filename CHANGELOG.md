@@ -1,3 +1,19 @@
+# [0.17.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.16.0...v0.17.0) (2026-11-21)
+
+
+### Bug Fixes
+
+* **gui:** a 4.0 / 4.4 role-catalog folder lists its roles and services together ([e7010d5](https://github.com/wadahiro/midpoint-config-tester/commit/e7010d53181868daf9cf366973ee29887e2c7284))
+* **gui:** a form picks a drop-down's choice for the value typed ([46e9f3c](https://github.com/wadahiro/midpoint-config-tester/commit/46e9f3ccb225b3114dad1b8a171c2daa951aaea5))
+
+
+### Features
+
+* **gui:** a form types a value as the field of its item's type takes it ([2fcf5e2](https://github.com/wadahiro/midpoint-config-tester/commit/2fcf5e2bd43921bfbcf17d4f9185b41d62625266))
+* **gui:** rows of a details page's Assignments and Inducements tabs as a user sees them ([dbb8fb7](https://github.com/wadahiro/midpoint-config-tester/commit/dbb8fb76f9ddbaea9b4052ccf83e229ce1762628))
+* **gui:** the request-access catalog's tree at any depth, read across the GUI's pages ([ca1c72d](https://github.com/wadahiro/midpoint-config-tester/commit/ca1c72de70cb739092fb2ee419c70443ff97d784))
+* **gui:** the roles of the request-access page as a user sees them ([722162b](https://github.com/wadahiro/midpoint-config-tester/commit/722162b6c80d6631ece544a05caa68798e36309e))
+
 # [0.16.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.15.1...v0.16.0) (2026-11-20)
 
 
