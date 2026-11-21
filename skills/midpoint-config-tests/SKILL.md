@@ -145,7 +145,9 @@ Inducements tabs as the user sees them, with the rows' Unassign and the "+" (the
 request phase): `t.actor(u).editForm(Roles.TEAM_1).inducements().hasRow(Roles.META_1).row(Roles.META_1).hasUnassign()`,
 `.assignButton().isHidden()`; removing a row and saving as the user does it, refused by the model as an
 unassignment (`#unassign`, an inducement's with `orderConstraints` order 1):
-`t.actor(u).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()` / `.rejectsWith(...)`,
+`t.actor(u).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()` / `.rejectsWith(message)` (exact) /
+`.rejectsWithMessageContaining("(meta-1)")` (a part: the model's refusals embed OIDs; also
+`.failsWithMessageContaining(text)` on `validate`),
 `.unassign(Orgs.SITE_1)` on the Assignments tab. Which roles the request-access page shows a requester (computed
 as the line's GUI computes it: 4.0 / 4.4 `roleManagement`, 4.8+ the GUI profile's `accessRequest`; each entry
 ANDed with what they may assign to the target, searched as them):

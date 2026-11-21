@@ -276,6 +276,19 @@ public abstract class ObjectForm {
             return this;
         }
 
+        /**
+         * {@link #fails()} with a message containing this text (a message that names a value or an object: assert
+         * the part a test can state).
+         */
+        public Check failsWithMessageContaining(String part) {
+            fails();
+            if (field.messages.stream().noneMatch(m -> m != null && m.contains(part))) {
+                throw new AssertionError("The form rejects " + item + " = " + value + " with: " + field.messages
+                        + "\nexpected a message containing: " + part);
+            }
+            return this;
+        }
+
         private void requireValidation() {
             if (field.absent != null) {
                 throw new AssertionError("No field to type " + item + " into: " + field.absent);
@@ -348,6 +361,20 @@ public abstract class ObjectForm {
             notSaved();
             if (!messages().contains(message)) {
                 throw new AssertionError("The form does not show \"" + message + "\"; its messages: " + messages());
+            }
+            return this;
+        }
+
+        /**
+         * The page does not save the object, and shows a message (on a field or on the form) containing this text:
+         * a refusal whose message names objects by OID ({@code User 'u' not authorized for operation with
+         * inducement on role:<oid>(team-1) ...}) asserted by the part a test can state.
+         */
+        public Submit rejectsWithMessageContaining(String part) {
+            notSaved();
+            if (messages().stream().noneMatch(m -> m != null && m.contains(part))) {
+                throw new AssertionError("The form shows no message containing \"" + part + "\"; its messages: "
+                        + messages());
             }
             return this;
         }

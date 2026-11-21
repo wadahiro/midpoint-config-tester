@@ -37,6 +37,13 @@ class NewObjectFormScenarioTest {
         NewObjectForm.Check lower = form.validate("identifier", "cat1").fails("The identifier is upper case letters and digits.");
         assertThat(lower.validated()).isTrue();
         assertThat(lower.passed()).isFalse();
+        lower.failsWithMessageContaining("upper case letters");
+        assertThatThrownBy(() -> lower.failsWithMessageContaining("lower case"))
+                .isInstanceOf(AssertionError.class)
+                .hasMessage("The form rejects identifier = cat1 with: [The identifier is upper case letters and"
+                        + " digits.]\nexpected a message containing: lower case");
+        assertThatThrownBy(() -> form.validate("identifier", "CAT1").failsWithMessageContaining("upper case"))
+                .isInstanceOf(AssertionError.class).hasMessage("The form accepts identifier = CAT1");
     }
 
     @Test

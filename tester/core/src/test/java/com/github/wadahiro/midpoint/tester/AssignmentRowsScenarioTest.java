@@ -95,8 +95,10 @@ class AssignmentRowsScenarioTest {
     void theUnassignOfARowSaves(MidPointConfigTester t) {
         importFixture(t);
 
-        t.actor("ar-role-admin").editForm(TEAM_1).uninduce(META_1).submit().saves();
+        ObjectForm.Submit saved = t.actor("ar-role-admin").editForm(TEAM_1).uninduce(META_1).submit().saves();
         assertThat(inducedOids(t)).doesNotContain(OID_META_1);
+        assertThatThrownBy(() -> saved.rejectsWithMessageContaining("not authorized"))
+                .isInstanceOf(AssertionError.class).hasMessageStartingWith("The form saves");
         t.actor("ar-role-admin").editForm(TEAM_1).inducements().hasNoRow(META_1).hasRow(META_2);
 
         // a row's Unassign and a typed item in one Save
@@ -122,6 +124,15 @@ class AssignmentRowsScenarioTest {
         assertThat(String.join("\n", submit.messages())).contains("not authorized for operation with inducement on"
                 + " role:10000000-0000-0000-0000-0000000f0704(ar-team-1) with target"
                 + " role:10000000-0000-0000-0000-0000000f0702(ar-meta-1)");
+        // the refusal by the part a test can state, without the OIDs
+        submit.rejectsWithMessageContaining("not authorized for operation with inducement on role:")
+                .rejectsWithMessageContaining("(ar-team-1) with target role:").rejectsWithMessageContaining("(ar-meta-1)");
+        assertThatThrownBy(() -> submit.rejectsWithMessageContaining("(ar-meta-2)")).isInstanceOf(AssertionError.class)
+                .hasMessageStartingWith("The form shows no message containing \"(ar-meta-2)\"; its messages: [")
+                .hasMessageContaining("with target role:10000000-0000-0000-0000-0000000f0702(ar-meta-1)");
+        // the exact message is still asked by rejectsWith
+        assertThatThrownBy(() -> submit.rejectsWith("(ar-meta-1)")).isInstanceOf(AssertionError.class)
+                .hasMessageStartingWith("The form does not show \"(ar-meta-1)\"; its messages: [");
         assertThat(inducedOids(t)).contains(OID_META_1);
     }
 

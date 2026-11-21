@@ -134,7 +134,8 @@ public final class EditObjectForm extends ObjectForm {
      * {@link #submit}: the page opened, the items typed in, the tab opened, the row found and its Unassign pressed (the
      * row is marked deleted), then Save, whose delta deletes the whole assignment, which the model authorizes as an
      * unassignment ({@code #unassign} of the target, then the execution's {@code #modify}): a refusal is the page's
-     * message ({@code submit().rejectsWith(...)}, {@code submit().saved()}). {@code submit()} fails (AssertionError)
+     * message ({@code submit().rejectsWith(...)}, {@code submit().rejectsWithMessageContaining(...)},
+     * {@code submit().saved()}). {@code submit()} fails (AssertionError)
      * when the user does not see the tab, the row or its Unassign. The target as a generated name or a handle.
      */
     public EditObjectForm unassign(ObjectRef target) {

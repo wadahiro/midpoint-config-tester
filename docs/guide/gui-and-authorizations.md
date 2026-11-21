@@ -264,12 +264,15 @@ assertThat(form.canRead("emailAddress")).isTrue();
   row: no field, a read-only field (or no add or remove button the user may press) fails the form; several values for
   a single-valued item fail it too. Then:
   - `.validate(item, value)` types the value into the item's field and leaves it: what the field shows, `passes()`,
-    `fails()`, `fails(message)` (also `validated()`: the item has a validation, `passed()`, `message()`,
-    `messages()`, `absent()`: why the page has no field to type into).
+    `fails()`, `fails(message)` (that message exactly), `failsWithMessageContaining(text)` (a message containing
+    the text); also `validated()`: the item has a validation, `passed()`, `message()`,
+    `messages()`, `absent()`: why the page has no field to type into.
   - `.submit()` presses Save: `saves()`, `rejects(item)` (not saved, and the item's field shows a message),
-    `rejectsWith(message)` (on a field or on the form), `saved()`, `rejected()`, `messages()`, `item(item)`. Saving
-    executes the changes through the model as the user: what their authorizations or a policy rule refuse is a
-    message of the page too.
+    `rejectsWith(message)` (that message exactly, on a field or on the form), `rejectsWithMessageContaining(text)`
+    (a message containing the text: midPoint's refusals name objects by OID, `... on role:<oid>(team-1) ...`, so a
+    test states the part it knows), `saved()`, `rejected()`, `messages()`, `item(item)`. Both fail listing the
+    page's messages. Saving executes the changes through the model as the user: what their authorizations or a
+    policy rule refuse is a message of the page too.
   - `.tabs()` reads the page's tabs as the GUI has them for the user, from the page it renders (once; the claims
     chain on it): `names()` the labels of the tabs shown, in the GUI's order; `hasTab(tab)`, `hasNoTab(tab)`;
     `tab(tab)` one tab (`label()`, `key()`, `identifier()`, `shown()`, `hiddenBecause()`, `subtabs()`); `all()` every
@@ -318,8 +321,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
       the model authorizes it as an unassignment of the target: `#unassign` with the target and relation in the
       request phase (an inducement's with `orderConstraints` order 1, midPoint's order of an inducement, unless the
       authorization has another) or a `#modify` of the item, then the execution's `#modify`. A refusal is the page's
-      message (`rejectsWith(...)`, `saved()` false: `User 'ui-only' not authorized for operation with inducement on
-      role:<oid>(team-1) with target role:<oid>(meta-1)`). `submit()` fails (`AssertionError`) when the page shows
+      message (`saved()` false: `User 'ui-only' not authorized for operation with inducement on
+      role:<oid>(team-1) with target role:<oid>(meta-1)`; `rejectsWithMessageContaining("(meta-1)")` without the
+      OIDs, `rejectsWith(...)` the whole message). `submit()` fails (`AssertionError`) when the page shows
       the user no such tab, no row of the target (`its rows: ...`) or no Unassign on it (`#adminUnassign is not
       allowed on the object: the security enforcer, request phase`). Adding a row (the "+" and its popup) is not
       driven: assign through the model (`t.actor(user).modify(...)`) or a members panel.
@@ -333,6 +337,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
   t.actor(Users.ROLE_ADMIN).editForm(Roles.TEAM_1).set("description", "x").unassign(Orgs.SITE_1).submit().saves()
   t.actor(Users.HELPDESK).editForm(Roles.TEAM_1).assignments().row(Orgs.SITE_1).hasNoUnassign()
   t.actor(Users.HELPDESK).editForm(Roles.TEAM_1).inducements().assignButton().isHidden()
+  t.actor(Users.UI_ONLY).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit()
+      .rejectsWithMessageContaining("not authorized for operation with inducement on role:")
+      .rejectsWithMessageContaining("with target role:").rejectsWithMessageContaining("(meta-1)")
   ```
 
   midPoint evaluates an object template's item validation (`item/validation/server`) only in the GUI's form, never in

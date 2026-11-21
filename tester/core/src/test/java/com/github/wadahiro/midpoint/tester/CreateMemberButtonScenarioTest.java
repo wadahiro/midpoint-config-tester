@@ -98,8 +98,8 @@ class CreateMemberButtonScenarioTest {
                 .click(OrgType.class, "member-category").set("name", "member-cat-2").submit();
 
         assertThat(refused.saved()).isFalse();
-        assertThat(String.join("\n", refused.messages())).contains("member-site-admin").contains("not authorized")
-                .contains("with target org:10000000-0000-0000-0000-0000000f0111(member-site-2)");
+        refused.rejectsWithMessageContaining("member-site-admin").rejectsWithMessageContaining("not authorized")
+                .rejectsWithMessageContaining("with target org:10000000-0000-0000-0000-0000000f0111(member-site-2)");
         t.org("member-cat-2").doesNotExist();
     }
 
@@ -120,8 +120,8 @@ class CreateMemberButtonScenarioTest {
                     + " we cannot process an object without a name");
         } else {
             // 4.4 quotes the user's name twice
-            assertThat(String.join("\n", refused.messages())).contains("member-team-admin").contains("not authorized")
-                    .contains("authorization-model-3#add on service:");
+            refused.rejectsWithMessageContaining("member-team-admin").rejectsWithMessageContaining("not authorized")
+                    .rejectsWithMessageContaining("authorization-model-3#add on service:");
         }
     }
 
