@@ -14,7 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -89,6 +91,8 @@ final class MidPointImpl implements MidPoint {
      * at most 36 letters, digits and dashes, with a dash.
      */
     private static final Pattern OID_SHAPED = Pattern.compile("(?=[\\w-]*-)[\\w-]{1,36}");
+    /** The warnings {@link #importResource} printed ({@link #reportOnce}). */
+    private static final Set<String> REPORTED_WARNINGS = ConcurrentHashMap.newKeySet();
 
     private final TesterRuntime runtime;
     final Harness harness;
@@ -252,6 +256,8 @@ final class MidPointImpl implements MidPoint {
         Retargeted resource = retarget(read(resourceFile), resourceFile.getName(), options);
         // locations refer to the file as written, not to the transformed copy
         ConfigIndex.get().register(resourceFile.toPath(), name(resourceFile));
+        resource.warnings.stream().filter(w -> reportOnce(resourceFile.getName() + ": " + w))
+                .forEach(w -> System.err.println("Tester: " + resourceFile.getName() + ": " + w));
         importXml(resource.xml, resourceFile.getName(), false);
         query("test resource " + resourceFile.getName(), (task, result) -> {
             harness.checkResource(resource.oid, task, result);
@@ -260,16 +266,27 @@ final class MidPointImpl implements MidPoint {
         return resource.target;
     }
 
+    /**
+     * Whether the warning is printed now: once per JVM, as a test class often imports the same resource in every
+     * test.
+     */
+    static boolean reportOnce(String warning) {
+        return REPORTED_WARNINGS.add(warning);
+    }
+
     /** A resource definition moved to the tester's target system ({@link #retarget}). */
     static final class Retargeted {
         final String oid;
         final String xml;
         final ManagedTarget target;
+        /** What the caller reports about the definition ({@link MirrorResourceXml#warnings}). */
+        final List<String> warnings;
 
-        Retargeted(String oid, String xml, ManagedTarget target) {
+        Retargeted(String oid, String xml, ManagedTarget target, List<String> warnings) {
             this.oid = oid;
             this.xml = xml;
             this.target = target;
+            this.warnings = warnings;
         }
     }
 
@@ -301,7 +318,7 @@ final class MidPointImpl implements MidPoint {
             }
             target = runtime.registerTarget(MirrorTargetImpl.create(resource));
         }
-        return new Retargeted(resource.oid, resource.xml, target);
+        return new Retargeted(resource.oid, resource.xml, target, resource.warnings);
     }
 
     /** The resource on its real CSV or LDAP connector, with the file or server the tester provides. */
@@ -358,7 +375,8 @@ final class MidPointImpl implements MidPoint {
         }
         ((RealTarget) target).scriptMirrors(scriptMirrors);
         runtime.writeWorkFile("tester-resources/" + fileName, xml);
-        return new Retargeted(resource.oid, xml, target);
+        // nothing to warn: the real connector's schema decides (the stored one is read again from it)
+        return new Retargeted(resource.oid, xml, target, List.of());
     }
 
     @Override

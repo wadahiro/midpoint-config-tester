@@ -54,7 +54,9 @@ import com.github.wadahiro.midpoint.tester.mirror.MirrorLink;
  *   <li>A simulated activation status ({@code capabilities/configured/activation/status/attribute}): the attribute
  *       is in the account classes (as a string), and without listed native capabilities the mirror has no native
  *       activation (as the CSV connector), so midPoint writes the status as the attribute
- *       ({@link SimulatedActivation}).</li>
+ *       ({@link SimulatedActivation}). With a stored schema the attribute is only there if the schema declares
+ *       it; if it does not, midPoint does not simulate the status, and the transform warns
+ *       ({@link #warnings}).</li>
  * </ul>
  * Computed attributes ({@link ResourceOptions#computed}), referential integrity
  * ({@link ResourceOptions#referentialIntegrity()}) and case insensitive references
@@ -86,12 +88,15 @@ final class MirrorResourceXml {
     final boolean caseInsensitiveNames;
     /** The simulated activation status of the account objects ({@code capabilities/configured}), or null. */
     final SimulatedActivation simulatedActivation;
+    /** What in the definition makes midPoint behave other than it says (for the load report and the test's log). */
+    final List<String> warnings;
 
     private MirrorResourceXml(String oid, String xml, List<MirrorClass> classes, List<String> accountClasses,
             List<String> otherClasses, List<MirrorLink> references, ResourceOptions options,
-            SimulatedActivation simulatedActivation) {
+            SimulatedActivation simulatedActivation, List<String> warnings) {
         this.oid = oid;
         this.simulatedActivation = simulatedActivation;
+        this.warnings = warnings;
         this.xml = xml;
         this.classes = classes;
         this.accountClasses = accountClasses;
@@ -245,6 +250,42 @@ final class MirrorResourceXml {
         if (schema != null && child(schema, "definition") == null) {
             schema = null;
         }
+        List<String> warnings = new ArrayList<>();
+        if (schema != null && simulated != null && !accountClasses.isEmpty()) {
+            List<String> notDeclaring = new ArrayList<>();
+            List<String> notInSchema = new ArrayList<>();
+            for (String accountClass : accountClasses) {
+                Boolean declares = declares(schema, accountClass, simulated.attribute);
+                if (declares == null) {
+                    notInSchema.add(accountClass);
+                } else if (!declares) {
+                    notDeclaring.add(accountClass);
+                }
+            }
+            if (!notDeclaring.isEmpty() || !notInSchema.isEmpty()) {
+                // the mirror reads the status in the first account class
+                if (notDeclaring.contains(accountClasses.get(0)) || notInSchema.contains(accountClasses.get(0))) {
+                    simulated = simulated.undeclared();
+                }
+                Element name = child(resource, "name");
+                StringBuilder warning = new StringBuilder("resource ")
+                        .append(name != null ? name.getTextContent().trim() : oid)
+                        .append(": the simulated activation status attribute ri:").append(simulated.attribute)
+                        .append(" (capabilities/configured/activation/status)");
+                if (!notDeclaring.isEmpty()) {
+                    warning.append(" is not declared in the stored schema (account classes ").append(notDeclaring)
+                            .append(")");
+                }
+                if (!notInSchema.isEmpty()) {
+                    warning.append(notDeclaring.isEmpty() ? ": " : "; ")
+                            .append("the class is not in the stored schema (account classes ").append(notInSchema)
+                            .append(")");
+                }
+                warnings.add(warning.append(": midPoint writes the native status of those accounts instead, so"
+                        + " isEnabled() / isDisabled() of its accounts do not read the status midPoint writes")
+                        .toString());
+            }
+        }
         List<MirrorClass> classes = schema != null
                 ? fromStoredSchema(schema, options, activation, password)
                 : fromSchemaHandling(objectTypes, accountClasses, otherClasses, associations, options, activation,
@@ -352,7 +393,27 @@ final class MirrorResourceXml {
         resource.insertBefore(connectorRef, before);
         resource.insertBefore(configuration, before);
         return new MirrorResourceXml(oid, Xml.serialize(doc), classes, accountClasses, otherClasses, references,
-                options, simulated);
+                options, simulated, warnings);
+    }
+
+    /**
+     * Whether the class of the stored schema declares the attribute (local name), null if the stored schema has no
+     * such class. The account classes are those the object types name themselves: an object type that inherits its
+     * {@code objectClass} from a {@code super} type is not among them (as everywhere in this transform), so its class
+     * is not checked.
+     */
+    private static Boolean declares(Element schema, String objectClass, String attribute) {
+        for (Element complexType : descendants(schema, "complexType")) {
+            if (NS_XSD.equals(complexType.getNamespaceURI()) && objectClass.equals(complexType.getAttribute("name"))) {
+                for (Element element : descendants(complexType, "element")) {
+                    if (NS_XSD.equals(element.getNamespaceURI()) && attribute.equals(element.getAttribute("name"))) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        return null;
     }
 
     // ---- password reading -------------------------------------------------------------------------------------

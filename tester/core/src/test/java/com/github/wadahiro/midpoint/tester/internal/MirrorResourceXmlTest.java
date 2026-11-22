@@ -521,6 +521,132 @@ class MirrorResourceXmlTest {
         assertThat(classes(r).get("Group").attributes).containsOnlyKeys("userName");
     }
 
+    /**
+     * A simulated status whose attribute the stored schema does not declare: midPoint does not simulate the status
+     * through it, so the transform warns, and reading the status of an account names that cause.
+     */
+    @Test
+    void aSimulatedStatusAttributeNotInTheStoredSchema() {
+        MirrorResourceXml r = transform(simulatedStatus("r-undeclared", ""));
+
+        assertThat(r.warnings).hasSize(1);
+        assertThat(r.warnings.get(0)).contains("resource R", "ri:locked",
+                "is not declared in the stored schema (account classes [person])",
+                "isEnabled() / isDisabled() of its accounts do not read the status midPoint writes");
+        assertThatThrownBy(() -> statusOfAnAccount(r))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("Account bob has no locked (simulated activation status)")
+                .hasMessageContaining("ri:locked is not declared in the stored schema of the resource");
+    }
+
+    /**
+     * An empty enable value (no attribute: enabled): the undeclared attribute reads as enabled whatever midPoint
+     * writes, so the transform warns and the target gives the hint for a failed assertion on the status.
+     */
+    @Test
+    void anUndeclaredSimulatedStatusAttributeWithAnEmptyEnableValue() {
+        MirrorResourceXml r = transform(simulatedStatus("r-undeclared-empty", "")
+                .replace("<cap:enableValue>false</cap:enableValue>", "<cap:enableValue></cap:enableValue>"));
+
+        assertThat(r.warnings).hasSize(1);
+        assertThat(r.warnings.get(0))
+                .contains("is not declared in the stored schema (account classes [person])");
+        MirrorTargetImpl target = MirrorTargetImpl.create(r);
+        target.addAccount("bob", Map.of());
+        assertThat(target.enabled("bob")).isTrue();
+        assertThat(target.statusHint()).contains("ri:locked is not declared in the stored schema of the resource");
+    }
+
+    /** Two account classes, one declaring the attribute, one not, and one the stored schema does not have. */
+    @Test
+    void aSimulatedStatusAttributeSomeAccountClassesDoNotDeclare() {
+        MirrorResourceXml r = transform(HEAD.replace("'r1'", "'r-some-classes'")
+                + "<schema><definition><xsd:schema>"
+                + personClass("person", "<xsd:element name='locked' type='xsd:string'/>")
+                + personClass("contractor", "")
+                + "</xsd:schema></definition></schema><schemaHandling>"
+                + accountType("default", "person") + accountType("contractor", "contractor")
+                + accountType("external", "external")
+                + "</schemaHandling>" + SIMULATED_STATUS + "</resource>");
+
+        assertThat(r.warnings).hasSize(1);
+        assertThat(r.warnings.get(0))
+                .contains("is not declared in the stored schema (account classes [contractor])",
+                        "the class is not in the stored schema (account classes [external])");
+        // the mirror reads the status in person, which declares it
+        assertThat(MirrorTargetImpl.create(r).statusHint()).isEmpty();
+    }
+
+    @Test
+    void aSimulatedStatusOfAnAccountClassNotInTheStoredSchema() {
+        MirrorResourceXml r = transform(HEAD.replace("'r1'", "'r-no-class'")
+                + "<schema><definition><xsd:schema>" + personClass("person", "")
+                + "</xsd:schema></definition></schema><schemaHandling>" + accountType("default", "external")
+                + "</schemaHandling>" + SIMULATED_STATUS + "</resource>");
+
+        assertThat(r.warnings).hasSize(1);
+        assertThat(r.warnings.get(0))
+                .contains("ri:locked (capabilities/configured/activation/status): the class is not in the stored"
+                        + " schema (account classes [external])")
+                .doesNotContain("is not declared");
+    }
+
+    @Test
+    void aSimulatedStatusAttributeInTheStoredSchema() {
+        MirrorResourceXml r = transform(simulatedStatus("r-declared", "<xsd:element name='locked' type='xsd:string'/>"));
+
+        assertThat(r.warnings).isEmpty();
+        assertThatThrownBy(() -> statusOfAnAccount(r))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("Account bob has no locked (simulated activation status)")
+                .hasMessageNotContaining("not declared");
+    }
+
+    @Test
+    void aSimulatedStatusWithoutStoredSchema() {
+        MirrorResourceXml r = transform(HEAD.replace("'r1'", "'r-no-schema'") + "<schemaHandling><objectType>"
+                + "<kind>account</kind><objectClass>ri:person</objectClass><attribute><ref>ri:login</ref></attribute>"
+                + "</objectType></schemaHandling>" + SIMULATED_STATUS + "</resource>",
+                ResourceOptions.defaults().namingAttribute("login"));
+
+        assertThat(r.warnings).isEmpty();
+        assertThat(classes(r).get("person").attributes).containsKey("locked");
+    }
+
+    /** {@code ri:locked}: enabled when false, disabled when true. */
+    private static final String SIMULATED_STATUS = "<capabilities><configured>"
+            + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
+            + "<cap:status><cap:attribute>ri:locked</cap:attribute><cap:enableValue>false</cap:enableValue>"
+            + "<cap:disableValue>true</cap:disableValue></cap:status></cap:activation></configured></capabilities>";
+
+    /** A resource with a stored schema of the account class person (with these elements) and the simulated status. */
+    private static String simulatedStatus(String oid, String elements) {
+        return HEAD.replace("'r1'", "'" + oid + "'")
+                + "<schema><definition><xsd:schema>" + personClass("person", elements)
+                + "</xsd:schema></definition></schema>"
+                + "<schemaHandling>" + accountType("default", "person") + "</schemaHandling>"
+                + SIMULATED_STATUS + "</resource>";
+    }
+
+    /** A class of the stored schema named by login, with these elements. */
+    private static String personClass(String name, String elements) {
+        return "<xsd:complexType name='" + name + "'><xsd:annotation><xsd:appinfo>"
+                + "<ra:namingAttribute>ri:login</ra:namingAttribute></xsd:appinfo></xsd:annotation><xsd:sequence>"
+                + "<xsd:element name='login' type='xsd:string'/>" + elements + "</xsd:sequence></xsd:complexType>";
+    }
+
+    private static String accountType(String intent, String objectClass) {
+        return "<objectType><kind>account</kind><intent>" + intent + "</intent><objectClass>ri:" + objectClass
+                + "</objectClass><attribute><ref>ri:login</ref></attribute></objectType>";
+    }
+
+    /** The status of an account without the attribute, on the resource's mirror. */
+    private static boolean statusOfAnAccount(MirrorResourceXml r) {
+        MirrorTargetImpl target = MirrorTargetImpl.create(r);
+        target.addAccount("bob", Map.of());
+        return target.enabled("bob");
+    }
+
     private static MirrorResourceXml transform(String xml) {
         return transform(xml, ResourceOptions.defaults());
     }

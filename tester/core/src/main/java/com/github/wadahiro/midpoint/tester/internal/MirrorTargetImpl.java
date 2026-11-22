@@ -149,6 +149,11 @@ final class MirrorTargetImpl implements ManagedTarget {
     }
 
     @Override
+    public String statusHint() {
+        return simulatedActivation != null ? simulatedActivation.hintIfUndeclared() : "";
+    }
+
+    @Override
     public void setEnabled(String account, boolean enabled) {
         Writes.count();
         if (simulatedActivation != null) {

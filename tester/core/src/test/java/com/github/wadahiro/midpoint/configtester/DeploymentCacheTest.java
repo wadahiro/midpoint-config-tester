@@ -160,6 +160,37 @@ class DeploymentCacheTest {
         assertThat(extraCodes(changed)).containsExactly("seed2");
     }
 
+    /**
+     * A warning of the preparation (a mirrored resource whose simulated status attribute the stored schema does not
+     * declare) is in the restored deployment's warnings and load report once, as in the fresh load's.
+     */
+    @Test
+    void aRestoredDeploymentHasTheWarningsOfTheFreshLoadOnce() throws IOException {
+        Path manifest = copyOfTheSample();
+        String xml = read(resource("fixtures/provisioning/resource-ldap.xml"))
+                .replace("10000000-0000-0000-0000-00000000a002", "20000000-0000-0000-0000-00000000a0f1")
+                .replace("<name>LDAP</name>", "<name>Directory</name>");
+        int close = xml.lastIndexOf("    <synchronization>");
+        xml = xml.substring(0, close) + "    <capabilities><configured>"
+                + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
+                + "<cap:status><cap:attribute>ri:employeeType</cap:attribute><cap:enableValue>active</cap:enableValue>"
+                + "<cap:disableValue>disabled</cap:disableValue></cap:status></cap:activation>"
+                + "</configured></capabilities>\n" + xml.substring(close);
+        Files.writeString(manifest.getParent().resolve("post-initial-objects/resources/029-resource-directory.xml"), xml,
+                StandardCharsets.UTF_8);
+        String warning = "resource Directory: the simulated activation status attribute ri:employeeType";
+
+        Deployment fresh = Deployment.reload(manifest);
+        assertThat(fresh.restoredFromCache()).isNull();
+        assertThat(fresh.warnings()).filteredOn(w -> w.contains(warning)).hasSize(1);
+
+        Deployment restored = Deployment.reload(manifest);
+        assertThat(restored.restoredFromCache()).isEqualTo(fresh.cacheEntry());
+        assertThat(restored.warnings()).isEqualTo(fresh.warnings());
+        String report = read(restored.prepared().getParent().resolve("load-report.txt"));
+        assertThat(report.indexOf(warning)).isNotNegative().isEqualTo(report.lastIndexOf(warning));
+    }
+
     private static List<String> extraCodes(Deployment deployment) throws java.sql.SQLException {
         List<String> out = new ArrayList<>();
         try (java.sql.Connection c = java.sql.DriverManager.getConnection(deployment.repositoryJdbcUrl(),

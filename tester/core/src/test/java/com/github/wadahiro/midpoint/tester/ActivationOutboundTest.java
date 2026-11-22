@@ -1,6 +1,7 @@
 package com.github.wadahiro.midpoint.tester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.io.TempDir;
@@ -65,6 +67,38 @@ class ActivationOutboundTest {
         verb.get().connectorCalls().to("LDAP").writes().none();
     }
 
+    /**
+     * The status simulated in employeeType, which the stored schema does not declare: midPoint writes the native
+     * status, and the account's status names that cause (the tester does not read another status instead).
+     */
+    @Test
+    void aSimulatedStatusAttributeTheStoredSchemaDoesNotDeclare(MidPointConfigTester t, @TempDir Path dir)
+            throws Exception {
+        resource(t, dir, "undeclared", "strong");
+
+        assertThatThrownBy(() -> t.target("LDAP").account(JDOE).isEnabled())
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("has no employeeType (simulated activation status)")
+                .hasMessageContaining("ri:employeeType is not declared in the stored schema of the resource");
+    }
+
+    /**
+     * The same with an empty enable value (no attribute: enabled): the account reads as enabled whatever midPoint
+     * writes, and the failed assertion names the cause.
+     */
+    @Test
+    void anUndeclaredSimulatedStatusAttributeWithAnEmptyEnableValue(MidPointConfigTester t, @TempDir Path dir)
+            throws Exception {
+        resource(t, dir, "undeclared-empty", "strong");
+        t.target("LDAP").account(JDOE).isEnabled();
+        t.user("jdoe").modify(m -> m.set("activation/administrativeStatus", "disabled"));
+
+        assertThatThrownBy(() -> t.target("LDAP").account(JDOE).isDisabled())
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("expected disabled, but it is enabled; the resource's configuration is the cause:"
+                        + " ri:employeeType is not declared in the stored schema of the resource");
+    }
+
     private static Supplier<Effects> verb(MidPointConfigTester t, String way) {
         switch (way) {
             case "recompute":
@@ -110,7 +144,9 @@ class ActivationOutboundTest {
 
     /**
      * The LDAP resource of {@code fixtures/provisioning} with an administrative status outbound of the strength, the
-     * status native or simulated in employeeType; {@code plain-} without its strong attribute outbounds. jdoe's account.
+     * status native or simulated in employeeType ({@code undeclared}: the stored schema without employeeType,
+     * {@code undeclared-empty} also with an empty enable value);
+     * {@code plain-} without its strong attribute outbounds. jdoe's account.
      */
     private static void resource(MidPointConfigTester t, Path dir, String kind, String strength) throws Exception {
         String xml = new String(Files.readAllBytes(new File(DIR, "resource-ldap.xml").toPath()), StandardCharsets.UTF_8);
@@ -122,17 +158,18 @@ class ActivationOutboundTest {
         int end = xml.indexOf("        </objectType>");
         xml = xml.substring(0, end) + "            <activation><administrativeStatus><outbound><strength>" + strength
                 + "</strength></outbound></administrativeStatus></activation>\n" + xml.substring(end);
-        if (kind.equals("simulated")) {
+        if (kind.equals("simulated") || kind.startsWith("undeclared")) {
             int mail = xml.indexOf("                        <xsd:element maxOccurs=\"unbounded\" minOccurs=\"0\" name=\"mail\"");
-            xml = xml.substring(0, mail)
-                    + "                        <xsd:element minOccurs=\"0\" name=\"employeeType\" type=\"xsd:string\">"
+            xml = xml.substring(0, mail) + (kind.startsWith("undeclared") ? ""
+                    : "                        <xsd:element minOccurs=\"0\" name=\"employeeType\" type=\"xsd:string\">"
                     + "<xsd:annotation><xsd:appinfo><ra:nativeAttributeName>employeeType</ra:nativeAttributeName>"
                     + "<ra:frameworkAttributeName>employeeType</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>"
-                    + "</xsd:element>\n" + xml.substring(mail);
+                    + "</xsd:element>\n") + xml.substring(mail);
             int close = xml.lastIndexOf("    <synchronization>");
             xml = xml.substring(0, close) + "    <capabilities><configured>"
                     + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
-                    + "<cap:status><cap:attribute>ri:employeeType</cap:attribute><cap:enableValue>active</cap:enableValue>"
+                    + "<cap:status><cap:attribute>ri:employeeType</cap:attribute><cap:enableValue>"
+                    + (kind.equals("undeclared-empty") ? "" : "active") + "</cap:enableValue>"
                     + "<cap:disableValue>disabled</cap:disableValue></cap:status></cap:activation>"
                     + "</configured></capabilities>\n" + xml.substring(close);
         }

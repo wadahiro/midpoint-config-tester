@@ -26,9 +26,12 @@ name. A test's write of an attribute the object class does not have (`t.target(.
 are there when the native capabilities list them, or, without those, when `schemaHandling` maps them; they are
 attributes in milliseconds (`attribute(account, "__ENABLE_DATE__")`). A status simulated with an attribute
 (`capabilities/configured/activation/status/attribute`) is that attribute, as on the real connector: the mirror then
-has no native status and has the attribute even when `schemaHandling` does not name it; `enabled(account)` and
-`setEnabled(account, enabled)` read and write the attribute with the enable and disable values (on the real CSV and
-LDAP connectors too, see [Activation and validity](midpoint-features.md#activation-and-validity)). Passwords are stored (`password(account)`,
+has no native status and has the attribute even when `schemaHandling` does not name it (with a stored schema, only when
+the account class there declares it: otherwise midPoint does not simulate the status and writes the native one, which
+the import and the deployment's load warn about, and which a failed `isEnabled()` / `isDisabled()` of the account, or a
+failed `enabled(account)`, names); `enabled(account)` and `setEnabled(account, enabled)` read and write the attribute
+with the enable and disable values (on the real CSV and LDAP connectors too, see [Activation and
+validity](midpoint-features.md#activation-and-validity)). Passwords are stored (`password(account)`,
 `setPassword(account, value)`) and returned as the real connector returns them: the native capability
 `credentials/password/readable` if the definition lists the native capabilities; otherwise the connector's
 configuration: the CSV connector's `passwordAttribute` (the column, returned by default), the LDAP connector's

@@ -604,6 +604,8 @@ public final class Deployment {
             repointToThisJvm();
         });
         importOrder.addAll((List<String>) meta.get("importOrder"));
+        // the fresh load's, which hold what prepare() just added again
+        warnings.clear();
         warnings.addAll((List<String>) meta.get("warnings"));
         if (meta.containsKey("initial.imported")) {
             initial = new InitialImport.Outcome();
@@ -815,6 +817,7 @@ public final class Deployment {
                 targetsUsed.add(name);
                 continue;
             }
+            retargeted.warnings.forEach(w -> warnings.add(relative + ": " + w));
             resourceOids.put(name, retargeted.oid);
             standIns.put(name, retargeted.xml);
             targetsUsed.add(name);

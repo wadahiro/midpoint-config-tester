@@ -9,6 +9,7 @@ import java.util.TreeSet;
 import com.github.wadahiro.midpoint.configtester.names.AttributeRef;
 import com.github.wadahiro.midpoint.tester.TargetSystem;
 import com.github.wadahiro.midpoint.tester.internal.Deployment;
+import com.github.wadahiro.midpoint.tester.internal.Internals;
 
 /**
  * An account on a resource's system ({@link Resource#account}), read anew by every call. The views ({@link #value},
@@ -111,7 +112,8 @@ public final class Account extends TargetObject {
         existing();
         if (!resource.system().enabled(name)) {
             throw new AssertionError("Account " + name + " on " + resource.name() + ": expected enabled, but it is"
-                    + " disabled; attributes: " + new TreeMap<>(existing())
+                    + " disabled" + Internals.statusHint(resource.system()) + "; attributes: "
+                    + new TreeMap<>(existing())
                     + Why.mappings(tester, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
         }
         return this;
@@ -121,7 +123,8 @@ public final class Account extends TargetObject {
         existing();
         if (resource.system().enabled(name)) {
             throw new AssertionError("Account " + name + " on " + resource.name() + ": expected disabled, but it is"
-                    + " enabled; attributes: " + new TreeMap<>(existing())
+                    + " enabled" + Internals.statusHint(resource.system()) + "; attributes: "
+                    + new TreeMap<>(existing())
                     + Why.mappings(tester, "activation/administrativeStatus", owner(), "the status on " + resource.name()));
         }
         return this;

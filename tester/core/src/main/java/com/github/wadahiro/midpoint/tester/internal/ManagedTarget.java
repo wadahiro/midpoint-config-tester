@@ -10,6 +10,14 @@ import com.github.wadahiro.midpoint.tester.TargetSystem;
  */
 interface ManagedTarget extends TargetSystem {
 
+    /**
+     * What a failed read of an account's status adds: why midPoint does not write the status the target reads
+     * ({@link SimulatedActivation#hintIfUndeclared}), or "".
+     */
+    default String statusHint() {
+        return "";
+    }
+
     /** The content (and definitions) at this moment. */
     Object capture();
 
