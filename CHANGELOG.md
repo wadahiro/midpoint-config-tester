@@ -1,3 +1,10 @@
+# [0.21.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.20.1...v0.21.0) (2026-11-22)
+
+
+### Features
+
+* **gui:** the user's own credentials page: set the password, pick the targets, read the policy messages ([edbd396](https://github.com/wadahiro/midpoint-config-tester/commit/edbd39642d2c6cbcc8d717eec94ed4706fea0fca))
+
 ## [0.20.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.20.0...v0.20.1) (2026-11-22)
 
 
