@@ -316,20 +316,23 @@ final class GuiFormsImpl implements GuiForms {
     }
 
     private <T> T run(Spec spec, String what, java.util.function.Function<WicketTester, T> action) {
-        String label = (spec.oid == null ? "form of a new " : "form of ") + spec.type.getSimpleName()
-                + (spec.oid == null ? "" : " " + spec.oid) + ": " + what;
+        String label = (spec.selfProfile ? "self-profile form of " : spec.oid == null ? "form of a new " : "form of ")
+                + spec.type.getSimpleName() + (spec.oid == null ? "" : " " + spec.oid) + ": " + what;
         MidPointApplication app = application(mp);
         return mp.queryAs(spec.user, null, label, (task, result) -> {
             // the session first: the page the GUI picks reads the application and the user's GUI profile
             WicketTester tester = new WicketTester(app, initializer.getServletContext(), false);
             tester.getSession().setLocale(Locale.getDefault());
-            Class<? extends Page> pageClass = spec.oid == null ? LINE.newObjectPageClass(spec.type)
-                    : LINE.detailsPage(spec.type);
+            Class<? extends Page> pageClass = spec.selfProfile ? LINE.selfProfilePage()
+                    : spec.oid == null ? LINE.newObjectPageClass(spec.type) : LINE.detailsPage(spec.type);
             if (pageClass == null) {
                 throw new IllegalArgumentException("The GUI has no details page of " + spec.type.getSimpleName());
             }
             decide(pageClass, spec);
-            if (spec.oid == null) {
+            if (spec.selfProfile) {
+                // the profile page takes no parameter: it loads the logged-in focus
+                tester.startPage(pageClass);
+            } else if (spec.oid == null) {
                 tester.startPage(LINE.newObjectPage(pageClass, newObject(spec)));
             } else {
                 tester.startPage(pageClass, new PageParameters().add(OnePageParameterEncoder.PARAMETER, spec.oid));
@@ -348,7 +351,7 @@ final class GuiFormsImpl implements GuiForms {
         if (url == null) {
             return;
         }
-        if (spec.oid != null) {
+        if (spec.oid != null && !spec.selfProfile) {
             url = url + "/" + spec.oid;
         }
         // the GUI's AccessDecisionManager (whose interface the lines have in different jars): decide(authentication,
@@ -942,6 +945,11 @@ final class GuiFormsImpl implements GuiForms {
             }
         });
         for (Component toggle : toggles) {
+            // an earlier click may have replaced the panel that held this toggle (4.4's old design re-renders the
+            // whole container): a toggle no longer on the page is not clickable
+            if (toggle.findParent(Page.class) == null) {
+                continue;
+            }
             tester.executeAjaxEvent(toggle, "click");
         }
     }

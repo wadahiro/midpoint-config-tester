@@ -46,6 +46,13 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public Class<? extends Page> selfProfilePage() {
+        // PageSelfProfile (4.8 to 4.11) sends to the page of the logged-in focus: PageUserSelfProfile
+        // (/self/profile/user)
+        return com.evolveum.midpoint.gui.api.util.WebComponentUtil.resolveSelfPage();
+    }
+
+    @Override
     public boolean storedIntoParentOrgRef(QName relation) {
         // DetailsPageUtil.initNewObjectWithReference: as the system configuration's relation definitions say
         return MidPointApplication.get().getRelationRegistry().isStoredIntoParentOrgRef(relation);

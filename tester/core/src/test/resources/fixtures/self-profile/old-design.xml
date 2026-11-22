@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The old design of 4.4's details pages for the self-profile page (SelfProfileFormScenarioTest, 4.4 only): a role
+    that turns the new design off (useNewDesign), so PageSelfProfile sends to the old PageUserSelfProfile
+    (/self/profile/user) instead of the new design's (/self/profile/userNew).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0b04">
+        <name>sp-old-design</name>
+        <adminGuiConfiguration>
+            <useNewDesign>false</useNewDesign>
+        </adminGuiConfiguration>
+    </role>
+</objects>

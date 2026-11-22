@@ -30,6 +30,8 @@ public final class EditObjectForm extends ObjectForm {
     private final String oid;
     private final String name;
     private final List<GuiForms.Removal> removals;
+    /** The user's own profile page ({@link Actor#selfProfileForm}) rather than the details page of the object. */
+    private final boolean selfProfile;
 
     EditObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String nameOrOid, String user) {
         this(tester, type, find(tester, type, nameOrOid), user, Map.of());
@@ -38,15 +40,24 @@ public final class EditObjectForm extends ObjectForm {
     private EditObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, ObjectType object,
             String user, Map<String, Object> items) {
         this(tester, type, object.getOid(), object.getName() != null ? object.getName().getOrig() : object.getOid(),
-                user, items, List.of());
+                user, items, List.of(), false);
     }
 
     private EditObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String oid, String name,
-            String user, Map<String, Object> items, List<GuiForms.Removal> removals) {
+            String user, Map<String, Object> items, List<GuiForms.Removal> removals, boolean selfProfile) {
         super(tester, type, user, items);
         this.oid = oid;
         this.name = name;
         this.removals = List.copyOf(removals);
+        this.selfProfile = selfProfile;
+    }
+
+    /** The user's own profile page as the GUI opens it for them ({@link Actor#selfProfileForm}). */
+    static EditObjectForm selfProfile(MidPointConfigTester tester, String user) {
+        ObjectType object = find(tester, com.evolveum.midpoint.xml.ns._public.common.common_3.UserType.class, user);
+        return new EditObjectForm(tester, com.evolveum.midpoint.xml.ns._public.common.common_3.UserType.class,
+                object.getOid(), object.getName() != null ? object.getName().getOrig() : object.getOid(), user,
+                Map.of(), List.of(), true);
     }
 
     private static ObjectType find(MidPointConfigTester tester, Class<? extends ObjectType> type, String nameOrOid) {
@@ -69,7 +80,7 @@ public final class EditObjectForm extends ObjectForm {
      * (docs/guide/gui-and-authorizations.md).
      */
     public EditObjectForm set(String item, Object value) {
-        return new EditObjectForm(tester, type, oid, name, user, with(items, item, value), removals);
+        return new EditObjectForm(tester, type, oid, name, user, with(items, item, value), removals, selfProfile);
     }
 
     /**
@@ -79,7 +90,7 @@ public final class EditObjectForm extends ObjectForm {
      */
     public EditObjectForm add(String item, Object value) {
         return new EditObjectForm(tester, type, oid, name, user,
-                with(items, item, GuiForms.ValueRows.add(items.get(item), value)), removals);
+                with(items, item, GuiForms.ValueRows.add(items.get(item), value)), removals, selfProfile);
     }
 
     /**
@@ -88,7 +99,7 @@ public final class EditObjectForm extends ObjectForm {
      */
     public EditObjectForm remove(String item, Object value) {
         return new EditObjectForm(tester, type, oid, name, user,
-                with(items, item, GuiForms.ValueRows.remove(items.get(item), value)), removals);
+                with(items, item, GuiForms.ValueRows.remove(items.get(item), value)), removals, selfProfile);
     }
 
     /**
@@ -110,8 +121,8 @@ public final class EditObjectForm extends ObjectForm {
 
     private AssignmentRows rows(AssignmentRows.Kind kind) {
         boolean inducements = kind == AssignmentRows.Kind.INDUCEMENTS;
-        GuiForms.Rows read = gui().rows(new GuiForms.Spec(type, oid, null, null, null, null, user, Map.of()),
-                inducements);
+        GuiForms.Rows read = gui().rows(new GuiForms.Spec(type, oid, null, null, null, null, user, Map.of(),
+                List.of(), selfProfile), inducements);
         Actor actor = user != null ? tester.actor(user) : null;
         if (actor != null) {
             actor.explainAuthorizations();
@@ -181,16 +192,16 @@ public final class EditObjectForm extends ObjectForm {
         List<GuiForms.Removal> more = new ArrayList<>(removals);
         more.add(new GuiForms.Removal(inducement, object.getOid(), AssignmentRow.describe(target, null, null)
                 .replace(" (default)", ""), relation));
-        return new EditObjectForm(tester, type, oid, name, user, items, more);
+        return new EditObjectForm(tester, type, oid, name, user, items, more, selfProfile);
     }
 
     @Override
     GuiForms.Spec spec() {
-        return new GuiForms.Spec(type, oid, null, null, null, null, user, items, removals);
+        return new GuiForms.Spec(type, oid, null, null, null, null, user, items, removals, selfProfile);
     }
 
     @Override
     String page() {
-        return kind() + " " + name;
+        return selfProfile ? "the profile of " + name : kind() + " " + name;
     }
 }

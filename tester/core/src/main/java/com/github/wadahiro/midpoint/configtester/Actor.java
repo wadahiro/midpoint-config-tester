@@ -382,6 +382,23 @@ public final class Actor {
         return editForm(typeOf(object), key(object));
     }
 
+    /**
+     * The user's own profile page as the GUI opens it for them (the side menu's Profile: {@code /self/profile},
+     * {@code #selfAll} or {@code #selfProfile}; the line's page: 4.0 {@code PageSelfProfile}, 4.4 the design's
+     * {@code PageUserSelfProfile} at {@code /self/profile/user} or {@code /self/profile/userNew}, 4.8+
+     * {@code PageUserSelfProfile} at {@code /self/profile/user}), run by midPoint's GUI with the user logged in: the
+     * details page of the user themself, which a user without {@code #userDetails} can open, with the same form as
+     * {@link #editForm} ({@link EditObjectForm}: {@code set}, {@code validate}, {@code submit}, {@code tabs},
+     * {@code assignments}). Its Save is the details page's Save: the model authorizes the change in the request and
+     * the execution phase. The page shows no execute options, Delete, Change archetype or Edit raw, applies no
+     * archetype's details configuration (4.4's new design, 4.8+), and on 4.8+ follows the GUI profile's
+     * {@code adminGuiConfiguration/selfProfilePage} when configured.
+     * {@code t.actor("jdoe").selfProfileForm().set("telephoneNumber", "+1 555 0100").submit().saves()}.
+     */
+    public EditObjectForm selfProfileForm() {
+        return EditObjectForm.selfProfile(tester, name);
+    }
+
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();

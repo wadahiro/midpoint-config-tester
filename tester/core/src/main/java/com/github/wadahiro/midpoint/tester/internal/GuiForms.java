@@ -41,6 +41,11 @@ public interface GuiForms {
         public final Map<String, Object> items;
         /** The rows of the Assignments and Inducements tabs whose Unassign is pressed before Save, in this order. */
         public final List<Removal> removals;
+        /**
+         * Whether the page is the user's own profile page (the side menu's Profile, which loads the logged-in user
+         * and takes no OID) rather than the details page of {@link #oid} (then the user's OID).
+         */
+        public final boolean selfProfile;
 
         public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
                 Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items) {
@@ -50,6 +55,12 @@ public interface GuiForms {
         public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
                 Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items,
                 List<Removal> removals) {
+            this(type, oid, archetypeOid, memberOid, memberType, relation, user, items, removals, false);
+        }
+
+        public Spec(Class<? extends ObjectType> type, String oid, String archetypeOid, String memberOid,
+                Class<? extends ObjectType> memberType, QName relation, String user, Map<String, Object> items,
+                List<Removal> removals, boolean selfProfile) {
             this.type = type;
             this.oid = oid;
             this.archetypeOid = archetypeOid;
@@ -59,6 +70,7 @@ public interface GuiForms {
             this.user = user;
             this.items = Collections.unmodifiableMap(new LinkedHashMap<>(items));
             this.removals = Collections.unmodifiableList(new ArrayList<>(removals));
+            this.selfProfile = selfProfile;
         }
     }
 

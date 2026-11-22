@@ -25,6 +25,15 @@ interface GuiLine {
     Class<? extends Page> newObjectPageClass(Class<? extends ObjectType> type);
 
     /**
+     * The page of the logged-in user's own profile (the side menu's Profile): 4.0 {@code PageSelfProfile}
+     * ({@code /self/profile}); 4.4 the design's user self-profile page {@code PageSelfProfile} sends to
+     * ({@code WebComponentUtil.resolveSelfPage}: {@code /self/profile/user}, the new design's
+     * {@code /self/profile/userNew}); 4.8+ {@code PageUserSelfProfile} ({@code /self/profile/user}). The page takes no
+     * parameter: it loads the logged-in focus.
+     */
+    Class<? extends Page> selfProfilePage();
+
+    /**
      * Whether the GUI puts an org a new member is created in with this relation into its parentOrgRef too (the
      * members panel's "+": initNewObjectWithReference).
      */

@@ -260,7 +260,22 @@ assertThat(form.canRead("emailAddress")).isTrue();
   for an org its `parentOrgRef` as the line's GUI adds it, on 4.0 with any relation, on 4.4 and later with a
   relation stored into `parentOrgRef`, by default `default` and `manager`). `editForm` is an existing object's page,
   opened by its OID as from a list: the fields show the stored values (`editForm(ref)` takes a generated name,
-  `Orgs.SITE_1`, its type from the ref). On either, `.set(item, value)` types a value in first (by path of local
+  `Orgs.SITE_1`, its type from the ref). `t.actor(u).selfProfileForm()` is the user's own profile page (the side
+  menu's Profile: `/self/profile`, `#selfAll` or `#selfProfile`), the same form API with the user themself as the
+  object, for a user who may not open the details page (`/admin/user/{oid}` needs `#userDetails`): the line's page
+  (4.0 `PageSelfProfile`; 4.4 `PageSelfProfile` sends to the design's page, `/self/profile/user` or
+  `/self/profile/userNew`; 4.8+ `PageUserSelfProfile`, `/self/profile/user`), the same details page with the
+  logged-in user loaded (as them: `#read` of self), its Save the details page's Save (the model's request and
+  execution phase both), the execute options panel hidden (the defaults go), no Delete, Change archetype or Edit raw
+  (4.4's new design and 4.8+), no archetype's details configuration (4.4's new design and 4.8+: the type's
+  `objectDetails` only), and on 4.8+ the panels of the GUI profile's `adminGuiConfiguration/selfProfilePage` when one
+  is configured (4.0 and 4.4 have no such element). Its Assignments tab is `.assignments()` as on `editForm`: a row's
+  Unassign is shown by the security enforcer with the user themself as the object (`#adminUnassign` of
+  `authorization-ui-3`, request phase), and `.unassign(role).submit().saves()` removes the user's own role: the Save's
+  delta is authorized as an unassignment (`#unassign` of the target), then the execution-phase `#modify` of one's
+  `assignment`, which midPoint's End user role grants. An item allowed in the request phase only
+  (`#modify` with `<phase>request</phase>`) is typed into on 4.0 and 4.8+ and refused at Save ("Not authorized");
+  4.4's GUI shows its field read-only. On either, `.set(item, value)` types a value in first (by path of local
   names: `identifier`, `extension/site`). The value is typed as a user types it into the item's field, which the GUI
   picks by the item's type (its panel factories); a value the field takes without a message that is not in the
   field's model afterwards fails the form (`Typed 2026-03-05T10:15:30Z into extension/opened, but its field holds

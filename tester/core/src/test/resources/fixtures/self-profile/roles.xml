@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The roles of the self-profile page (SelfProfileFormScenarioTest), imported into scenarios/access. sp-self-editor:
+    the page and one's own telephone number in both phases; sp-self-request-only: the telephone number in the request
+    phase only, so the Save fails in the execution phase; sp-profile-config: a self-profile page configuration
+    (adminGuiConfiguration/selfProfilePage, 4.8 and later) hiding the Assignments panel. fixtures-4.4 has the 4.0 and
+    4.4 variant (no selfProfilePage in their schema).
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0b01">
+        <name>sp-self-editor</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <object>
+                <special>self</special>
+            </object>
+            <item>telephoneNumber</item>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0b02">
+        <name>sp-self-request-only</name>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfAll</action>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+            <phase>request</phase>
+            <object>
+                <special>self</special>
+            </object>
+            <item>telephoneNumber</item>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0b05">
+        <name>sp-self-unassign</name>
+        <!-- the Unassign of one's own requestable roles: the row's button (the GUI asks #adminUnassign on the object),
+             then the model's unassignment (the execution-phase modify of one's assignments is midPoint's End user
+             role's) -->
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#adminUnassign</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+        <authorization>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#unassign</action>
+            <object>
+                <special>self</special>
+            </object>
+            <target>
+                <type>RoleType</type>
+                <filter>
+                    <q:equal xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+                        <q:path>requestable</q:path>
+                        <q:value>true</q:value>
+                    </q:equal>
+                </filter>
+            </target>
+        </authorization>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0b03">
+        <name>sp-profile-config</name>
+        <adminGuiConfiguration>
+            <selfProfilePage>
+                <type>UserType</type>
+                <panel>
+                    <identifier>assignments</identifier>
+                    <visibility>hidden</visibility>
+                </panel>
+            </selfProfilePage>
+        </adminGuiConfiguration>
+    </role>
+</objects>

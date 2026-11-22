@@ -47,6 +47,13 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public Class<? extends Page> selfProfilePage() {
+        // PageSelfProfile (4.4) sends to the design's page of the logged-in focus: the old design's PageUserSelfProfile
+        // (/self/profile/user) or the new design's (/self/profile/userNew)
+        return WebComponentUtil.resolveSelfPage();
+    }
+
+    @Override
     public boolean storedIntoParentOrgRef(QName relation) {
         // WebComponentUtil.initNewObjectWithReference: as the system configuration's relation definitions say
         return MidPointApplication.get().getRelationRegistry().isStoredIntoParentOrgRef(relation);

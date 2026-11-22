@@ -137,6 +137,14 @@ Other line notes:
   `roleManagement/defaultExecuteAfterAllApprovals`, the comment; `initialPartialProcessing` only in 4.8+'s
   requests), named `com.evolveum.midpoint.web.page.self.PageAssignmentsList.requestAssignments` (4.0, 4.4) or
   "Requesting access for N users" (4.8+).
+- **4.0**: the user's own profile page (`selfProfileForm()`) is `PageSelfProfile` (`/self/profile`), the user
+  details page of the logged-in user with the execute options hidden; 4.4's `PageSelfProfile` sends to the design's
+  `PageUserSelfProfile` (`/self/profile/user`, the new design's `/self/profile/userNew`); 4.8 and later open
+  `PageUserSelfProfile` (`/self/profile/user`). 4.4's new design and 4.8+ hide Delete, Change archetype and Edit raw
+  and apply no archetype's details configuration; 4.8 and later show the panels of the GUI profile's
+  `adminGuiConfiguration/selfProfilePage` when configured (no such element on 4.0 and 4.4).
+- **4.4**: a form's field of an item the user may modify in the request phase only is read-only in its GUI; 4.0 and
+  4.8+ let the user type into it and refuse the Save in the execution phase ("Not authorized").
 - **4.0, 4.4**: the side menu (`sideMenu()`) lists "Request a role" (`PageAdmin.menu.request`,
   `/self/assignmentShoppingCart`); 4.8 and later "Request access" (`PageRequestAccess.title`, `/self/requestAccess`).
   The configuration section's text is the line's localization's ("Configuration", `CONFIGURATION`: name it by its

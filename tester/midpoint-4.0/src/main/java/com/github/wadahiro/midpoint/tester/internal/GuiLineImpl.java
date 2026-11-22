@@ -38,6 +38,12 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public Class<? extends Page> selfProfilePage() {
+        // PageSelfProfile (4.0): PageUser of the logged-in user (getObjectOidParameter), /self/profile
+        return com.evolveum.midpoint.web.page.self.PageSelfProfile.class;
+    }
+
+    @Override
     public boolean storedIntoParentOrgRef(QName relation) {
         // WebComponentUtil.initNewObjectWithReference: every org reference, whatever its relation
         return true;

@@ -140,7 +140,10 @@ boolean's or an enumeration's drop-down takes the choice: `.set("extension/vip",
 archetype[, relation])` (configuration), the user's by `t.actor(u).createMemberButton(t.org(x)).isShown()` /
 `.isHidden()`, and `.click(type, archetype[, relation])` is the new member's form, `.set(...).submit().saves()`. The
 tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs().hasTab("Members").hasNoTab("Governance")`
-(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). The side menu as the user sees it,
+(a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). A user's own profile page (the side
+menu's Profile, `#selfAll`, for a user without `#userDetails`): `t.actor(u).selfProfileForm().set("telephoneNumber", v)
+.submit().saves()`, the same form API (`tabs()`, `validate`, read-only fields fail `set`; the Save needs both phases;
+4.8+ `adminGuiConfiguration/selfProfilePage` picks its panels). The side menu as the user sees it,
 built by the GUI (an item listed when any of the user's authorizations names its page's action, whatever the decision;
 pair it with `canOpen(url)`, the enforcer's decision): `t.actor(u).sideMenu().hasItem(MenuPage.REQUEST_ACCESS)
 .hasNoSection("ADMINISTRATION")`, `.hasItem("/admin/users")` / `("All users")`, `.hasNoItem(MenuPage.ROLES)`,
