@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The users' own credentials page (SelfCredentialsScenarioTest), imported into the bare deployment: a password policy
+    of at least 10 characters (the default security policy points to it, with a history of 3 passwords), jdoe with the
+    End user role and a password, nobody without a role, pageonly with a role that opens the page and reads the user
+    themself but grants no change. 4.0 format, so the same file runs on every line.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+         xmlns:t="http://prism.evolveum.com/xml/ns/public/types-3">
+    <valuePolicy oid="10000000-0000-0000-0000-0000000c0001">
+        <name>sc-password-policy</name>
+        <stringPolicy>
+            <limitations>
+                <minLength>10</minLength>
+                <maxLength>64</maxLength>
+                <minUniqueChars>3</minUniqueChars>
+            </limitations>
+        </stringPolicy>
+    </valuePolicy>
+    <user oid="10000000-0000-0000-0000-0000000c0101">
+        <name>jdoe</name>
+        <fullName>John Doe</fullName>
+        <familyName>Doe</familyName>
+        <assignment>
+            <targetRef oid="00000000-0000-0000-0000-000000000008" type="RoleType"/>
+        </assignment>
+        <credentials>
+            <password>
+                <value>
+                    <t:clearValue>Initial.12345</t:clearValue>
+                </value>
+            </password>
+        </credentials>
+    </user>
+    <user oid="10000000-0000-0000-0000-0000000c0102">
+        <name>nobody</name>
+        <fullName>No Body</fullName>
+        <familyName>Body</familyName>
+        <credentials>
+            <password>
+                <value>
+                    <t:clearValue>Initial.12345</t:clearValue>
+                </value>
+            </password>
+        </credentials>
+    </user>
+    <role oid="10000000-0000-0000-0000-0000000c0201">
+        <name>sc-credentials-page-only</name>
+        <authorization>
+            <name>credentials-page</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfCredentials</action>
+        </authorization>
+        <authorization>
+            <name>self-read</name>
+            <action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+            <object>
+                <special>self</special>
+            </object>
+        </authorization>
+    </role>
+    <user oid="10000000-0000-0000-0000-0000000c0103">
+        <name>pageonly</name>
+        <fullName>Page Only</fullName>
+        <familyName>Only</familyName>
+        <assignment>
+            <targetRef oid="10000000-0000-0000-0000-0000000c0201" type="RoleType"/>
+        </assignment>
+        <credentials>
+            <password>
+                <value>
+                    <t:clearValue>Initial.12345</t:clearValue>
+                </value>
+            </password>
+        </credentials>
+    </user>
+</objects>

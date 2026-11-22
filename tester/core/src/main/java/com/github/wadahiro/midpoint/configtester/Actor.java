@@ -399,6 +399,19 @@ public final class Actor {
         return EditObjectForm.selfProfile(tester, name);
     }
 
+    /**
+     * The user's own credentials page as the GUI opens it for them (the side menu's Credentials,
+     * {@code /self/credentials}, {@code #selfAll} or {@code #selfCredentials}; 4.0 and 4.4 {@code PageSelfCredentials}
+     * with its Save, 4.8+ {@code PageSelfCredentials} with its {@code PropagatePasswordPanel} and Change password), run
+     * by midPoint's GUI with the user logged in ({@link SelfCredentialsPage}): whether it asks for the current password,
+     * the targets it lists (the user and their accounts, selected or not), the policy's requirements, and its Save as
+     * the page executes it through the model as the user. Fails when the user may not open the page.
+     * {@code t.actor("jdoe").selfCredentials().currentPassword("Old.1234").newPassword("New.12345").submit().saves()}.
+     */
+    public SelfCredentialsPage selfCredentials() {
+        return new SelfCredentialsPage(tester, name);
+    }
+
     /** The form the GUI shows the user for the object: what it shows and what it lets them change. */
     public Form form(ObjectRef object) {
         explainAuthorizations();

@@ -28,7 +28,7 @@
   "My work items" (`workItems()`, the page's query as the user), the side menu as the GUI builds it for them
   (`sideMenu()`: its sections and items, run by the GUI's own code in the JVM); not what a page does after it opens.
   The one exception is the objects' details pages: `newObjectForm`, `editForm` and `selfProfileForm` (the user's own
-  profile page) run the GUI's own page in the JVM
+  profile page), and the user's own credentials page (`selfCredentials`), run the GUI's own page in the JVM
   (its fields' validations, the value typed as each field of the item's type takes it, its drop-downs' choices, the
   value rows of a multi-valued item with their add and
   remove buttons, Save, its tabs, the rows of its Assignments and Inducements tabs with their Unassign and "+"); not

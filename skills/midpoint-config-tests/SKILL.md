@@ -143,7 +143,11 @@ tabs of the page as the user sees them: `t.actor(u).editForm(Orgs.SITE_1).tabs()
 (a tab by label, label key or identifier; `.names()`, `.tab(x).hiddenBecause()`). A user's own profile page (the side
 menu's Profile, `#selfAll`, for a user without `#userDetails`): `t.actor(u).selfProfileForm().set("telephoneNumber", v)
 .submit().saves()`, the same form API (`tabs()`, `validate`, read-only fields fail `set`; the Save needs both phases;
-4.8+ `adminGuiConfiguration/selfProfilePage` picks its panels). The side menu as the user sees it,
+4.8+ `adminGuiConfiguration/selfProfilePage` picks its panels). A user's own password change (the side menu's
+Credentials, `#selfAll`): `t.actor(u).selfCredentials().currentPassword(old).newPassword(new).submit().saves()`,
+`.deselect("LDAP")` / `.select("LDAP")` a target, `.open()` for `asksCurrentPassword()`, `targets()`,
+`unmetRequirements()`, a refusal by `rejectsWithMessageContaining(part)` (a policy or authorization refusal changes
+nothing; 4.8+ with the targets not listed the policy's message is in `targetResults()`, not `messages()`). The side menu as the user sees it,
 built by the GUI (an item listed when any of the user's authorizations names its page's action, whatever the decision;
 pair it with `canOpen(url)`, the enforcer's decision): `t.actor(u).sideMenu().hasItem(MenuPage.REQUEST_ACCESS)
 .hasNoSection("ADMINISTRATION")`, `.hasItem("/admin/users")` / `("All users")`, `.hasNoItem(MenuPage.ROLES)`,

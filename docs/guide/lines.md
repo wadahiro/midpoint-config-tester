@@ -143,6 +143,12 @@ Other line notes:
   `PageUserSelfProfile` (`/self/profile/user`). 4.4's new design and 4.8+ hide Delete, Change archetype and Edit raw
   and apply no archetype's details configuration; 4.8 and later show the panels of the GUI profile's
   `adminGuiConfiguration/selfProfilePage` when configured (no such element on 4.0 and 4.4).
+- **4.0, 4.4**: the user's own credentials page (`selfCredentials()`) is `web.page.self.PageSelfCredentials` with its
+  Save; 4.0 selects a target by its icon (an account not selected by default) and goes to the home page after a saved
+  password, 4.4 by its check box (every target selected by default). 4.8 and later: `PropagatePasswordPanel` and its
+  Change password, the targets listed only with "Change password on individual systems" ticked (not listed, a refused
+  save shows only the toast pointing to the table: the policy's message is in `targetResults()`, not `messages()`),
+  its messages toasts; 4.4+ list the password policy's requirements for the typed password and each target's result.
 - **4.4**: a form's field of an item the user may modify in the request phase only is read-only in its GUI; 4.0 and
   4.8+ let the user type into it and refuse the Save in the execution phase ("Not authorized").
 - **4.0, 4.4**: the side menu (`sideMenu()`) lists "Request a role" (`PageAdmin.menu.request`,

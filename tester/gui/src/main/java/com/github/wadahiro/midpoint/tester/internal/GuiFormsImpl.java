@@ -328,7 +328,8 @@ final class GuiFormsImpl implements GuiForms {
             if (pageClass == null) {
                 throw new IllegalArgumentException("The GUI has no details page of " + spec.type.getSimpleName());
             }
-            decide(pageClass, spec);
+            decide(pageClass, LINE.mountUrl(pageClass) == null ? null : spec.oid != null && !spec.selfProfile
+                    ? LINE.mountUrl(pageClass) + "/" + spec.oid : LINE.mountUrl(pageClass), spec.user);
             if (spec.selfProfile) {
                 // the profile page takes no parameter: it loads the logged-in focus
                 tester.startPage(pageClass);
@@ -345,14 +346,62 @@ final class GuiFormsImpl implements GuiForms {
         });
     }
 
+    /**
+     * The user's own credentials page ({@link GuiLine#selfCredentialsPage}) in a WicketTester of its own as the user,
+     * its URL decided first as the security filter decides it, then driven as the user drives it
+     * ({@link SelfCredentials}).
+     */
+    @Override
+    public Credentials credentials(CredentialsSpec spec, boolean save) {
+        MidPointApplication app = application(mp);
+        Class<? extends Page> pageClass = LINE.selfCredentialsPage();
+        com.evolveum.midpoint.common.LocalizationService localization =
+                mp.bean(com.evolveum.midpoint.common.LocalizationService.class);
+        return mp.queryAs(spec.user, null, "credentials page of " + spec.user + (save ? ": save" : ""),
+                (task, result) -> {
+                    WicketTester tester = new WicketTester(app, initializer.getServletContext(), false);
+                    tester.getSession().setLocale(Locale.getDefault());
+                    decide(pageClass, LINE.mountUrl(pageClass), spec.user);
+                    tester.startPage(pageClass);
+                    if (!pageClass.isInstance(tester.getLastRenderedPage())) {
+                        throw new AssertionError("The GUI did not open " + pageClass.getSimpleName() + " but "
+                                + tester.getLastRenderedPage().getClass().getSimpleName() + messages(tester));
+                    }
+                    return new SelfCredentials(tester, message -> translate(localization, message))
+                            .drive(spec, save);
+                });
+    }
+
+    /** A localizable message or a poly string (its translation key) in the JVM's locale. */
+    private static String translate(com.evolveum.midpoint.common.LocalizationService localization, Object message) {
+        try {
+            if (message instanceof com.evolveum.midpoint.util.LocalizableMessage) {
+                return localization.translate((com.evolveum.midpoint.util.LocalizableMessage) message,
+                        Locale.getDefault());
+            }
+            if (message instanceof com.evolveum.prism.xml.ns._public.types_3.PolyStringType) {
+                return localization.translate(
+                        ((com.evolveum.prism.xml.ns._public.types_3.PolyStringType) message).toPolyString(),
+                        Locale.getDefault(), true);
+            }
+        } catch (RuntimeException e) {
+            // its text as it is
+        }
+        return String.valueOf(message);
+    }
+
+    static String errorPageOf(Page page) {
+        return errorPage(page);
+    }
+
+    static String textOf(Object message) {
+        return text(message);
+    }
+
     /** The page's URL as midPoint's security filter decides it: the user may open it, or the form fails. */
-    private void decide(Class<? extends Page> pageClass, Spec spec) {
-        String url = LINE.mountUrl(pageClass);
+    private void decide(Class<? extends Page> pageClass, String url, String user) {
         if (url == null) {
             return;
-        }
-        if (spec.oid != null && !spec.selfProfile) {
-            url = url + "/" + spec.oid;
         }
         // the GUI's AccessDecisionManager (whose interface the lines have in different jars): decide(authentication,
         // the request, its attributes) throws AccessDeniedException
@@ -364,7 +413,7 @@ final class GuiFormsImpl implements GuiForms {
         } catch (java.lang.reflect.InvocationTargetException e) {
             Throwable denied = e.getCause();
             if (denied != null && denied.getClass().getSimpleName().equals("AccessDeniedException")) {
-                throw new AssertionError((spec.user != null ? spec.user : "The administrator") + " may not open "
+                throw new AssertionError((user != null ? user : "The administrator") + " may not open "
                         + url + " (" + pageClass.getSimpleName() + "): " + denied.getMessage(), denied);
             }
             throw new IllegalStateException("The GUI's authorization evaluator failed on " + url + ": " + denied, denied);
@@ -455,7 +504,7 @@ final class GuiFormsImpl implements GuiForms {
             throw new AssertionError("Cannot fill in " + item + ": it is a protected string (a password), which the"
                     + " GUI types in a password panel of its own (the value twice), not in a field of the form, and"
                     + " set does not type; change a password through the model instead (t.actor(user).modify(user,"
-                    + " m -> m.password(\"...\")))");
+                    + " m -> m.password(\"...\"))) or the user's own credentials page (t.actor(user).selfCredentials())");
         }
     }
 

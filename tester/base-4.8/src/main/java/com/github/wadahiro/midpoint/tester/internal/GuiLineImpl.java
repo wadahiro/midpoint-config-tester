@@ -53,6 +53,12 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public Class<? extends Page> selfCredentialsPage() {
+        // 4.8 to 4.11: the PropagatePasswordPanel of the logged-in focus, its Change password button
+        return com.evolveum.midpoint.gui.impl.page.self.credentials.PageSelfCredentials.class;
+    }
+
+    @Override
     public boolean storedIntoParentOrgRef(QName relation) {
         // DetailsPageUtil.initNewObjectWithReference: as the system configuration's relation definitions say
         return MidPointApplication.get().getRelationRegistry().isStoredIntoParentOrgRef(relation);

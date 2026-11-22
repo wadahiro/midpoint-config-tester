@@ -296,7 +296,7 @@ assertThat(form.canRead("emailAddress")).isTrue();
   | `xsd:QName` | drop-down of the object types (`DropDownChoicePanelFactory`: any QName item) | an object type's QName, its local name (`"UserType"`) or the text shown (`"User"`) | any other value; a stored value no choice has fails the Save (the GUI's error page) |
   | string of a lookup table (`valueEnumerationRef`) | autocomplete text field | a row's key (`"south"`) or its label (`"South wing"`): the key is stored | |
   | reference (`parentOrgRef`, an extension reference) | the chosen object's name and a chooser popup (`ValueChoosePanel`) | | always (`it is a reference, whose field the GUI sets by the object chosen in its chooser popup`): change it through the model, `t.actor(user).modify(...)` |
-  | protected string (`credentials/password/value`) | the GUI's own password panel | | always (`it is a protected string (a password)`): `t.actor(user).modify(user) { it.password("...") }` |
+  | protected string (`credentials/password/value`) | the GUI's own password panel | | always (`it is a protected string (a password)`): `t.actor(user).modify(user) { it.password("...") }`, or the user's own credentials page, `t.actor(user).selfCredentials()` |
 
   An item on another panel of the page than the one it opens on (4.4 and later: `activation`, the credentials) has no
   field (`the page shows no field of activation/validTo`). A drop-down field takes the value as the choice a user
@@ -426,7 +426,54 @@ assertThat(form.canRead("emailAddress")).isTrue();
   The tester brings midPoint's GUI for them, nothing to declare:
   [Classes of the GUI](environment.md#classes-of-the-gui). The GUI's beans load once per JVM, on its first form (not
   midPoint's web application: no initial import, filters or web server). Not covered: the browser's own validations and scripts,
-  wizards (a resource's, an object type's), and pages other than the objects' details pages.
+  wizards (a resource's, an object type's), and pages other than the objects' details pages and the credentials page
+  below.
+- `t.actor(u).selfCredentials()` is the user's own credentials page (the side menu's Credentials,
+  `/self/credentials`, `#selfAll` or `#selfCredentials`; a user who may not open it fails:
+  `nobody may not open /self/credentials`), **run by the GUI itself** as the forms are (`SelfCredentialsPage`).
+  `.currentPassword(p)`, `.newPassword(p)` (typed into both fields; `newPassword(p, repeated)` for a mismatch),
+  `.select(target)` / `.deselect(target)` (a row by its resource, name or OID: `"LDAP"`, the user's own name) are
+  typed and clicked as the user does; `.open()` reads the page after them: `asksCurrentPassword()` (the security
+  policy's `passwordChangeSecurity`: unset, it asks on every line), `targets()` / `target("LDAP")` (the user
+  themself, then each linked account with its resource; `selected()`, `selectable()`, `note()` as the page shows
+  them; a row's own policy in its `requirements()`), `requirements()` / `unmetRequirements()` (the user's password
+  policy's limitations the page lists for the typed password; 4.0 lists none). `.submit()` presses the page's Save,
+  which executes the page's own deltas through the model as the user (the user's `#changeCredentials` / `#modify`, the
+  password policy and history, the self-service channel). A save the password policy or the authorizations refuse
+  changes nothing; a partial error (4.4+: one target failed) may still have changed the user's own password with
+  `saved()` false, and 4.0 reports `saved()` false when the home page it opens after saving is the GUI's error page.
+  `saves()`, `rejects()`, `rejectsWithMessageContaining(part)` (recommended: it reads alike on every line) and
+  `rejectsWith(m)` (exact: a 4.8+ toast is `Save password: Password not changed. Old password is incorrect.`, 4.0
+  and 4.4 show the body only, which 4.8+ also list, line by line) are over `messages()`: what the browser shows, the page's feedback, its toasts,
+  each row's result when the browser shows the table (`Identity Manager Repository (jdoe): FATAL_ERROR: Provided
+  password does not satisfy the policies: The value was recently used.`). 4.8+ with the table not listed, the
+  model's refusal shows only the toast `There were some errors during processing, see result table for details.`
+  and the browser renders no table (`rowResultsShown()` false): the policy's message is then in `targetResults()`
+  only, not in `messages()`. `page()` is the page after saving as the tester renders it again. By line:
+
+  | | 4.0 | 4.4 | 4.8 to 4.11 |
+  |---|---|---|---|
+  | Page, Save | `web.page.self.PageSelfCredentials`, its Save; a saved password goes to the home page | as 4.0, the page stays with each row's result | `gui.impl.page.self.credentials.PageSelfCredentials` (`PropagatePasswordPanel`), its Change password |
+  | Current password | `oldPassword`, asked when `passwordChangeSecurity` is unset or `oldPassword` | as 4.0, and `oldPasswordIfExists` when the user has a password | `currentPassword`, as 4.4 |
+  | Targets | rows selected by their icon: the user selected, an account not selected (or by the mapping, with a password outbound: `deselect` fails while the user's row is selected) | check boxes, the rows selected; disabled (and not selected) without the password capability, or as `propagationUserControl` says | as 4.4, the table listed only with "Change password on individual systems" ticked (`propagationUserControl` `userChoice` or `identityManagerMandatory`, or a `select`/`deselect`, which ticks it); not listed, its rows are still saved as selected (`listsTargets()` false) |
+  | Messages | feedback | feedback (the result in the rows' column) | toasts and the rows' column |
+
+  Not covered: the security questions tab, 4.8's password hint field (shown with `ALWAYS_CONFIGURE`), the rows'
+  policy validation column beyond its requirements, Back, and 4.8+'s `propagationUserControl` `mapping` (no
+  "Change password on individual systems" check box, so `select` / `deselect` fail); the page's texts are in the
+  JVM's locale, not the user's.
+
+  ```kotlin
+  t.actor("jdoe").selfCredentials().currentPassword("Initial.12345").newPassword("Changed.12345").submit().saves()
+  t.actor("jdoe").selfCredentials().currentPassword("Wrong.12345").newPassword("Changed.12345").submit()
+      .rejectsWithMessageContaining("Old password is incorrect")
+  // 4.4 shows the policy's message in the table; 4.8+ without the table listed, in targetResults() only
+  t.actor("jdoe").selfCredentials().select("LDAP").currentPassword("Initial.12345").newPassword("Short.1").submit()
+      .rejectsWithMessageContaining("Minimal size (10) is not met")
+  t.actor("jdoe").selfCredentials().open().target("LDAP").selected() shouldBe true
+  t.actor("jdoe").selfCredentials().deselect("LDAP").currentPassword("Initial.12345").newPassword("Changed.12345")
+      .submit().saves()
+  ```
 - A failed assertion after any of them lists the user's authorizations, by the role they come from:
   `'read-it-users': allow authorization-model-3#read of UserType with a filter; items name, givenName...`.
 - midPoint's initial End user role (every user of the sample has it) lets a user get **any** user, with all items

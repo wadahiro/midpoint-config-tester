@@ -313,6 +313,134 @@ public interface GuiForms {
         }
     }
 
+    /**
+     * The user's own credentials page as the user fills it in: the current password (null: not typed), the new
+     * password and its repetition (null: not typed), the targets whose selection the user changes (a row by its name
+     * or resource, true: selected), in this order.
+     */
+    final class CredentialsSpec {
+        public final String user;
+        public final String currentPassword;
+        public final String newPassword;
+        public final String repeatedPassword;
+        public final Map<String, Boolean> selections;
+
+        public CredentialsSpec(String user, String currentPassword, String newPassword, String repeatedPassword,
+                Map<String, Boolean> selections) {
+            this.user = user;
+            this.currentPassword = currentPassword;
+            this.newPassword = newPassword;
+            this.repeatedPassword = repeatedPassword;
+            this.selections = Collections.unmodifiableMap(new LinkedHashMap<>(selections));
+        }
+    }
+
+    /** A row of the credentials page's table of targets: the user themself or one of their accounts. */
+    final class CredentialsTarget {
+        /** The OID of the user or the account (shadow). */
+        public final String oid;
+        /** The name column: the user's name, the account's name. */
+        public final String name;
+        /** The resource column: the resource's name, or the page's name of midPoint for the user. */
+        public final String resource;
+        /** Whether the row is the user themself (midPoint), not an account. */
+        public final boolean user;
+        /** Whether the row is selected (4.0: its icon is the selected one; 4.4+: its check box is ticked). */
+        public final boolean selected;
+        /** Whether the user may change the selection (4.0: the icon is enabled; 4.4+: the check box is). */
+        public final boolean selectable;
+        /** 4.0: the password changes through the user's password mapping (the icon of a propagated account). */
+        public final boolean byMapping;
+        /** Why the row cannot be changed, as the page says it (its title), or null. */
+        public final String note;
+        /**
+         * The row's result after a Change password / Save (status and message), or null: none. Held by the page
+         * whether or not the browser shows it ({@link Credentials#rowResultsShown}).
+         */
+        public final String result;
+        /**
+         * The requirements of the row's own password policy as its validation column lists them (4.4+; the account's
+         * resource's policy, the user's for their own row), empty: none listed.
+         */
+        public final List<PasswordRequirement> requirements;
+
+        public CredentialsTarget(String oid, String name, String resource, boolean user, boolean selected,
+                boolean selectable, boolean byMapping, String note, String result,
+                List<PasswordRequirement> requirements) {
+            this.oid = oid;
+            this.name = name;
+            this.resource = resource;
+            this.user = user;
+            this.selected = selected;
+            this.selectable = selectable;
+            this.byMapping = byMapping;
+            this.note = note;
+            this.result = result;
+            this.requirements = Collections.unmodifiableList(new ArrayList<>(requirements));
+        }
+    }
+
+    /** A requirement of the password policy as the page lists it for the new password typed. */
+    final class PasswordRequirement {
+        public final String text;
+        public final boolean satisfied;
+
+        public PasswordRequirement(String text, boolean satisfied) {
+            this.text = text;
+            this.satisfied = satisfied;
+        }
+    }
+
+    /** The credentials page as the GUI rendered it for the user, after the inputs and, when saved, the save. */
+    final class Credentials {
+        /** Whether the page shows (and so requires) the current password field. */
+        public final boolean asksCurrentPassword;
+        /**
+         * Whether the table of targets is shown (4.8+: "Change password on individual systems" ticked; 4.0, 4.4:
+         * unless the policy's propagation is {@code mapping} or the page loads no accounts).
+         */
+        public final boolean targetsShown;
+        /** Whether the page offers the "Change password on individual systems" check box (4.8+ only). */
+        public final boolean individualSystemsOffered;
+        public final List<CredentialsTarget> targets;
+        public final List<PasswordRequirement> requirements;
+        /** Whether Save / Change password was pressed. */
+        public final boolean submitted;
+        /** Whether the page saved the password (the model's changes executed without an error). */
+        public final boolean saved;
+        /**
+         * Whether the browser shows the rows' results after the save: the table was listed before it, or the page
+         * rendered it again (4.8+: a save without an error re-renders the panel; after an error only the result column
+         * of a table already shown is updated).
+         */
+        public final boolean rowResultsShown;
+        /**
+         * What the page shows the user: feedback, toasts (each as "title: body", and the body's lines alone), the rows'
+         * results when {@link #rowResultsShown}; in this order.
+         */
+        public final List<String> messages;
+
+        public Credentials(boolean asksCurrentPassword, boolean targetsShown, boolean individualSystemsOffered,
+                List<CredentialsTarget> targets, List<PasswordRequirement> requirements, boolean submitted,
+                boolean saved, boolean rowResultsShown, List<String> messages) {
+            this.asksCurrentPassword = asksCurrentPassword;
+            this.targetsShown = targetsShown;
+            this.individualSystemsOffered = individualSystemsOffered;
+            this.targets = Collections.unmodifiableList(new ArrayList<>(targets));
+            this.requirements = Collections.unmodifiableList(new ArrayList<>(requirements));
+            this.submitted = submitted;
+            this.saved = saved;
+            this.rowResultsShown = rowResultsShown;
+            this.messages = Collections.unmodifiableList(new ArrayList<>(messages));
+        }
+    }
+
+    /**
+     * The user's own credentials page ({@code /self/credentials}) opened as them, the selections changed and the
+     * passwords typed in, then (save) its Save / Change password pressed.
+     */
+    Credentials credentials(CredentialsSpec spec, boolean save);
+
     /** The page opened, the items typed into, then the value into the item. */
     Field type(Spec spec, String item, Object value);
 

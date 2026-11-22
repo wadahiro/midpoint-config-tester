@@ -44,6 +44,12 @@ final class GuiLineImpl implements GuiLine {
     }
 
     @Override
+    public Class<? extends Page> selfCredentialsPage() {
+        // PageAbstractSelfCredentials (4.0): its ChangePasswordPanel, the accounts selected by their icons, the Save
+        return com.evolveum.midpoint.web.page.self.PageSelfCredentials.class;
+    }
+
+    @Override
     public boolean storedIntoParentOrgRef(QName relation) {
         // WebComponentUtil.initNewObjectWithReference: every org reference, whatever its relation
         return true;

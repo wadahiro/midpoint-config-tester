@@ -34,6 +34,15 @@ interface GuiLine {
     Class<? extends Page> selfProfilePage();
 
     /**
+     * The page of the logged-in user's own credentials (the side menu's Credentials, {@code /self/credentials} on every
+     * line): 4.0 and 4.4 {@code web.page.self.PageSelfCredentials} (the change password panel of a
+     * {@code MyPasswordsDto}, the page's Save), 4.8+ {@code gui.impl.page.self.credentials.PageSelfCredentials} (its
+     * {@code PropagatePasswordPanel} on the logged-in focus, the panel's Change password). The page takes no
+     * parameter.
+     */
+    Class<? extends Page> selfCredentialsPage();
+
+    /**
      * Whether the GUI puts an org a new member is created in with this relation into its parentOrgRef too (the
      * members panel's "+": initNewObjectWithReference).
      */
