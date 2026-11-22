@@ -1,3 +1,11 @@
+# [0.19.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.18.0...v0.19.0) (2026-11-22)
+
+
+### Features
+
+* **gui:** the request-access page's Submit: several roles, the page's options, several targets ([87da75c](https://github.com/wadahiro/midpoint-config-tester/commit/87da75cbbb95b2f3e60673eb85097b310a76b39b))
+* **gui:** the user's own profile page as a form ([fca67ad](https://github.com/wadahiro/midpoint-config-tester/commit/fca67ad958bd34bfd6330c2513df70a21f904a0e))
+
 # [0.18.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.17.0...v0.18.0) (2026-11-21)
 
 
