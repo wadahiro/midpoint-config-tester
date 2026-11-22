@@ -1,3 +1,10 @@
+## [0.20.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.20.0...v0.20.1) (2026-11-22)
+
+
+### Bug Fixes
+
+* **mirror:** read the native status when the simulated status attribute is not in the stored schema ([ee59c2c](https://github.com/wadahiro/midpoint-config-tester/commit/ee59c2c1ee634ac8d06b5033fed3d94d9d763642))
+
 # [0.20.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.19.0...v0.20.0) (2026-11-22)
 
 
