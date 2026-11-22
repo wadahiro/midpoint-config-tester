@@ -26,12 +26,20 @@ name. A test's write of an attribute the object class does not have (`t.target(.
 are there when the native capabilities list them, or, without those, when `schemaHandling` maps them; they are
 attributes in milliseconds (`attribute(account, "__ENABLE_DATE__")`). A status simulated with an attribute
 (`capabilities/configured/activation/status/attribute`) is that attribute, as on the real connector: the mirror then
-has no native status and has the attribute even when `schemaHandling` does not name it (with a stored schema, only when
-the account class there declares it: otherwise midPoint does not simulate the status and writes the native one, which
-the import and the deployment's load warn about, and which a failed `isEnabled()` / `isDisabled()` of the account, or a
-failed `enabled(account)`, names); `enabled(account)` and `setEnabled(account, enabled)` read and write the attribute
-with the enable and disable values (on the real CSV and LDAP connectors too, see [Activation and
-validity](midpoint-features.md#activation-and-validity)). Passwords are stored (`password(account)`,
+has no native status unless the native capabilities list one, and has the attribute even when `schemaHandling` does not
+name it; `enabled(account)` and `setEnabled(account, enabled)` read and write the attribute with the enable and disable
+values (on the real CSV and LDAP connectors too, see [Activation and
+validity](midpoint-features.md#activation-and-validity)). With a stored schema the attribute is there only when the
+account class there declares it. Otherwise midPoint does not simulate the status and writes the native one, which a real
+connector with native activation maps itself: `enabled(account)` and `setEnabled(account, enabled)` then read and write
+the mirror's native status, the one midPoint writes, and fail when the native capabilities list no activation. midPoint
+itself still reads the status from the attribute, which the account does not have: with neither value empty the read is
+a partial error (a warning before 4.8); with an empty disable value midPoint reads every account as disabled, so a
+strong enabled outbound writes the status again on every recompute; with an empty enable value and a non-empty disable
+value it reads every account as enabled, so it does not enable a disabled account again. An account class the stored
+schema does not have makes midPoint reject its object type (an unknown object class), so midPoint writes no status
+there. The import and the deployment's load report both (the import once per JVM). Passwords are stored
+(`password(account)`,
 `setPassword(account, value)`) and returned as the real connector returns them: the native capability
 `credentials/password/readable` if the definition lists the native capabilities; otherwise the connector's
 configuration: the CSV connector's `passwordAttribute` (the column, returned by default), the LDAP connector's

@@ -522,42 +522,64 @@ class MirrorResourceXmlTest {
     }
 
     /**
-     * A simulated status whose attribute the stored schema does not declare: midPoint does not simulate the status
-     * through it, so the transform warns, and reading the status of an account names that cause.
+     * A simulated status whose attribute the stored schema does not declare, on a resource with the native activation
+     * capability: midPoint does not simulate the status but writes the native one, so the mirror reads and writes its
+     * native status, and the transform says so.
      */
     @Test
-    void aSimulatedStatusAttributeNotInTheStoredSchema() {
-        MirrorResourceXml r = transform(simulatedStatus("r-undeclared", ""));
+    void anUndeclaredSimulatedStatusAttributeWithTheNativeCapability() {
+        MirrorResourceXml r = transform(simulatedStatus("r-undeclared-native", "", NATIVE_ACTIVATION));
 
         assertThat(r.warnings).hasSize(1);
         assertThat(r.warnings.get(0)).contains("resource R", "ri:locked",
                 "is not declared in the stored schema (account classes [person])",
-                "isEnabled() / isDisabled() of its accounts do not read the status midPoint writes");
-        assertThatThrownBy(() -> statusOfAnAccount(r))
-                .isInstanceOf(AssertionError.class)
-                .hasMessageContaining("Account bob has no locked (simulated activation status)")
-                .hasMessageContaining("ri:locked is not declared in the stored schema of the resource");
-    }
-
-    /**
-     * An empty enable value (no attribute: enabled): the undeclared attribute reads as enabled whatever midPoint
-     * writes, so the transform warns and the target gives the hint for a failed assertion on the status.
-     */
-    @Test
-    void anUndeclaredSimulatedStatusAttributeWithAnEmptyEnableValue() {
-        MirrorResourceXml r = transform(simulatedStatus("r-undeclared-empty", "")
-                .replace("<cap:enableValue>false</cap:enableValue>", "<cap:enableValue></cap:enableValue>"));
-
-        assertThat(r.warnings).hasSize(1);
-        assertThat(r.warnings.get(0))
-                .contains("is not declared in the stored schema (account classes [person])");
+                "midPoint does not simulate the status of those accounts but writes their native status, which the"
+                        + " tester reads")
+                .doesNotContain("fails");
         MirrorTargetImpl target = MirrorTargetImpl.create(r);
         target.addAccount("bob", Map.of());
         assertThat(target.enabled("bob")).isTrue();
-        assertThat(target.statusHint()).contains("ri:locked is not declared in the stored schema of the resource");
+        target.setEnabled("bob", false);
+        assertThat(target.enabled("bob")).isFalse();
+        target.setEnabled("bob", true);
+        assertThat(target.enabled("bob")).isTrue();
     }
 
-    /** Two account classes, one declaring the attribute, one not, and one the stored schema does not have. */
+    /** The same with an empty enable value: the native status, not "no attribute: enabled". */
+    @Test
+    void anUndeclaredSimulatedStatusAttributeWithAnEmptyEnableValue() {
+        MirrorResourceXml r = transform(simulatedStatus("r-undeclared-empty", "", NATIVE_ACTIVATION)
+                .replace("<cap:enableValue>false</cap:enableValue>", "<cap:enableValue></cap:enableValue>"));
+
+        assertThat(r.warnings).hasSize(1);
+        MirrorTargetImpl target = MirrorTargetImpl.create(r);
+        target.addAccount("bob", Map.of());
+        target.setEnabled("bob", false);
+        assertThat(target.enabled("bob")).isFalse();
+    }
+
+    /** Without the native activation capability there is no status to read: the read names why. */
+    @Test
+    void anUndeclaredSimulatedStatusAttributeWithoutTheNativeCapability() {
+        MirrorResourceXml r = transform(simulatedStatus("r-undeclared", "", ""));
+
+        assertThat(r.warnings).hasSize(1);
+        assertThat(r.warnings.get(0)).contains("is not declared in the stored schema (account classes [person])",
+                "the resource has no native activation capability, so reading the status fails");
+        MirrorTargetImpl target = MirrorTargetImpl.create(r);
+        target.addAccount("bob", Map.of());
+        String why = "the simulated status attribute ri:locked is not in the stored schema and the resource has no"
+                + " native activation capability";
+        assertThatThrownBy(() -> target.enabled("bob"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining(why);
+        assertThatThrownBy(() -> target.setEnabled("bob", false))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining(why);
+    }
+
+    /**
+     * Two account classes, one declaring the attribute, one not, and one the stored schema does not have: the mirror
+     * reads the status in person, which declares it, so through the attribute.
+     */
     @Test
     void aSimulatedStatusAttributeSomeAccountClassesDoNotDeclare() {
         MirrorResourceXml r = transform(HEAD.replace("'r1'", "'r-some-classes'")
@@ -567,16 +589,24 @@ class MirrorResourceXmlTest {
                 + "</xsd:schema></definition></schema><schemaHandling>"
                 + accountType("default", "person") + accountType("contractor", "contractor")
                 + accountType("external", "external")
-                + "</schemaHandling>" + SIMULATED_STATUS + "</resource>");
+                + "</schemaHandling>" + with(NATIVE_ACTIVATION) + "</resource>");
 
         assertThat(r.warnings).hasSize(1);
         assertThat(r.warnings.get(0))
                 .contains("is not declared in the stored schema (account classes [contractor])",
-                        "the class is not in the stored schema (account classes [external])");
-        // the mirror reads the status in person, which declares it
-        assertThat(MirrorTargetImpl.create(r).statusHint()).isEmpty();
+                        "the class is not in the stored schema (account classes [external]): midPoint cannot use"
+                                + " those object types")
+                .doesNotContain("the tester reads", "fails");
+        assertThat(r.simulatedActivation.undeclared).isFalse();
+        assertThatThrownBy(() -> statusOfAnAccount(r))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("Account bob has no locked (simulated activation status)");
     }
 
+    /**
+     * An account class the stored schema does not have: midPoint cannot use its object type (an unknown object class),
+     * so it writes no status there, and the transform says that instead of the native status.
+     */
     @Test
     void aSimulatedStatusOfAnAccountClassNotInTheStoredSchema() {
         MirrorResourceXml r = transform(HEAD.replace("'r1'", "'r-no-class'")
@@ -587,19 +617,29 @@ class MirrorResourceXmlTest {
         assertThat(r.warnings).hasSize(1);
         assertThat(r.warnings.get(0))
                 .contains("ri:locked (capabilities/configured/activation/status): the class is not in the stored"
-                        + " schema (account classes [external])")
-                .doesNotContain("is not declared");
+                        + " schema (account classes [external]): midPoint cannot use those object types, their object"
+                        + " class is unknown")
+                .doesNotContain("is not declared", "native status", "partial error");
+        assertThat(r.simulatedActivation.undeclared).isFalse();
     }
 
+    /** Declared: the status is the attribute, with or without the native capability. */
     @Test
     void aSimulatedStatusAttributeInTheStoredSchema() {
-        MirrorResourceXml r = transform(simulatedStatus("r-declared", "<xsd:element name='locked' type='xsd:string'/>"));
+        for (String nativeCapabilities : new String[] { "", NATIVE_ACTIVATION }) {
+            MirrorResourceXml r = transform(simulatedStatus("r-declared" + nativeCapabilities.length(),
+                    "<xsd:element name='locked' type='xsd:string'/>", nativeCapabilities));
 
-        assertThat(r.warnings).isEmpty();
-        assertThatThrownBy(() -> statusOfAnAccount(r))
-                .isInstanceOf(AssertionError.class)
-                .hasMessageContaining("Account bob has no locked (simulated activation status)")
-                .hasMessageNotContaining("not declared");
+            assertThat(r.warnings).isEmpty();
+            MirrorTargetImpl target = MirrorTargetImpl.create(r);
+            target.addAccount("bob", Map.of());
+            assertThatThrownBy(() -> target.enabled("bob"))
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessageContaining("Account bob has no locked (simulated activation status)");
+            target.setEnabled("bob", false);
+            assertThat(target.attributeValues("bob", "locked")).containsExactly("true");
+            assertThat(target.enabled("bob")).isFalse();
+        }
     }
 
     @Test
@@ -613,19 +653,32 @@ class MirrorResourceXmlTest {
         assertThat(classes(r).get("person").attributes).containsKey("locked");
     }
 
+    /** The native activation capability (status), in the capabilities of {@link #SIMULATED_STATUS} ({@link #with}). */
+    private static final String NATIVE_ACTIVATION = "<native>"
+            + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
+            + "<cap:status/></cap:activation></native>";
+
+    /** {@link #SIMULATED_STATUS} with these native capabilities. */
+    private static String with(String nativeCapabilities) {
+        return SIMULATED_STATUS.replace("<capabilities>", "<capabilities>" + nativeCapabilities);
+    }
+
     /** {@code ri:locked}: enabled when false, disabled when true. */
     private static final String SIMULATED_STATUS = "<capabilities><configured>"
             + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
             + "<cap:status><cap:attribute>ri:locked</cap:attribute><cap:enableValue>false</cap:enableValue>"
             + "<cap:disableValue>true</cap:disableValue></cap:status></cap:activation></configured></capabilities>";
 
-    /** A resource with a stored schema of the account class person (with these elements) and the simulated status. */
-    private static String simulatedStatus(String oid, String elements) {
+    /**
+     * A resource with a stored schema of the account class person (with these elements), these native capabilities
+     * ("" or {@link #NATIVE_ACTIVATION}) and the simulated status.
+     */
+    private static String simulatedStatus(String oid, String elements, String nativeCapabilities) {
         return HEAD.replace("'r1'", "'" + oid + "'")
                 + "<schema><definition><xsd:schema>" + personClass("person", elements)
                 + "</xsd:schema></definition></schema>"
                 + "<schemaHandling>" + accountType("default", "person") + "</schemaHandling>"
-                + SIMULATED_STATUS + "</resource>";
+                + with(nativeCapabilities) + "</resource>";
     }
 
     /** A class of the stored schema named by login, with these elements. */

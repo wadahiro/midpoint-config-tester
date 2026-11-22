@@ -125,7 +125,8 @@ A resource provisions the status of its accounts only through the activation sec
 - **Simulated status** (`capabilities/configured/activation/status`: `attribute`, `enableValue`, `disableValue`), e.g.
   a CSV column or an LDAP attribute. midPoint keeps the attribute out of the shadow (`ignoreAttribute`, default true):
   assert on the target system, `TargetSystem.enabled(account)` reads it as midPoint does, on a mirror and on the real
-  CSV and LDAP connectors.
+  CSV and LDAP connectors (with a stored schema whose account class does not declare the attribute, the native status
+  midPoint writes instead, see [Configuration and target systems](environment.md#configuration-and-target-systems)).
 
 Time passes with midPoint's clock; the scanners do what midPoint's recurring tasks would:
 

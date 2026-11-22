@@ -139,31 +139,38 @@ final class MirrorTargetImpl implements ManagedTarget {
 
     @Override
     public boolean enabled(String account) {
-        if (simulatedActivation != null) {
+        if (simulatedActivation != null && !simulatedActivation.undeclared) {
             return simulatedActivation.enabled(this, account);
         }
-        if (!resource.byName(accountClass()).activation) {
-            throw new IllegalStateException("Resource " + resource.instanceId + " has no activation capability");
-        }
+        requireNativeActivation();
         return !Boolean.FALSE.equals(existing(accountClass(), account).enabled);
-    }
-
-    @Override
-    public String statusHint() {
-        return simulatedActivation != null ? simulatedActivation.hintIfUndeclared() : "";
     }
 
     @Override
     public void setEnabled(String account, boolean enabled) {
         Writes.count();
-        if (simulatedActivation != null) {
+        if (simulatedActivation != null && !simulatedActivation.undeclared) {
             simulatedActivation.setEnabled(this, account, enabled);
             return;
         }
-        if (!resource.byName(accountClass()).activation) {
-            throw new IllegalStateException("Resource " + resource.instanceId + " has no activation capability");
-        }
+        requireNativeActivation();
         existing(accountClass(), account).enabled = enabled;
+    }
+
+    /**
+     * The native status of the account class, which a status simulated through an attribute the stored schema does
+     * not declare also is: midPoint then writes the native status ({@link SimulatedActivation#undeclared}).
+     */
+    private void requireNativeActivation() {
+        if (resource.byName(accountClass()).activation) {
+            return;
+        }
+        if (simulatedActivation != null) {
+            throw new IllegalStateException("Resource " + resource.instanceId + ": the simulated status attribute ri:"
+                    + simulatedActivation.attribute + " is not in the stored schema and the resource has no native"
+                    + " activation capability");
+        }
+        throw new IllegalStateException("Resource " + resource.instanceId + " has no activation capability");
     }
 
     @Override

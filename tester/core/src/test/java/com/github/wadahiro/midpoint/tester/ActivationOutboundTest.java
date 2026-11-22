@@ -21,6 +21,8 @@ import com.github.wadahiro.midpoint.configtester.Effects;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
 import com.github.wadahiro.midpoint.configtester.Modification;
+import com.github.wadahiro.midpoint.tester.OperationFailed;
+import com.github.wadahiro.midpoint.tester.internal.Internals;
 
 /**
  * An account disabled on the target, under each way of recomputing its user (as {@link AttributeOutboundTest} does for
@@ -68,35 +70,66 @@ class ActivationOutboundTest {
     }
 
     /**
-     * The status simulated in employeeType, which the stored schema does not declare: midPoint writes the native
-     * status, and the account's status names that cause (the tester does not read another status instead).
+     * The status simulated in employeeType, which the stored schema does not declare, on a resource with the native
+     * activation capability: midPoint writes the native status, and the account's status is that one, as on the real
+     * connector. midPoint's own read of the account still goes through the attribute
+     * ({@code TwoStateSimulatedToRealConverter}): with neither value empty no value is a partial error, which fails the
+     * modify (its write is done). 4.0 and 4.4 skip the status of that read with a warning: no error.
      */
     @Test
     void aSimulatedStatusAttributeTheStoredSchemaDoesNotDeclare(MidPointConfigTester t, @TempDir Path dir)
             throws Exception {
-        resource(t, dir, "undeclared", "strong");
+        resource(t, dir, "undeclared-native", "strong");
+        t.target("LDAP").account(JDOE).isEnabled();
+        boolean partialError = Lines.atLeast(t.midpoint(), "4.8");
 
-        assertThatThrownBy(() -> t.target("LDAP").account(JDOE).isEnabled())
-                .isInstanceOf(AssertionError.class)
-                .hasMessageContaining("has no employeeType (simulated activation status)")
-                .hasMessageContaining("ri:employeeType is not declared in the stored schema of the resource");
+        Runnable disable = () -> t.user("jdoe").modify(m -> m.set("activation/administrativeStatus", "disabled"))
+                .connectorCalls().to("LDAP").writes().single().only("activation/administrativeStatus");
+        if (partialError) {
+            // the message differs between the lines, the status does not
+            assertThatThrownBy(disable::run).isInstanceOf(OperationFailed.class)
+                    .hasMessageContaining("failed: PARTIAL_ERROR");
+        } else {
+            disable.run();
+        }
+        t.target("LDAP").account(JDOE).isDisabled();
+        assertThat(t.midpoint().target("LDAP").account(JDOE)).doesNotContainKey("employeeType");
+
+        Internals.allowingPartialErrors(t.midpoint(), partialError, () -> t.user("jdoe")
+                .modify(m -> m.set("activation/administrativeStatus", "enabled"))
+                .connectorCalls().to("LDAP").writes().single().only("activation/administrativeStatus"));
+        t.target("LDAP").account(JDOE).isEnabled();
     }
 
     /**
-     * The same with an empty enable value (no attribute: enabled): the account reads as enabled whatever midPoint
-     * writes, and the failed assertion names the cause.
+     * The same with an empty enable value: the account's status is still the native one midPoint writes. midPoint
+     * reads no attribute as enabled, so it does not write the status of a disabled account enabled again.
      */
     @Test
     void anUndeclaredSimulatedStatusAttributeWithAnEmptyEnableValue(MidPointConfigTester t, @TempDir Path dir)
             throws Exception {
-        resource(t, dir, "undeclared-empty", "strong");
+        resource(t, dir, "undeclared-empty-native", "strong");
         t.target("LDAP").account(JDOE).isEnabled();
-        t.user("jdoe").modify(m -> m.set("activation/administrativeStatus", "disabled"));
 
-        assertThatThrownBy(() -> t.target("LDAP").account(JDOE).isDisabled())
-                .isInstanceOf(AssertionError.class)
-                .hasMessageContaining("expected disabled, but it is enabled; the resource's configuration is the cause:"
-                        + " ri:employeeType is not declared in the stored schema of the resource");
+        t.user("jdoe").modify(m -> m.set("activation/administrativeStatus", "disabled"))
+                .connectorCalls().to("LDAP").writes().single().only("activation/administrativeStatus");
+        t.target("LDAP").account(JDOE).isDisabled();
+
+        t.user("jdoe").modify(m -> m.set("activation/administrativeStatus", "enabled"))
+                .connectorCalls().to("LDAP").writes().none();
+        t.target("LDAP").account(JDOE).isDisabled();
+    }
+
+    /** The same without the native activation capability: there is no status to read, and the read names why. */
+    @Test
+    void anUndeclaredSimulatedStatusAttributeWithoutTheNativeCapability(MidPointConfigTester t, @TempDir Path dir)
+            throws Exception {
+        resource(t, dir, "undeclared", "strong");
+
+        assertThatThrownBy(() -> t.target("LDAP").account(JDOE).isEnabled())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("the simulated status attribute ri:employeeType is not in the stored schema and"
+                        + " the resource has no native activation capability");
     }
 
     private static Supplier<Effects> verb(MidPointConfigTester t, String way) {
@@ -145,7 +178,7 @@ class ActivationOutboundTest {
     /**
      * The LDAP resource of {@code fixtures/provisioning} with an administrative status outbound of the strength, the
      * status native or simulated in employeeType ({@code undeclared}: the stored schema without employeeType,
-     * {@code undeclared-empty} also with an empty enable value);
+     * {@code -empty} also with an empty enable value, {@code -native} with the native activation capability listed);
      * {@code plain-} without its strong attribute outbounds. jdoe's account.
      */
     private static void resource(MidPointConfigTester t, Path dir, String kind, String strength) throws Exception {
@@ -166,10 +199,12 @@ class ActivationOutboundTest {
                     + "<ra:frameworkAttributeName>employeeType</ra:frameworkAttributeName></xsd:appinfo></xsd:annotation>"
                     + "</xsd:element>\n") + xml.substring(mail);
             int close = xml.lastIndexOf("    <synchronization>");
-            xml = xml.substring(0, close) + "    <capabilities><configured>"
+            xml = xml.substring(0, close) + "    <capabilities>" + (kind.endsWith("-native")
+                    ? "<native><cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
+                    + "<cap:status/></cap:activation></native>" : "") + "<configured>"
                     + "<cap:activation xmlns:cap='http://midpoint.evolveum.com/xml/ns/public/resource/capabilities-3'>"
                     + "<cap:status><cap:attribute>ri:employeeType</cap:attribute><cap:enableValue>"
-                    + (kind.equals("undeclared-empty") ? "" : "active") + "</cap:enableValue>"
+                    + (kind.startsWith("undeclared-empty") ? "" : "active") + "</cap:enableValue>"
                     + "<cap:disableValue>disabled</cap:disableValue></cap:status></cap:activation>"
                     + "</configured></capabilities>\n" + xml.substring(close);
         }

@@ -27,9 +27,10 @@ final class SimulatedActivation {
     final List<String> enableValues;
     final List<String> disableValues;
     /**
-     * Whether the stored schema the resource's classes come from has no such attribute in its account class:
-     * midPoint then does not simulate the status through it (it writes the native status, warning "attribute for
-     * simulated activation status capability ... is not present in the schema for objectclass").
+     * Whether the account class the status is read from, in the stored schema the resource's classes come from, does
+     * not declare the attribute: midPoint then does not simulate the status through it but writes the native
+     * status (warning "attribute for simulated activation status capability ... is not present in the schema
+     * for objectclass"), and the mirror reads that one ({@link MirrorTargetImpl#enabled}).
      */
     final boolean undeclared;
 
@@ -91,7 +92,7 @@ final class SimulatedActivation {
             }
             throw new AssertionError("Account " + account + " has no " + attribute + " (simulated activation status):"
                     + " neither enabled nor disabled (enable values " + enableValues + ", disable values "
-                    + disableValues + ")" + hintIfUndeclared());
+                    + disableValues + ")");
         }
         String value = String.valueOf(values.get(0));
         if (disableValues.contains(value)) {
@@ -102,16 +103,7 @@ final class SimulatedActivation {
         }
         throw new AssertionError("Account " + account + " has " + attribute + "=" + value + " (simulated activation"
                 + " status): neither enabled nor disabled (enable values " + enableValues + ", disable values "
-                + disableValues + ")" + hintIfUndeclared());
-    }
-
-    /**
-     * Why the status midPoint writes is not the attribute, when its account class does not declare it (or "") - for
-     * every message that reads the status.
-     */
-    String hintIfUndeclared() {
-        return undeclared ? "; the resource's configuration is the cause: ri:" + attribute + " is not declared in the"
-                + " stored schema of the resource, so midPoint writes the native status instead of the attribute" : "";
+                + disableValues + ")");
     }
 
     void setEnabled(TargetSystem target, String account, boolean enabled) {

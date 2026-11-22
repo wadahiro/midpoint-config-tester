@@ -55,8 +55,9 @@ import com.github.wadahiro.midpoint.tester.mirror.MirrorLink;
  *       is in the account classes (as a string), and without listed native capabilities the mirror has no native
  *       activation (as the CSV connector), so midPoint writes the status as the attribute
  *       ({@link SimulatedActivation}). With a stored schema the attribute is only there if the schema declares
- *       it; if it does not, midPoint does not simulate the status, and the transform warns
- *       ({@link #warnings}).</li>
+ *       it; if the account class does not declare it, midPoint does not simulate the status but writes the native
+ *       one, which the mirror then reads, and the transform warns ({@link #warnings}), as it does for an account
+ *       class the stored schema does not have (midPoint cannot use its object type).</li>
  * </ul>
  * Computed attributes ({@link ResourceOptions#computed}), referential integrity
  * ({@link ResourceOptions#referentialIntegrity()}) and case insensitive references
@@ -263,8 +264,10 @@ final class MirrorResourceXml {
                 }
             }
             if (!notDeclaring.isEmpty() || !notInSchema.isEmpty()) {
-                // the mirror reads the status in the first account class
-                if (notDeclaring.contains(accountClasses.get(0)) || notInSchema.contains(accountClasses.get(0))) {
+                // the mirror reads the status in the first account class; a class the stored schema does not have
+                // makes midPoint reject its object type (RefinedResourceSchemaParser: "Unknown object class"), so
+                // midPoint writes no status there
+                if (notDeclaring.contains(accountClasses.get(0))) {
                     simulated = simulated.undeclared();
                 }
                 Element name = child(resource, "name");
@@ -274,16 +277,24 @@ final class MirrorResourceXml {
                         .append(" (capabilities/configured/activation/status)");
                 if (!notDeclaring.isEmpty()) {
                     warning.append(" is not declared in the stored schema (account classes ").append(notDeclaring)
-                            .append(")");
+                            .append("): midPoint does not simulate the status of those accounts but writes their"
+                                    + " native status");
+                    if (simulated.undeclared) {
+                        // the class the mirror reads the status in
+                        warning.append(activation ? ", which the tester reads"
+                                : "; the resource has no native activation capability, so reading the status fails");
+                    }
+                    // TwoStateSimulatedToRealConverter: midPoint's read does not fall back to the native status
+                    warning.append("; midPoint still reads their status from the attribute they do not have: a"
+                            + " partial error (a warning before 4.8), or the status of an empty enable or disable"
+                            + " value");
                 }
                 if (!notInSchema.isEmpty()) {
                     warning.append(notDeclaring.isEmpty() ? ": " : "; ")
                             .append("the class is not in the stored schema (account classes ").append(notInSchema)
-                            .append(")");
+                            .append("): midPoint cannot use those object types, their object class is unknown");
                 }
-                warnings.add(warning.append(": midPoint writes the native status of those accounts instead, so"
-                        + " isEnabled() / isDisabled() of its accounts do not read the status midPoint writes")
-                        .toString());
+                warnings.add(warning.toString());
             }
         }
         List<MirrorClass> classes = schema != null
