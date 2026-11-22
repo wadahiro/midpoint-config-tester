@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.19.0...v0.20.0) (2026-11-22)
+
+
+### Features
+
+* **mirror:** warn when a simulated status attribute is not in the stored schema ([d02758e](https://github.com/wadahiro/midpoint-config-tester/commit/d02758e4c3e96386e2016a75e1a0e991551d28da))
+
 # [0.19.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.18.0...v0.19.0) (2026-11-22)
 
 
