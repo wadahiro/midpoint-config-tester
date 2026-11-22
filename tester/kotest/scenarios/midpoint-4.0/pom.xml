@@ -6,12 +6,12 @@
     <parent>
         <groupId>io.github.wadahiro.midpoint</groupId>
         <artifactId>midpoint-config-tester-parent-4.0</artifactId>
-        <version>0.21.0</version>
+        <version>0.21.1-SNAPSHOT</version>
         <relativePath>../../../../parent/midpoint-4.0/pom.xml</relativePath>
     </parent>
     <groupId>io.github.wadahiro.midpoint</groupId>
     <artifactId>midpoint-config-tester-kotest-scenarios-4.0</artifactId>
-    <version>0.21.0</version>
+    <version>0.21.1-SNAPSHOT</version>
     <name>Tests of the Kotest layer on midPoint 4.0</name>
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
