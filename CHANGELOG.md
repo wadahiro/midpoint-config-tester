@@ -1,3 +1,11 @@
+# [0.22.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.21.0...v0.22.0) (2026-11-23)
+
+
+### Features
+
+* **certification:** record a reviewer's comment without changing the response ([1f2bc9d](https://github.com/wadahiro/midpoint-config-tester/commit/1f2bc9d15ad5a2d90c87496286da7bbbbfc8b581))
+* **config:** change a deployed function's script for one test ([0327021](https://github.com/wadahiro/midpoint-config-tester/commit/0327021c3d61a6ee01a9ce8d282a005df1ed2f89))
+
 # [0.21.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.20.1...v0.21.0) (2026-11-22)
 
 
