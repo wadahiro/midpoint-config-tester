@@ -277,7 +277,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
     `t.audit().ofType("DELETE_OBJECT").execution().target(name).single().outcome()` (a part of the test:
     `t.audit(() -> ...)`; midPoint audits to its database, so audit reports and scripts that search it work; another
     system's SQL on midPoint's own tables: `t.repositoryDatabase().rows(sql, ...)`), a mail that cannot be sent
-    `t.mailServer().reject(address)`, failures
+    `t.mailServer().reject(address)`, a mail to an address the RFCs do not allow (`john..doe@example.com`; midPoint
+    4.10+ sends it with `-Dmail.mime.address.strict=false`): listed, the address read leniently in `to()`/`cc()`/`from()`
+    (else the header as written) and noted in `mail.unreadable()`, never failing `mails()` or a verb; failures
     `t.expectFailure(() -> ...)`
 - **Lines differ.** Check the line notes (https://github.com/wadahiro/midpoint-config-tester/blob/main/docs/guide/lines.md#line-notes) before asserting status values
   (e.g. an archived user is `archived` on 4.4 and `disabled` on 4.8 and later).

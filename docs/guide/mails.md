@@ -68,6 +68,7 @@ mail.subject();                          // decoded; mail.header("Subject") is t
 mail.body(); mail.bodyContentType(); mail.isHtml();
 mail.attachments();                      // fileName(), contentType(), contentId(), content(), text(), size()
 mail.contentType(); mail.headers(); mail.raw();   // multipart/mixed; headers as received; the MIME text
+mail.unreadable();                       // what the RFCs do not allow, read leniently or kept as written
 ```
 
 **What the tester changes on import.** Every import of a system configuration (`importObject`, `importObjects`,
@@ -103,6 +104,20 @@ adding a system configuration with `addObject(bean)`, is not rewritten.
 - `notifications()` stays for the `dummy` transports; a notifier with both kinds of transport appears in both.
 - TLS, authentication (basic and OAuth2) and the delivery to a real server are not tested: they are what the tester
   replaces.
+
+**Addresses the RFCs do not allow.** A mail is listed whatever its headers hold, and one mail the server cannot
+read never fails `mails()`, a driver call or a verb (each reads the mails it sent, `runDue()` too). `From`, `To` and
+`Cc` are read as the RFCs say; a header they do not allow (a local part with two dots in a row, or starting or ending
+with a dot: `john..doe@example.com`) is read leniently when that gives plain addresses, so `to()` holds
+`john..doe@example.com` and `t.mails().to("john..doe@example.com")` finds the mail; any other header is one entry,
+the header as written (`<jdoe@example.com` without its `>`). Each such header is a line of `mail.unreadable()`
+(`To: john..doe@example.com: Local address contains dot-dot ... (read leniently)`), as is a part that could not be read
+(its value is then missing: `body()` null, say); `raw()` and the envelope `recipients()` are always there. Whether
+midPoint sends such an address depends on its line: 4.10 and 4.11 send it when the JVM has
+`mail.mime.address.strict=false` (their transport reads the addresses with that property), 4.0 always (javax.mail
+1.4.5 takes the dots); 4.4, 4.8 and 4.9 refuse it before sending, whatever the property (no mail). A script or another
+sender outside midPoint's transport can send one on every line. Every line reads them so (4.0 to 4.11); on 4.0 the
+dots are within what its javax.mail reads strictly, so `unreadable()` does not note them.
 
 **A mail that cannot be sent.** `t.mailServer().reject()` makes the tester's SMTP server refuse every mail from then
 on in the test, `reject("jdoe@example.com")` the mails to those recipients, `accept()` takes them again: the server

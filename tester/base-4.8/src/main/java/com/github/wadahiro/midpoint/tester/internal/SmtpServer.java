@@ -7,13 +7,13 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-import jakarta.mail.Address;
 import jakarta.mail.Header;
-import jakarta.mail.Message.RecipientType;
 import jakarta.mail.Multipart;
 import jakarta.mail.Part;
+import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeUtility;
 
 import com.icegreen.greenmail.configuration.GreenMailConfiguration;
 import com.icegreen.greenmail.mail.MovingMessage;
@@ -27,6 +27,8 @@ import com.github.wadahiro.midpoint.tester.Mail;
  * The in-memory SMTP server (GreenMail 2.1, Jakarta Mail) the mail transports of the system configuration are
  * redirected to. It keeps every SMTP transaction with its envelope recipients, in the order received; GreenMail
  * delivers before it answers {@code 250} to the end of {@code DATA}, so a mail is here when midPoint's send returns.
+ * A mail is read part by part: what the RFCs do not allow (an address with two dots in a row) is read leniently or
+ * kept as written and noted in {@link Mail#unreadable()}, so one such mail never fails the reading of the others.
  */
 final class SmtpServer {
 
@@ -91,7 +93,7 @@ final class SmtpServer {
         }
         List<Mail> out = new ArrayList<>();
         for (Received r : copy) {
-            out.add(toMail(r.message.getMessage(), r.recipients));
+            out.add(toMail(r.message, r.recipients));
         }
         return out;
     }
@@ -116,26 +118,49 @@ final class SmtpServer {
         }
     }
 
-    private static Mail toMail(MimeMessage message, List<String> recipients) {
+    /** The reading of one part of a mail, which may fail. */
+    private interface Reading {
+        void read() throws Exception;
+    }
+
+    private static Mail toMail(MovingMessage received, List<String> recipients) {
+        Mail.Builder mail = Mail.builder().recipients(recipients);
+        MimeMessage message;
         try {
-            Mail.Builder mail = Mail.builder()
-                    .from(first(message.getFrom()))
-                    .to(addresses(message.getRecipients(RecipientType.TO)))
-                    .cc(addresses(message.getRecipients(RecipientType.CC)))
-                    .recipients(recipients)
-                    .subject(message.getSubject())
-                    .contentType(message.getContentType());
+            message = received.getMessage();
+        } catch (RuntimeException e) {
+            return mail.unreadable("message: " + e).build();
+        }
+        read(mail, "raw", () -> {
+            ByteArrayOutputStream raw = new ByteArrayOutputStream();
+            message.writeTo(raw);
+            mail.raw(raw.toString(StandardCharsets.UTF_8));
+        });
+        read(mail, "headers", () -> {
             for (Enumeration<Header> e = message.getAllHeaders(); e.hasMoreElements(); ) {
                 Header header = e.nextElement();
                 mail.header(header.getName(), header.getValue());
             }
-            ByteArrayOutputStream raw = new ByteArrayOutputStream();
-            message.writeTo(raw);
-            mail.raw(raw.toString(StandardCharsets.UTF_8));
-            walk(message, mail);
-            return mail.build();
+        });
+        read(mail, "From", () -> {
+            // as getFrom(): the Sender when there is no From
+            List<String> from = message.getHeader("From") != null || message.getHeader("Sender") == null
+                    ? addresses(message, "From", mail) : addresses(message, "Sender", mail);
+            mail.from(from.isEmpty() ? null : from.get(0));
+        });
+        read(mail, "To", () -> mail.to(addresses(message, "To", mail)));
+        read(mail, "Cc", () -> mail.cc(addresses(message, "Cc", mail)));
+        read(mail, "Subject", () -> mail.subject(message.getSubject()));
+        read(mail, "Content-Type", () -> mail.contentType(message.getContentType()));
+        read(mail, "body", () -> walk(message, mail));
+        return mail.build();
+    }
+
+    private static void read(Mail.Builder mail, String what, Reading reading) {
+        try {
+            reading.read();
         } catch (Exception e) {
-            throw new IllegalStateException("Cannot read the received mail", e);
+            mail.unreadable(what + ": " + e);
         }
     }
 
@@ -160,19 +185,44 @@ final class SmtpServer {
         }
     }
 
-    private static String first(Address[] addresses) {
-        List<String> list = addresses(addresses);
-        return list.isEmpty() ? null : list.get(0);
-    }
+    /** An address of one local part and one domain, without spaces, brackets, quotes or comments. */
+    private static final java.util.regex.Pattern PLAIN_ADDRESS =
+            java.util.regex.Pattern.compile("[^\\s<>()\\[\\],;:\"@]+@[^\\s<>()\\[\\],;:\"@]+");
 
-    private static List<String> addresses(Address[] addresses) {
+    /**
+     * The addresses of the header: as the RFCs say; else, noted, as a lenient reading gives them when each is a
+     * plain address ({@code john..doe@example.com}, {@code ops.@example.com}: what midPoint 4.10+ sends with
+     * {@code mail.mime.address.strict=false}); else, noted, the header as written, as one entry (a lenient reading of a
+     * broken header gives addresses nobody wrote).
+     */
+    private static List<String> addresses(MimeMessage message, String header, Mail.Builder mail) throws Exception {
+        String value = message.getHeader(header, ",");
         List<String> out = new ArrayList<>();
-        if (addresses != null) {
-            for (Address address : addresses) {
-                out.add(address instanceof InternetAddress ? ((InternetAddress) address).getAddress()
-                        : address.toString());
-            }
+        if (value == null) {
+            return out;
         }
-        return out;
+        try {
+            for (InternetAddress address : InternetAddress.parseHeader(value, true)) {
+                out.add(address.getAddress());
+            }
+            return out;
+        } catch (AddressException strict) {
+            String written = MimeUtility.unfold(value).trim();
+            String problem = header + ": " + written + ": " + strict.getMessage();
+            try {
+                for (InternetAddress address : InternetAddress.parseHeader(value, false)) {
+                    if (address.getAddress() == null || !PLAIN_ADDRESS.matcher(address.getAddress()).matches()) {
+                        throw new AddressException("not a plain address: " + address.getAddress());
+                    }
+                    out.add(address.getAddress());
+                }
+                mail.unreadable(problem + " (read leniently)");
+            } catch (AddressException lenient) {
+                out.clear();
+                out.add(written);
+                mail.unreadable(problem + " (kept as written)");
+            }
+            return out;
+        }
     }
 }

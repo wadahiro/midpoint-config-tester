@@ -33,6 +33,7 @@ public final class Mail {
     private final List<Attachment> attachments;
     private final Map<String, List<String>> headers;
     private final String raw;
+    private final List<String> unreadable;
 
     private Mail(Builder b) {
         this.from = b.from;
@@ -55,6 +56,7 @@ public final class Mail {
         b.headers.forEach((k, v) -> h.put(k, List.copyOf(v)));
         this.headers = Collections.unmodifiableMap(h);
         this.raw = b.raw;
+        this.unreadable = List.copyOf(b.unreadable);
     }
 
     public static Builder builder() {
@@ -69,7 +71,12 @@ public final class Mail {
         return from;
     }
 
-    /** The {@code To} header addresses. */
+    /**
+     * The {@code To} header addresses. A header the RFCs do not allow is read leniently when that gives plain
+     * addresses (a local part with two dots in a row, or starting or ending with a dot: {@code john..doe@example.com});
+     * any other is one entry, the header as written ({@code <jdoe@example.com} without its {@code >}). Either is
+     * noted in {@link #unreadable()}. The same for {@link #cc()} and {@link #from()}.
+     */
     public List<String> to() {
         return to;
     }
@@ -266,9 +273,20 @@ public final class Mail {
         return raw;
     }
 
+    /**
+     * What the server could not read as the RFCs say, one entry per header or part: an address header read leniently
+     * or kept as written ({@code To: john..doe@example.com: Local address contains dot-dot ... (read leniently)}), a body
+     * that could not be decoded. Empty for a well-formed mail. A mail is listed whatever it holds: what could not be
+     * read is missing from it ({@link #body()} null, say), the rest is there, {@link #raw()} always.
+     */
+    public List<String> unreadable() {
+        return unreadable;
+    }
+
     @Override
     public String toString() {
-        return "mail from " + from + " to " + recipients + ": " + subject;
+        return "mail from " + from + " to " + recipients + ": " + subject
+                + (unreadable.isEmpty() ? "" : " (unreadable: " + String.join("; ", unreadable) + ")");
     }
 
     private static boolean containsIgnoreCase(List<String> list, String value) {
@@ -339,6 +357,7 @@ public final class Mail {
         private final List<Attachment> attachments = new ArrayList<>();
         private final Map<String, List<String>> headers = new LinkedHashMap<>();
         private String raw;
+        private final List<String> unreadable = new ArrayList<>();
 
         private Builder() {
         }
@@ -395,6 +414,12 @@ public final class Mail {
 
         public Builder raw(String raw) {
             this.raw = raw;
+            return this;
+        }
+
+        /** What could not be read as the RFCs say ({@link Mail#unreadable()}). */
+        public Builder unreadable(String what) {
+            unreadable.add(what);
             return this;
         }
 
