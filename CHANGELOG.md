@@ -1,3 +1,11 @@
+# [0.23.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.22.0...v0.23.0) (2026-11-23)
+
+
+### Features
+
+* **certification:** look up an existing campaign by name or OID ([0a66c8c](https://github.com/wadahiro/midpoint-config-tester/commit/0a66c8c264e8ec3505e9b7d2a1f776e086650e17))
+* **mail:** list a mail whose addresses the RFCs do not allow ([0704d63](https://github.com/wadahiro/midpoint-config-tester/commit/0704d6373dae3d02ac74816caa7befb6a012c0b3))
+
 # [0.22.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.21.0...v0.22.0) (2026-11-23)
 
 
