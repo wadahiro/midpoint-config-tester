@@ -1,3 +1,10 @@
+## [0.23.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.0...v0.23.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **gui:** wait for a form's background save to end before reading its result ([e4a662c](https://github.com/wadahiro/midpoint-config-tester/commit/e4a662ca2e5c2a9de810759004b3042427485877))
+
 # [0.23.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.22.0...v0.23.0) (2026-11-23)
 
 
