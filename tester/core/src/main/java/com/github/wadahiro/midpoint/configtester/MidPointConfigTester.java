@@ -423,6 +423,22 @@ public final class MidPointConfigTester {
         return new Certification(this, definition);
     }
 
+    /**
+     * A certification campaign that exists already, by name or OID: one started outside this API (a task, a script,
+     * a report import, the model API), reviewed as the campaigns of {@link Certification#start()} are
+     * ({@code t.campaign("Role assignments 1").reviews().forUser("jack").single().accept(t.actor("sec-officer"))}).
+     * Fails if there is none.
+     */
+    public Campaign campaign(String nameOrOid) {
+        com.evolveum.midpoint.xml.ns._public.common.common_3.AccessCertificationCampaignType campaign = deployment.api()
+                .find(com.evolveum.midpoint.xml.ns._public.common.common_3.AccessCertificationCampaignType.class,
+                        nameOrOid);
+        if (campaign == null) {
+            throw new AssertionError("No certification campaign " + nameOrOid);
+        }
+        return new Campaign(this, campaign.getOid());
+    }
+
     /** A report of the deployment, by name: {@code t.report("Users by cost center").run(Map.of("costCenter", "IT"))}. */
     public Report report(String name) {
         return new Report(this, name);

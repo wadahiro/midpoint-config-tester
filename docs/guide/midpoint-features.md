@@ -29,6 +29,7 @@ Certification.WorkItem w = mp.certification().campaign(c).caseOf("kate", "Audito
 mp.certification().decide(w, "sec-officer", "revoke", null);     // closeCurrentStage, startRemediation, closeCampaign
 mp.certification().comment(w, "sec-officer", "asked the manager"); // the comment column: the response as stored
 mp.certification().reiterateCampaign(c);                          // a closed campaign: unanswered cases, iteration 2
+t.campaign(c).reviews().forUser("kate").single().accept(t.actor("sec-officer"));  // high level, by OID or name
 t.clock().advance("P5D").runTriggerScanner();                    // a stage's timedActions: escalate, delegate
 
 // reports: an export task as the GUI's "Run report"
@@ -96,6 +97,14 @@ comment was checked in midPoint's GUI code of each line the tester takes: 4.0.4,
 (the row's `CertWorkItemDto.getComment()`, the comment column with the row's response), 4.9.9, 4.10.5 and 4.11.0
 `AbstractCertItemDecisionAction` (the row's `output/comment`) and `CertItemEditableCommentColumn` (`recordCertItemResponse`
 with no response: the row's), in the sources and in the released `admin-gui` jars of 4.9.9, 4.10.5, 4.11.0 and 4.8.14.
+
+**A campaign started elsewhere.** `t.campaign(nameOrOid)` gives the high-level `Campaign` of a campaign that exists
+already: one a task, a script, a report import or the model API created, or a low-level
+`mp.certification().createCampaign(...)`. It is the same `Campaign` as `t.certification(definition).start()`
+returns: `reviews()` with `comment`, `accept`, `revoke`, the outcomes and the stage verbs, read anew by every call. The
+name is the campaign's (midPoint numbers the campaigns of a definition: `Role assignments 1`), the OID its own; a name
+or OID of no campaign fails at the lookup (`AssertionError`). Every line (4.0 to 4.11): the lookup reads the
+repository, nothing of a line's certification service.
 
 **Report parameters with several values.** A `Collection` as a parameter value gives the parameter several values,
 as a report task's `reportParam` may hold them (the GUI gives one). 4.8+ pass them to the expressions as a list (a

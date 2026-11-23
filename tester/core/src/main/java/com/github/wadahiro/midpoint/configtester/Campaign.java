@@ -8,8 +8,9 @@ import com.github.wadahiro.midpoint.configtester.names.UserRef;
 import com.github.wadahiro.midpoint.tester.Certification.Case;
 
 /**
- * A certification campaign ({@link Certification#start()}), read anew by every call: its stages, its review work
- * items and the outcome of each case (a user's assignment of a role).
+ * A certification campaign ({@link Certification#start()}, or an existing one: {@link MidPointConfigTester#campaign}),
+ * read anew by every call: its stages, its review work items and the outcome of each case (a user's assignment of a
+ * role).
  */
 public final class Campaign {
 

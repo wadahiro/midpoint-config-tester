@@ -1,8 +1,13 @@
 package com.github.wadahiro.midpoint.configtester;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+
+import com.evolveum.midpoint.model.api.AccessCertificationService;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.AccessCertificationCampaignType;
+import com.evolveum.midpoint.xml.ns._public.common.common_3.AccessCertificationDefinitionType;
 
 import com.github.wadahiro.midpoint.configtester.sample.access.CertificationDefinitions;
 import com.github.wadahiro.midpoint.configtester.sample.access.Roles;
@@ -68,5 +73,40 @@ class CertificationScenarioTest {
         Review revoked = campaign.reviews().forUser(Users.JACK).single();
         assertThat(revoked.response()).isEqualTo("revoke");
         assertThat(revoked.comment()).isEqualTo("final note");
+    }
+
+    @Test
+    void aCampaignStartedOutsideTheTesterIsReviewedByNameOrOid(MidPointConfigTester t) {
+        t.user(Users.JACK).assign(Roles.AUDITOR);
+
+        // created and opened through the model API, as a task or a script would (4.9+: the stage opens in a
+        // certification task, the call waits for it)
+        AccessCertificationService service = t.midpoint().bean(AccessCertificationService.class);
+        String definition = t.midpoint().find(AccessCertificationDefinitionType.class,
+                CertificationDefinitions.ROLE_ASSIGNMENTS.on(t.line())).getOid();
+        AccessCertificationCampaignType created = t.midpoint().invoke("create a campaign outside the tester",
+                (task, result) -> service.createCampaign(definition, task, result)).value();
+        t.midpoint().invoke("open its first stage outside the tester", (task, result) -> {
+            service.openNextStage(created.getOid(), task, result);
+            return null;
+        });
+
+        Campaign byOid = t.campaign(created.getOid()).atStage(1).hasState("IN_REVIEW_STAGE");
+        Campaign byName = t.campaign(created.getName().getOrig()).atStage(1);
+        assertThat(byName.name()).isEqualTo(byOid.name());
+
+        byName.reviews().forUser(Users.JACK).single().comment(t.actor(Users.SEC_OFFICER), "checked with the manager");
+        byOid.reviews().forUser(Users.JACK).undecided().single().accept(t.actor(Users.SEC_OFFICER));
+
+        Review accepted = byOid.reviews().forUser(Users.JACK).single();
+        assertThat(accepted.response()).isEqualTo("accept");
+        assertThat(accepted.comment()).isEqualTo("checked with the manager");
+        byOid.hasOutcome(Users.JACK, Roles.AUDITOR, "accept");
+    }
+
+    @Test
+    void anUnknownCampaignFailsAtTheLookup(MidPointConfigTester t) {
+        assertThatThrownBy(() -> t.campaign("No such campaign")).isInstanceOf(AssertionError.class)
+                .hasMessageContaining("No certification campaign No such campaign");
     }
 }

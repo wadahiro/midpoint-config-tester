@@ -75,6 +75,8 @@ c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-offi
 c.closeStage();
 c.remediate();
 t.user("jack").hasNoAssignment("Auditor");
+// a campaign started elsewhere (a task, a script, a report import, the model API): by name or OID
+t.campaign("Role assignments 1").reviews().forUser("jack").single().accept(t.actor("sec-officer"));
 
 ReportOutput out = t.report("Users by cost center").run(Map.of("costCenter", "IT"));
 out.hasRows(2).hasRowWith("User", "jack");
@@ -102,7 +104,8 @@ out.hasRows(2).hasRowWith("User", "jack");
 | `effects.claims()` | the same in steps: claims nothing until `verifyAll()` | `Claims` |
 
 A verb whose result the test cannot name beforehand returns what midPoint made, not `Effects`:
-`t.certification(name).start()` its `Campaign`, `t.report(name).run()` its `ReportOutput` (an export task runs: it
+`t.certification(name).start()` its `Campaign` (`t.campaign(nameOrOid)`: one that exists already, started outside this
+API; all lines), `t.report(name).run()` its `ReportOutput` (an export task runs: it
 is no read), and `t.addUser/addRole/addOrg/addService(...)` the focus midPoint named, by its OID. Their effects:
 `effectsOf { }`.
 

@@ -252,6 +252,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - a certification reviewer's comment column (a save of the comment alone, the response kept):
     `campaign.reviews().forUser(x).single().comment(t.actor(reviewer), text)`, read back with `.comment()` of a
     review listed again; `accept(actor)` / `revoke(actor)` later keep that comment, as the GUI's buttons send it
+  - a campaign the test did not start (a task, a script, a report import or the model API made it):
+    `t.campaign(nameOrOid)` gives the same `Campaign` as `t.certification(definition).start()`, with its `reviews()`,
+    `comment`/`accept`/`revoke` and stage verbs (all lines; fails if there is no such campaign)
   - an account's naming attribute and identifier are attributes too: `account(dn).hasAttribute("dn", dn)`, a SCIM
     user's `hasAttribute("userName", name)` / `hasAttribute("id", id)`
   - a user's own change or deletion in the GUI (a self-service form, deleting from a list):
