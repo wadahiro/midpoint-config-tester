@@ -96,7 +96,7 @@ out.hasRows(2).hasRowWith("User", "jack");
 | `has*`, `is*`, `exists`, `doesNotExist`, `memberOf`, `hasMember`, `offersNewMember`, `offersNoNewMember` (also `isShown`, `isHidden`), a form's `validate(...).passes()`, `fails(message)`, `failsWithMessageContaining(text)`, `submit().saves()`, `rejects(item)`, `rejectsWith(message)` (exact), `rejectsWithMessageContaining(text)` (a part, for a refusal that names objects by OID), its `tabs().hasTab`, `hasNoTab`, its `assignments()` / `inducements()` `hasRow`, `hasNoRow` and a row's `hasUnassign`, `hasNoUnassign`, a request-access page's `showsRole`, `showsNoRole`, `offersRole`, `offersNoRole`, `offersTarget`, `offersNoTarget` | a claim about midPoint now | its subject; `AssertionError` |
 | `values`, `value`, `asObject`, `state`, `tag`, `names`, `members`, `newMemberOffers`, `shown`, a form's `tabs().names()`, `all()`, `tab(tab)`, its `assignments().all()`, `row(target)`, a row's `target()`, `relation()`, `unassignShown()`, a request-access page's `roles()`, `entries()`, `entry(name)`, `relations()`, `explain(role)`, a members panel's `relations()`, `memberTypes()`, `assignButton().action()` | a read, for AssertJ | the value |
 | `add`, `modify`, `delete`, `assign`, `unassign`, `recompute`, `run`, `runDue`, `approve`, `revoke`, `closeStage`..., a members panel's `assign`, `unassign`, `unassignSelected`, `unassignAll` | a verb: midPoint works | `Effects` |
-| `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
+| `t.source(...)`/`t.target(...)` `add`/`modify`/`delete`, `t.raw()...`, `t.config()...replace`, the clock's `advance`/`stopAt` | a write past midPoint | its subject |
 | `to`, `withSubject`, `of`, `ofType`, `assignedTo`, `forUser`; `projections`, `accounts`, `entitlements`, `intent`, `tag`, `named` | a selection only | ends in `exactly`, `none`, `single` |
 | `effects.verifyAll(c -> ...)` | a verification: the checks claim, then nothing else may have happened | `Effects`; `AssertionError` |
 | `effects.claims()` | the same in steps: claims nothing until `verifyAll()` | `Claims` |
@@ -366,6 +366,29 @@ The read side names the place it reads, without provisioning (which would act on
 claims all three: the link, its live shadow and the object on the target system. A role's group is linked alike:
 `t.raw().role("Sales").link("Directory", "cn=sales,ou=groups,dc=example,dc=com", s -> s.kind("entitlement").intent("group"))`;
 `t.raw()` has `user`, `role`, `org` and `service` by name.
+
+## The deployed configuration changed for one test: `t.config()`
+
+A case may need the configuration other than it is deployed: a script's daily limit of hundreds of items lowered to
+two, so that a run stops after two and the next day's run goes on with the rest; a cutoff time set. By hand an operator
+edits the deployed object and changes it back afterwards. `t.config()` makes that change in midPoint's repository for
+the test, never in the configuration under test, which the next test runs as it is:
+
+```java
+t.config().functionLibrary("batchLibrary").function("applyResults")       // by name; fails if there is none
+        .replace("long DAILY_LIMIT = 300", "long DAILY_LIMIT = 2");      // the text exactly once, else it fails
+t.task("Apply results").run();                                           // the next evaluation runs the changed code
+t.config().functionLibrary("batchLibrary").function("applyResults").code();  // the code as midPoint has it now
+```
+
+The change is written past the model (no audit, no policies) through midPoint's repository cache, so the cached
+function libraries and compiled scripts are dropped and the next evaluation reads it, also without a reset in between.
+It lasts until the test ends or a restore to a checkpoint taken before it: in a Kotest spec a change in a container's
+body holds for the container's tests, under the container's precondition rule (a write past midPoint). `replace` needs
+the text exactly once (`IllegalArgumentException` with the function's code otherwise), so a change of the configuration
+that moves the constant fails the test instead of leaving it unchanged; it reads back what it wrote. Only a function
+whose code is a script; `Run.select()` and the mapping back to the configuration files see the changed code. Every
+line (4.0 to 4.11).
 
 ## Nested classes: tests that share a prefix
 

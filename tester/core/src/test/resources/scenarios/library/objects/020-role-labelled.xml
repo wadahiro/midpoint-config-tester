@@ -1,0 +1,20 @@
+<role xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+      oid="7d1c3a52-0f1e-4b6a-9a52-3c7e0a1b5e02">
+    <name>Labelled</name>
+    <inducement>
+        <focusMappings>
+            <mapping>
+                <name>label-from-library</name>
+                <strength>strong</strength>
+                <expression>
+                    <script>
+                        <code>exampleLibrary.execute('label', [:])</code>
+                    </script>
+                </expression>
+                <target>
+                    <path>description</path>
+                </target>
+            </mapping>
+        </focusMappings>
+    </inducement>
+</role>

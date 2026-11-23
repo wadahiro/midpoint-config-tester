@@ -1,0 +1,21 @@
+<functionLibrary xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+                 xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                 oid="7d1c3a52-0f1e-4b6a-9a52-3c7e0a1b5e01">
+    <name>exampleLibrary</name>
+    <function>
+        <name>label</name>
+        <returnType>xsd:string</returnType>
+        <script>
+            <code>
+                String LABEL = 'standard'
+                int LIMIT = 3
+                return LABEL + ' (limit ' + LIMIT + ')'
+            </code>
+        </script>
+    </function>
+    <function>
+        <name>fixed</name>
+        <returnType>xsd:string</returnType>
+        <value>fixed value</value>
+    </function>
+</functionLibrary>

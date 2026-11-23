@@ -315,6 +315,14 @@ public interface MidPoint {
     /** Applies the modifications to the stored object as they are, like {@link #addRaw}. */
     <O extends ObjectType> void modifyRaw(Class<O> type, String oid, Collection<? extends ItemDelta<?, ?>> modifications);
 
+    /**
+     * Applies the modifications to a stored configuration object (a function library) as they are, like
+     * {@link #modifyRaw}, but through midPoint's repository cache: the caches that hold the object or what was built
+     * from it (the function libraries, the compiled expressions) drop it, so the next evaluation reads the change.
+     */
+    <O extends ObjectType> void modifyConfigurationRaw(Class<O> type, String oid,
+            Collection<? extends ItemDelta<?, ?>> modifications);
+
     /** Deletes the stored object, like {@link #addRaw}: a shadow's account stays on the target system. */
     <O extends ObjectType> void deleteRaw(Class<O> type, String oid);
 

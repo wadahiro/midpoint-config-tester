@@ -229,6 +229,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - cron tasks at a time of day: start the test at a fixed time first, `t.clock().startAt(day.atTime(12, 0))`, so
     what is due does not depend on when the test runs (never an `Assumptions` on `LocalTime.now()`)
   - functions: `t.midpoint().script("lib.execute('f', [user: u])").variable("u", user).evaluate().value()`
+  - a constant of a deployed script lowered for one case (a daily limit of hundreds made 2), instead of editing the
+    deployed object by hand: `t.config().functionLibrary(lib).function(f).replace("LIMIT = 300", "LIMIT = 2")` (the
+    text exactly once; the next evaluation runs it; gone at the test's end and at a restore to an earlier checkpoint)
   - files scripts read: `t.midpoint().files().map("/dir").write("/dir/in.tsv", text)`
   - the directories the deployment's tasks write in (its volume): manifest `files: { initial: { /dir: files/dir } }`
     (empty directories by a `.gitkeep`); a due task that cannot write fails `t.clock().runDue()`

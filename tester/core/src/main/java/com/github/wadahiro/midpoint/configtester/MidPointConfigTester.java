@@ -66,6 +66,14 @@ public final class MidPointConfigTester {
         return new Raw(this);
     }
 
+    /**
+     * Changes to the deployed configuration for this test only ({@link Config}): a constant of a function library's
+     * script lowered for one case, the configuration under test left as it is.
+     */
+    public Config config() {
+        return new Config(this);
+    }
+
     /** A target system by its resource name (e.g. the directory), to check its accounts. */
     public Resource target(String resource) {
         return new Resource(this, resource);

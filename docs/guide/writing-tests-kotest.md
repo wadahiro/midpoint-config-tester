@@ -34,7 +34,7 @@ class CampaignSpec : MidPointConfigSpec({
 
 - Each root starts from the loaded configuration, as a JUnit test method does; `t` is its tester. A failed assertion gets the
   mappings behind the values it read, as in JUnit.
-- A container whose body changes midPoint (a driver call, a `t.raw()` write, a target system, a file, the clock...)
+- A container whose body changes midPoint (a driver call, a `t.raw()` write, a `t.config()` change, a target system, a file, the clock...)
   checks what it made in its first test, a `precondition("...") { }`: the test only reads, and its name says what the
   tests after it depend on. When it fails, the container's other tests fail without running (they are not skipped),
   each by its name, the nested ones too: a test of a rule cannot pass on a state the body never made. A first test

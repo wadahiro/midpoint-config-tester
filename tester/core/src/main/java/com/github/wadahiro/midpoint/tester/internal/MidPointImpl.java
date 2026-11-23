@@ -1374,6 +1374,20 @@ final class MidPointImpl implements MidPoint {
     }
 
     @Override
+    public <O extends ObjectType> void modifyConfigurationRaw(Class<O> type, String oid,
+            Collection<? extends ItemDelta<?, ?>> modifications) {
+        Writes.count();
+        written("modify configuration " + nameOf(type, oid), (task, result) -> {
+            // RepositoryService by type is the repository itself (no invalidation); the cache in front of it
+            // invalidates the object on this node, and with it what midPoint's caches built from it
+            harness.bean(org.springframework.context.ApplicationContext.class)
+                    .getBean("cacheRepositoryService", RepositoryService.class)
+                    .modifyObject(type, oid, modifications, result);
+            return null;
+        });
+    }
+
+    @Override
     public <O extends ObjectType> void deleteRaw(Class<O> type, String oid) {
         Writes.count();
         written("delete raw " + nameOf(type, oid), (task, result) -> {

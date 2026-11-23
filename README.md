@@ -204,7 +204,7 @@ each test in a few tens of milliseconds, so one test approves the request and th
   configuration of `examples/getting-started`, tested step by step.
 - [Setting up a config repository](docs/guide/setup.md): the POM, the parent, required properties, the manifest.
 - [Writing tests with JUnit](docs/guide/writing-tests-junit.md): the API and its rules, users, roles and orgs, tasks,
-  values, `t.raw()`, nested classes.
+  values, `t.raw()`, `t.config()`, nested classes.
 - [Writing tests with Kotest](docs/guide/writing-tests-kotest.md): specs in Kotlin, containers and their prefixes,
   preconditions, steps, rows as tests.
 - [What a block did, and the configuration at rest](docs/guide/effects.md): claiming midPoint's changes, recomputing
