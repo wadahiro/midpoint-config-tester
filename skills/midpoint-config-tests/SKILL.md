@@ -246,6 +246,9 @@ only through `t.clock().runDue()` or `t.task(name).run()` (interval and cron, by
   - an approver's own work items (their "My work items", deputies included), decided as them:
     `t.actor(approver).workItems().forUser(x).single().approve()`; `t.workItems()` reads every work item as the
     administrator
+  - a certification reviewer's comment column (a save of the comment alone, the response kept):
+    `campaign.reviews().forUser(x).single().comment(t.actor(reviewer), text)`, read back with `.comment()` of a
+    review listed again; `accept(actor)` / `revoke(actor)` later keep that comment, as the GUI's buttons send it
   - an account's naming attribute and identifier are attributes too: `account(dn).hasAttribute("dn", dn)`, a SCIM
     user's `hasAttribute("userName", name)` / `hasAttribute("id", id)`
   - a user's own change or deletion in the GUI (a self-service form, deleting from a list):

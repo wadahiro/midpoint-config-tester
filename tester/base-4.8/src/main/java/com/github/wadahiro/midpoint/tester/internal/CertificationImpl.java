@@ -96,6 +96,35 @@ final class CertificationImpl implements Certification {
     }
 
     @Override
+    public Run comment(WorkItem item, String reviewer, String comment) {
+        // the response as stored now, not as the caller's (possibly older) copy has it
+        AccessCertificationResponseType current = storedResponse(item);
+        return mp.runAs(reviewer, "comment on " + item.objectName() + "/" + item.targetName()
+                        + " stage " + item.stageNumber() + (item.iteration() > 1 ? " iteration " + item.iteration() : "")
+                        + " as " + reviewer,
+                (task, result) -> {
+                    service().recordDecision(item.campaignOid(), item.caseId(), item.id(), current, comment, task, result);
+                    return new MidPointImpl.Outcome(item.campaignOid(), null);
+                });
+    }
+
+    /** The work item's response in the repository now, or null while undecided. */
+    private AccessCertificationResponseType storedResponse(WorkItem item) {
+        for (Case aCase : campaign(item.campaignOid()).cases()) {
+            if (aCase.id() == item.caseId()) {
+                for (WorkItem stored : aCase.workItems()) {
+                    if (stored.id() == item.id()) {
+                        return stored.response() != null
+                                ? AccessCertificationResponseType.fromValue(stored.response()) : null;
+                    }
+                }
+            }
+        }
+        throw new IllegalArgumentException("No work item " + item + " of case " + item.caseId() + " in campaign "
+                + item.campaignOid());
+    }
+
+    @Override
     public Campaign campaign(String campaignOid) {
         return mp.query("campaign " + campaignOid, (task, result) -> {
             AccessCertificationCampaignType bean = mp.bean(ModelService.class).getObject(

@@ -70,6 +70,7 @@ t.expectFailure(() -> t.user("ann").assign("Auditor")).isPolicyViolation();   //
 assertThat(t.expectFailure(() -> t.user("ann").assign("Auditor")).userMessage("ja")).contains("Auditor");
 
 Campaign c = t.certification("Role assignments").start();
+c.reviews().forUser("jack").forRole("Auditor").single().comment(t.actor("sec-officer"), "asked HR");  // comment only
 c.reviews().forUser("jack").forRole("Auditor").single().revoke(t.actor("sec-officer"), "left the audit");
 c.closeStage();
 c.remediate();

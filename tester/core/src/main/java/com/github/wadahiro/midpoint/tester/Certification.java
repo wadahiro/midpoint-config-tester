@@ -52,6 +52,13 @@ public interface Certification {
      */
     Run decide(WorkItem item, String reviewer, String response, String comment);
 
+    /**
+     * Records a comment alone, as this user (by name), as the GUI's comment column of the reviewer's work items saves
+     * it: a decision with the work item's response as stored now (none while undecided), so the response stays as it
+     * is. A later {@link #decide} is a save of its own; it replaces the comment with its own (null clears it).
+     */
+    Run comment(WorkItem item, String reviewer, String comment);
+
     /** The campaign as stored now, with its cases. */
     Campaign campaign(String campaignOid);
 
@@ -239,6 +246,11 @@ public interface Certification {
         public String response() {
             String outcome = bean.getOutput() != null ? bean.getOutput().getOutcome() : null;
             return outcome != null && outcome.contains("#") ? outcome.substring(outcome.indexOf('#') + 1) : outcome;
+        }
+
+        /** The reviewer's comment ({@code output/comment}), or null. */
+        public String comment() {
+            return bean.getOutput() != null ? bean.getOutput().getComment() : null;
         }
 
         public boolean isOpen() {

@@ -27,6 +27,7 @@ String c = mp.certification().createCampaign("role-assignments").oid();
 mp.certification().openNextStage(c).select().element("reviewerExpression");
 Certification.WorkItem w = mp.certification().campaign(c).caseOf("kate", "Auditor").workItems().get(0);
 mp.certification().decide(w, "sec-officer", "revoke", null);     // closeCurrentStage, startRemediation, closeCampaign
+mp.certification().comment(w, "sec-officer", "asked the manager"); // the comment column: the response as stored
 mp.certification().reiterateCampaign(c);                          // a closed campaign: unanswered cases, iteration 2
 t.clock().advance("P5D").runTriggerScanner();                    // a stage's timedActions: escalate, delegate
 
@@ -80,6 +81,21 @@ of role-assignments iteration 2`). Certification work items are delegated and es
 `timedActions` (midPoint has no service call for it): move the clock and run the trigger scanner. A stage's deadline
 is rounded to the end of its day (`deadlineRounding` `day`), and the stage closes at its deadline in the same scan,
 so a timed action is easiest to test before the deadline (`time/value` negative).
+
+**Certification comments.** The comment column of a reviewer's work items saves the comment alone: midPoint's
+`recordDecision` with the response the work item has (none while undecided) and the new comment, as the reviewer.
+`comment(item, reviewer, text)` (high level: `review.comment(actor, text)`) does that with the response as stored at
+the call, so the work item stays undecided, or keeps its response, and the case's outcome does not change; it is a
+save of its own, with the performer and output timestamp it sets. A response button is a second save: it sends the
+comment the row shows, so `review.accept(actor)` and `revoke(actor)` keep the review's comment (as listed, or as
+saved through it since; a review listed before a comment saved through another one sends the older comment, as a page
+not reloaded does), and `accept(actor, text)`, `revoke(actor, text)` and `decide(actor, response, text)` replace it
+(null clears it); the low-level `decide` sends the comment it is given. The comment is read back from
+`output/comment`: `WorkItem.comment()`, `Review.comment()`. Every line (4.0 to 4.11). That the buttons send the row's
+comment was checked in midPoint's GUI code of each line the tester takes: 4.0.4, 4.4.11 and 4.8.14 `PageCertDecisions`
+(the row's `CertWorkItemDto.getComment()`, the comment column with the row's response), 4.9.9, 4.10.5 and 4.11.0
+`AbstractCertItemDecisionAction` (the row's `output/comment`) and `CertItemEditableCommentColumn` (`recordCertItemResponse`
+with no response: the row's), in the sources and in the released `admin-gui` jars of 4.9.9, 4.10.5, 4.11.0 and 4.8.14.
 
 **Report parameters with several values.** A `Collection` as a parameter value gives the parameter several values,
 as a report task's `reportParam` may hold them (the GUI gives one). 4.8+ pass them to the expressions as a list (a
