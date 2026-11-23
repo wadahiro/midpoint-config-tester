@@ -300,6 +300,31 @@ public abstract class ObjectForm {
         }
     }
 
+    /**
+     * How a {@link #submit} ended ({@link Submit#outcome}): saved, or why not. {@code saved()} is false for each but
+     * {@link #SAVED}.
+     */
+    public enum Outcome {
+        /** The page saved the object: the changes executed, the page reported their success or left after them. */
+        SAVED,
+        /**
+         * The page did not save the object: a field shows a message, the page an error (the validation on saving,
+         * the operation's error, a refusal of the user's authorizations or of a policy rule), or the GUI's error
+         * page opened.
+         */
+        REJECTED,
+        /**
+         * The save did not complete: its execution in the background still ran when the tester stopped waiting for
+         * it (120 seconds), so the page reports no result yet; the execution may still create or change the object.
+         */
+        INCOMPLETE,
+        /**
+         * The save completed, but the page neither reported the result of its changes nor left, and shows no error:
+         * nothing tells whether it saved (the object read through the model does).
+         */
+        UNDETERMINED
+    }
+
     /** The form saved: whether the page saved the object, and its messages. */
     public static final class Submit {
 
@@ -309,9 +334,20 @@ public abstract class ObjectForm {
             this.saved = saved;
         }
 
-        /** Whether the page saved the object (the changes executed). */
+        /** Whether the page saved the object (the changes executed): {@link #outcome} is {@link Outcome#SAVED}. */
         public boolean saved() {
             return saved.saved;
+        }
+
+        /** How the save ended: saved, rejected, not completed or undetermined. */
+        public Outcome outcome() {
+            if (saved.saved) {
+                return Outcome.SAVED;
+            }
+            if (!saved.completed) {
+                return Outcome.INCOMPLETE;
+            }
+            return saved.refused ? Outcome.REJECTED : Outcome.UNDETERMINED;
         }
 
         /** The items whose fields show a message, with the first one. */
@@ -341,7 +377,7 @@ public abstract class ObjectForm {
         /** The page saves the object. */
         public Submit saves() {
             if (!saved.saved) {
-                throw new AssertionError("The form does not save: " + messages());
+                throw new AssertionError("The form does not save" + why() + ": " + messages());
             }
             return this;
         }
@@ -350,8 +386,8 @@ public abstract class ObjectForm {
         public Submit rejects(String item) {
             notSaved();
             if (!saved.fields.containsKey(item)) {
-                throw new AssertionError("The form shows no message on " + item + "; its messages: " + saved.fields
-                        + " " + saved.page);
+                throw new AssertionError("The form shows no message on " + item + why() + "; its messages: "
+                        + saved.fields + " " + saved.page);
             }
             return this;
         }
@@ -360,7 +396,8 @@ public abstract class ObjectForm {
         public Submit rejectsWith(String message) {
             notSaved();
             if (!messages().contains(message)) {
-                throw new AssertionError("The form does not show \"" + message + "\"; its messages: " + messages());
+                throw new AssertionError("The form does not show \"" + message + "\"" + why() + "; its messages: "
+                        + messages());
             }
             return this;
         }
@@ -373,8 +410,8 @@ public abstract class ObjectForm {
         public Submit rejectsWithMessageContaining(String part) {
             notSaved();
             if (messages().stream().noneMatch(m -> m != null && m.contains(part))) {
-                throw new AssertionError("The form shows no message containing \"" + part + "\"; its messages: "
-                        + messages());
+                throw new AssertionError("The form shows no message containing \"" + part + "\"" + why()
+                        + "; its messages: " + messages());
             }
             return this;
         }
@@ -382,6 +419,22 @@ public abstract class ObjectForm {
         private void notSaved() {
             if (saved.saved) {
                 throw new AssertionError("The form saves" + (messages().isEmpty() ? "" : ": " + messages()));
+            }
+            if (outcome() == Outcome.INCOMPLETE) {
+                throw new AssertionError("The form rejects nothing" + why() + ": " + messages());
+            }
+        }
+
+        /** Why a save that is neither saved nor rejected did not save, as a failure names it; else empty. */
+        private String why() {
+            switch (outcome()) {
+                case INCOMPLETE:
+                    return " (INCOMPLETE: the save still ran after 120 s, the page reports no result yet)";
+                case UNDETERMINED:
+                    return " (UNDETERMINED: the page neither reported the result of the changes nor left, and shows"
+                            + " no error)";
+                default:
+                    return "";
             }
         }
     }

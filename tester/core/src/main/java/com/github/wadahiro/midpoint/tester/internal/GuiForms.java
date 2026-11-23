@@ -233,13 +233,23 @@ public interface GuiForms {
     final class Saved {
         /** The page saved the object (the changes executed without an error). */
         public final boolean saved;
+        /**
+         * The save ended: false when its execution in the background still ran as long as the tester waits for it
+         * (the page reports nothing yet; the execution may still change the object).
+         */
+        public final boolean completed;
+        /** The page refused or failed the save: a field's message, an error message, the GUI's error page. */
+        public final boolean refused;
         /** The messages on the fields, by item path, in the page's order. */
         public final Map<String, List<String>> fields;
         /** The other messages of the page: the form's (the validation on saving) and the operation's result. */
         public final List<String> page;
 
-        public Saved(boolean saved, Map<String, List<String>> fields, List<String> page) {
+        public Saved(boolean saved, boolean completed, boolean refused, Map<String, List<String>> fields,
+                List<String> page) {
             this.saved = saved;
+            this.completed = completed;
+            this.refused = refused;
             this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
             this.page = Collections.unmodifiableList(new ArrayList<>(page));
         }

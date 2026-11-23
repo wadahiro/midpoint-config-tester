@@ -370,6 +370,7 @@ public final class TesterRuntime {
         long total = Timing.start();
         long t = Timing.start();
         // background work must not run into the restored database (nor into the next test's runs)
+        awaitGuiSaves("reset");
         List<String> pending = TaskSchedules.awaitBackgroundWork(harness, RESET_WAIT_MILLIS);
         Timing.end("reset.awaitBackgroundWork", t);
         if (!pending.isEmpty()) {
@@ -440,6 +441,14 @@ public final class TesterRuntime {
         Timing.end("reset.total", total);
     }
 
+    /** The GUI's saves a form stopped waiting for ({@link GuiSaves}): awaited, those still running interrupted. */
+    private static void awaitGuiSaves(String at) {
+        int interrupted = GuiSaves.await(RESET_WAIT_MILLIS);
+        if (interrupted > 0) {
+            System.err.println("Tester: interrupting " + interrupted + " GUI save(s) still running at the " + at);
+        }
+    }
+
     /**
      * Replaces the database by a dump of another JVM ({@link PgDump}, the deployment cache) with the reset's machinery:
      * background work awaited, Quartz held, the dump copied in, midPoint's caches and Quartz's jobs synchronized with
@@ -448,6 +457,7 @@ public final class TesterRuntime {
      */
     void restoreDatabase(Path dump, boolean regularRunsHeld, Runnable inWindow) throws java.io.IOException {
         atBaseline = null;
+        awaitGuiSaves("restore");
         List<String> pending = TaskSchedules.awaitBackgroundWork(harness, RESET_WAIT_MILLIS);
         if (!pending.isEmpty()) {
             System.err.println("Tester: suspending background work still running at the restore: " + pending);

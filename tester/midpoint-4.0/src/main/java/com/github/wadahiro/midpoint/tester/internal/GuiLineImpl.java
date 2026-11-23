@@ -2,7 +2,6 @@ package com.github.wadahiro.midpoint.tester.internal;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
@@ -124,11 +123,6 @@ final class GuiLineImpl implements GuiLine {
     @Override
     public Component removeValueButton(MarkupContainer row) {
         return row.get("buttonContainer:removeButton");
-    }
-
-    @Override
-    public Future<?> saving(Page page) {
-        return null;
     }
 
     @Override

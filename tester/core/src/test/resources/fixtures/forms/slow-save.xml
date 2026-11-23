@@ -1,0 +1,67 @@
+<!--
+    A category archetype whose object template takes a while to compute (a mapping that sleeps before it sets the
+    description), so that saving the form runs longer than a few of the GUI's progress refreshes. A site to create the
+    categories in. A second archetype whose slow mapping then fails. SlowSaveFormScenarioTest: the form waits for the
+    save, however long it runs, and reports how it ended.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <objectTemplate oid="10000000-0000-0000-0000-0000000f0c01">
+        <name>form-slow-template</name>
+        <mapping>
+            <strength>strong</strength>
+            <expression>
+                <script>
+                    <code>
+                        Thread.sleep(1500)
+                        'computed slowly'
+                    </code>
+                </script>
+            </expression>
+            <target>
+                <path>description</path>
+            </target>
+        </mapping>
+    </objectTemplate>
+    <archetype oid="10000000-0000-0000-0000-0000000f0c02">
+        <name>form-slow-category</name>
+        <archetypePolicy>
+            <objectTemplateRef oid="10000000-0000-0000-0000-0000000f0c01"/>
+        </archetypePolicy>
+        <assignment>
+            <assignmentRelation>
+                <holderType>OrgType</holderType>
+            </assignmentRelation>
+        </assignment>
+    </archetype>
+    <objectTemplate oid="10000000-0000-0000-0000-0000000f0c06">
+        <name>form-slow-failing-template</name>
+        <mapping>
+            <strength>strong</strength>
+            <expression>
+                <script>
+                    <code>
+                        Thread.sleep(1500)
+                        throw new IllegalStateException('The slow computation failed')
+                    </code>
+                </script>
+            </expression>
+            <target>
+                <path>description</path>
+            </target>
+        </mapping>
+    </objectTemplate>
+    <archetype oid="10000000-0000-0000-0000-0000000f0c07">
+        <name>form-slow-failing-category</name>
+        <archetypePolicy>
+            <objectTemplateRef oid="10000000-0000-0000-0000-0000000f0c06"/>
+        </archetypePolicy>
+        <assignment>
+            <assignmentRelation>
+                <holderType>OrgType</holderType>
+            </assignmentRelation>
+        </assignment>
+    </archetype>
+    <org oid="10000000-0000-0000-0000-0000000f0c03">
+        <name>form-slow-site</name>
+    </org>
+</objects>

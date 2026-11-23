@@ -2,7 +2,6 @@ package com.github.wadahiro.midpoint.tester.internal;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
@@ -15,7 +14,6 @@ import com.evolveum.midpoint.gui.api.prism.wrapper.ItemWrapper;
 import com.evolveum.midpoint.gui.api.util.WebComponentUtil;
 import com.evolveum.midpoint.gui.impl.component.menu.DetailsNavigationPanel;
 import com.evolveum.midpoint.gui.impl.page.admin.AbstractPageObjectDetails;
-import com.evolveum.midpoint.gui.impl.page.admin.component.ProgressPanel;
 import com.evolveum.midpoint.gui.impl.prism.panel.ItemPanel;
 import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.path.ItemPath;
@@ -124,19 +122,6 @@ final class GuiLineImpl implements GuiLine {
     @Override
     public Component removeValueButton(MarkupContainer row) {
         return GuiLine.descendant(row, "removeButton");
-    }
-
-    @Override
-    public Future<?> saving(Page page) {
-        Future<?>[] found = new Future<?>[1];
-        page.visitChildren(ProgressPanel.class, (panel, visit) -> {
-            var process = ((ProgressPanel) panel).getReporterModel().getObject();
-            if (process != null && process.getFuture() != null) {
-                found[0] = process.getFuture();
-                visit.stop();
-            }
-        });
-        return found[0];
     }
 
     @Override

@@ -6,8 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
@@ -37,6 +40,8 @@ import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.result.OperationResultStatus;
 import com.evolveum.midpoint.util.DisplayableValue;
+import com.evolveum.midpoint.web.application.AsyncWebProcess;
+import com.evolveum.midpoint.web.application.AsyncWebProcessModel;
 import com.evolveum.midpoint.web.security.MidPointApplication;
 import com.evolveum.midpoint.web.util.OnePageParameterEncoder;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.ArchetypeType;
@@ -67,7 +72,8 @@ import com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType;
  *       value rows, which its add and remove buttons make;</li>
  *   <li>a Save that opens the GUI's error page did not save (the page's exception is a message);</li>
  *   <li>Save is the form's default (save) button; a save executed in the background (progress reporting) is waited
- *       for, then its progress timer fires once, as the browser's poll;</li>
+ *       for until its execution ends (at most {@code SAVE_TIMEOUT_SECONDS}: a save still running then is reported
+ *       as not completed, not as not saved), then its progress timer fires, as the browser's poll;</li>
  *   <li>the tabs are read from the rendered page ({@link GuiLine#tabs}): each as the GUI decided its visibility.</li>
  * </ul>
  */
@@ -115,7 +121,7 @@ final class GuiFormsImpl implements GuiForms {
             Component save = saveButton(form, opened);
             tester.getSession().getFeedbackMessages().clear();
             tester.executeAjaxEvent(save, "click");
-            awaitSaving(tester, page);
+            boolean completed = awaitSaving(tester, page);
             Map<String, List<String>> fields = new LinkedHashMap<>();
             List<String> other = new ArrayList<>();
             boolean errors = false;
@@ -140,10 +146,11 @@ final class GuiFormsImpl implements GuiForms {
             if (failed != null) {
                 // the GUI failed saving (its error page): not a page left after saving
                 other.add("Saving opened the GUI's error page " + failed);
-                return new Saved(false, fields, other);
+                return new Saved(false, true, true, fields, other);
             }
             boolean left = tester.getLastRenderedPage().getClass() != page.getClass();
-            return new Saved(!errors && (success || left), fields, other);
+            return new Saved(completed && !errors && (success || left), completed, errors || !fields.isEmpty(),
+                    fields, other);
         });
     }
 
@@ -1128,14 +1135,30 @@ final class GuiFormsImpl implements GuiForms {
         return save;
     }
 
-    /** A save executed in the background: waited for, then the progress timer fires as the browser's poll does. */
-    private static void awaitSaving(WicketTester tester, Page page) {
+    /**
+     * A save executed in the background (the progress panel's execution, 4.0's and 4.4's old design's too): waited for
+     * until it ends, then the progress timer fires as the browser's poll does, which shows its result or leaves the
+     * page. False: the execution still ran at {@link #SAVE_TIMEOUT_SECONDS} (the page reports nothing yet; the next
+     * reset waits for it, {@link GuiSaves}).
+     */
+    private static boolean awaitSaving(WicketTester tester, Page page) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(SAVE_TIMEOUT_SECONDS);
         for (int round = 0; round < 50 && tester.getLastRenderedPage() == page; round++) {
-            Future<?> saving = LINE.saving(page);
+            Future<?> saving = saving(page);
             if (saving != null) {
                 try {
-                    saving.get(SAVE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                } catch (Exception e) {
+                    saving.get(Math.max(deadline - System.nanoTime(), 0), TimeUnit.NANOSECONDS);
+                } catch (TimeoutException e) {
+                    // the next reset waits for it, not to let it run into the restored database
+                    GuiSaves.running(saving);
+                    return false;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    if (!saving.isDone()) {
+                        GuiSaves.running(saving);
+                        return false;
+                    }
+                } catch (ExecutionException | CancellationException e) {
                     // the execution's failure is in its result, which the page shows
                 }
             }
@@ -1149,18 +1172,63 @@ final class GuiFormsImpl implements GuiForms {
                 }
             });
             if (timers.isEmpty()) {
-                return;
+                return true;
             }
             if (saving == null) {
                 try {
                     Thread.sleep(20);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    return;
+                    return true;
                 }
             }
             tester.executeBehavior(timers.get(0));
         }
+        return true;
+    }
+
+    /**
+     * The background execution of the changes a save started on the page, or null (none: a synchronous save): the
+     * future of the process of a progress panel's {@code reporterModel}, of either panel a line has (4.0 and 4.4's old
+     * design {@code web.component.progress.ProgressPanel}, its field private; 4.4 and later
+     * {@code gui.impl.page.admin.component.ProgressPanel}).
+     */
+    private static Future<?> saving(Page page) {
+        Future<?>[] found = new Future<?>[1];
+        page.visitChildren((component, visit) -> {
+            Object model = reporterModel(component);
+            if (model instanceof AsyncWebProcessModel) {
+                AsyncWebProcess<?> process = ((AsyncWebProcessModel<?>) model).getObject();
+                if (process != null && process.getFuture() != null) {
+                    found[0] = process.getFuture();
+                    visit.stop();
+                }
+            }
+        });
+        return found[0];
+    }
+
+    /** The component's {@code reporterModel} field (a progress panel's), or null: none. */
+    private static Object reporterModel(Component component) {
+        for (Class<?> type = component.getClass(); type != null && type != Component.class;
+                type = type.getSuperclass()) {
+            java.lang.reflect.Field field;
+            try {
+                field = type.getDeclaredField("reporterModel");
+            } catch (NoSuchFieldException e) {
+                continue;
+            }
+            if (!AsyncWebProcessModel.class.isAssignableFrom(field.getType())) {
+                return null;
+            }
+            try {
+                field.setAccessible(true);
+                return field.get(component);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                throw new IllegalStateException("Cannot read the progress of " + component.getClass().getName(), e);
+            }
+        }
+        return null;
     }
 
     private static String text(Object message) {

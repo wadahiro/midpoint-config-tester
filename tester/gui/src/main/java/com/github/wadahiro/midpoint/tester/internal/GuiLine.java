@@ -1,7 +1,6 @@
 package com.github.wadahiro.midpoint.tester.internal;
 
 import java.util.List;
-import java.util.concurrent.Future;
 import javax.xml.namespace.QName;
 
 import org.apache.wicket.Component;
@@ -84,8 +83,6 @@ interface GuiLine {
      */
     Component removeValueButton(org.apache.wicket.MarkupContainer row);
 
-    /** The background execution of the changes a save started on the page, or null (none, or executed already). */
-    Future<?> saving(Page page);
 
     /**
      * The tabs of the rendered details page, shown or hidden, in the GUI's order: 4.4 and later the items of its

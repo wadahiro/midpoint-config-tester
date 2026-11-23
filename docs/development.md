@@ -149,6 +149,7 @@ porting expectations between lines. The test of each row:
 | A custom policy constraint (`policyConstraints/custom`) | `PolicyTest.contractorsNeedAnEndDate` |
 | Provenance metadata on the value of an object type's association outbound | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
 | "Show empty fields" of a details page as a user who may change only some items (4.8.14: the GUI's error page) | `ChoiceFormScenarioTest.anEmptyFieldOfAUserWhoMayChangeSomeItems` |
+| A form's save executed in the background (progress reporting) that runs longer than a few progress refreshes, or fails, on 4.0, 4.4's old design and the new design (`web.component.progress.ProgressPanel`, whose `reporterModel` is private, and `gui.impl.page.admin.component.ProgressPanel`) | `SlowSaveFormScenarioTest` |
 | Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | `SimulationTest` |
 | Approval comments of an approved assignment | `ApprovalCommentsTest.theApprovedAssignmentKeepsTheFormattedComment` |
 | Certification comments of a certified assignment (`reviewerCommentsFormatting`, when the campaign closes) | `CertificationCommentsTest.theCertifiedAssignmentKeepsTheFormattedComment` |

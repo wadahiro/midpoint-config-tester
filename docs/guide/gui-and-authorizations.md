@@ -317,7 +317,16 @@ assertThat(form.canRead("emailAddress")).isTrue();
     (a message containing the text: midPoint's refusals name objects by OID, `... on role:<oid>(team-1) ...`, so a
     test states the part it knows), `saved()`, `rejected()`, `messages()`, `item(item)`. Both fail listing the
     page's messages. Saving executes the changes through the model as the user: what their authorizations or a
-    policy rule refuse is a message of the page too.
+    policy rule refuse is a message of the page too. With progress reporting (midPoint's default, on every line and
+    design) the GUI executes the changes in the background; `submit()` waits for that execution to end (however long
+    the object template, the policy rules or the connectors take, up to 120 seconds), then lets the page show its
+    result or leave, as the browser's poll does, so the object is saved, or the error that failed it is a message,
+    by the time `submit()` returns. `outcome()` tells how it ended: `SAVED` (`saved()` true), `REJECTED` (a field's
+    message, an error on the page: the validation on saving, the operation's error, a partial error such as
+    `Error executing changes` with the result of the failed part, the GUI's error page), `INCOMPLETE` (the execution
+    still ran after 120 seconds: no result yet; the next test's reset waits for it, then interrupts it) or
+    `UNDETERMINED` (the page neither reported a result nor left, and shows no error). A failed `saves()` names the
+    last two (`The form does not save (INCOMPLETE: ...): []`).
   - `.tabs()` reads the page's tabs as the GUI has them for the user, from the page it renders (once; the claims
     chain on it): `names()` the labels of the tabs shown, in the GUI's order; `hasTab(tab)`, `hasNoTab(tab)`;
     `tab(tab)` one tab (`label()`, `key()`, `identifier()`, `shown()`, `hiddenBecause()`, `subtabs()`); `all()` every
