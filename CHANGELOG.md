@@ -1,3 +1,10 @@
+## [0.23.2](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.1...v0.23.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* **gui:** fail a form's submit when a change recorded on a derived form was dropped ([70fd570](https://github.com/wadahiro/midpoint-config-tester/commit/70fd57091432ac4da48423ee080f87caf0eae5f8))
+
 ## [0.23.1](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.0...v0.23.1) (2026-11-23)
 
 
