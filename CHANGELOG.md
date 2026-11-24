@@ -1,3 +1,10 @@
+## [0.23.3](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.2...v0.23.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* switch off the SMTP debug output of the redirected mail transports ([23e2c2c](https://github.com/wadahiro/midpoint-config-tester/commit/23e2c2c4a78da0ca4b88e499231aff628b71830d))
+
 ## [0.23.2](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.1...v0.23.2) (2026-11-24)
 
 
