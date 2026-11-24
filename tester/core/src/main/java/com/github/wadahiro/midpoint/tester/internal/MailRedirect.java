@@ -17,7 +17,8 @@ import org.w3c.dom.Element;
  * {@code username}, {@code password}, {@code basicAuthentication} and {@code oauth2Authentication} (plain SMTP
  * without authentication; a password encrypted with the production key could not be decrypted here). The files of
  * {@code redirectToFile} and {@code logToFile} are moved into the working directory (same file name); a transport
- * that redirects to a file still does, and its mails do not reach the SMTP server.
+ * that redirects to a file still does, and its mails do not reach the SMTP server. {@code debug} is removed (off): it
+ * only makes the mail library dump each SMTP exchange to the console, and the mails are checked through the tester.
  */
 final class MailRedirect {
 
@@ -127,6 +128,12 @@ final class MailRedirect {
             }
             notes.add(name + ": " + servers.size() + " server(s) redirected to " + host + ":" + port
                     + (servers.isEmpty() ? " (none configured: midPoint sends no mail)" : ""));
+            for (Element debug : Xml.children(mail, "debug")) {
+                if (debug.getTextContent().trim().equals("true")) {
+                    notes.add(name + ": debug switched off");
+                }
+                mail.removeChild(debug);
+            }
             for (String file : List.of("redirectToFile", "logToFile")) {
                 Element e = Xml.child(mail, file);
                 if (e != null && !e.getTextContent().trim().isEmpty()) {

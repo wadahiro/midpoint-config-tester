@@ -82,8 +82,9 @@ each `messageTransportConfiguration/mail` (4.8 and later) and `notificationConfi
 | `transportSecurity` | removed: plain SMTP (no STARTTLS, no SSL) |
 | `username`, `password`, `basicAuthentication`, `oauth2Authentication` | removed: no authentication (a password encrypted with the production key could not be decrypted here) |
 | `redirectToFile`, `logToFile` (of the transport) | the same file name under `<workDir>/tester-mail/files/` |
+| `debug` | removed (off): it only makes JavaMail print every SMTP exchange to standard output; the mails are checked through `mails()` |
 
-Everything else stays as written (`name`, `defaultFrom`, `debug`, black and white lists, `recipientFilterExpression`,
+Everything else stays as written (`name`, `defaultFrom`, black and white lists, `recipientFilterExpression`,
 `recipientAddressExpression`, the notifiers). Each rewrite prints a `Tester: mail transports redirected` line and
 writes the imported copy to `<workDir>/tester-mail/`. Changing the mail servers later through `execute`/`modify`, or
 adding a system configuration with `addObject(bean)`, is not rewritten.
@@ -93,7 +94,6 @@ adding a system configuration with `addObject(bean)`, is not rewritten.
   from the configuration you test if you want the mails.
 - A `mail` transport without `server` sends nothing (midPoint warns "Mail server(s) are not defined"), as in
   production; the import line says so.
-- **`debug`** sets `mail.debug` and JavaMail prints the SMTP dialogue to standard output.
 - midPoint sends in the operation's thread (or a task's, which the drivers wait for) and the server stores a mail
   before it acknowledges it, so `run.mails()` is complete when the driver returns. `mp.mails()` is cleared before each
   test method.

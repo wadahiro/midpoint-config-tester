@@ -40,6 +40,19 @@ class MailRedirectTest {
     }
 
     @Test
+    void theSmtpDebugOutputIsSwitchedOff() {
+        MailRedirect.Result r = apply("<systemConfiguration" + NS + "><name>S</name>"
+                + "<notificationConfiguration><handler/><mail><server><host>smtp.example.com</host></server>"
+                + "<debug>true</debug><defaultFrom>mp@example.com</defaultFrom></mail></notificationConfiguration>"
+                + "</systemConfiguration>");
+
+        assertThat(r.xml).doesNotContain("debug");
+        assertThat(r.xml).contains("<defaultFrom>mp@example.com</defaultFrom>");
+        assertThat(r.notes).containsExactly("notificationConfiguration/mail: 1 server(s) redirected to 127.0.0.1:2525",
+                "notificationConfiguration/mail: debug switched off");
+    }
+
+    @Test
     void legacyNotificationMailInAnObjectsFile() {
         MailRedirect.Result r = apply("<objects" + NS + "><user><name>mail</name></user>"
                 + "<systemConfiguration><name>S</name><notificationConfiguration><handler/>"
