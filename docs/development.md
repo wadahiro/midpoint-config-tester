@@ -148,6 +148,7 @@ porting expectations between lines. The test of each row:
 | Task archetypes in the baseline | `RuntimeTest.baselineAndWiring` |
 | A custom policy constraint (`policyConstraints/custom`) | `PolicyTest.contractorsNeedAnEndDate` |
 | Provenance metadata on the value of an object type's association outbound | `ObjectTypeAssociationTest.theAccountJoinsTheGroupOfItsCostCenter` |
+| Save of a details page for a user without a `#modify` of the object: 4.0 shows it disabled until a row of the Assignments or Inducements tab is removed or added (`FocusMainPanel.areSavePreviewButtonsEnabled`), 4.4 and later hide it (MID-9380) | `AssignmentRowsScenarioTest.aUserWhoMayChangeNothingHasNoSaveToPress`, `SelfProfileFormScenarioTest.aUserWithoutModifyRemovesThreeRolesInOneSave` |
 | "Show empty fields" of a details page as a user who may change only some items (4.8.14: the GUI's error page) | `ChoiceFormScenarioTest.anEmptyFieldOfAUserWhoMayChangeSomeItems` |
 | A form's save executed in the background (progress reporting) that runs longer than a few progress refreshes, or fails, on 4.0, 4.4's old design and the new design (`web.component.progress.ProgressPanel`, whose `reporterModel` is private, and `gui.impl.page.admin.component.ProgressPanel`) | `SlowSaveFormScenarioTest` |
 | Simulation metrics (domain, value and selection expressions; aggregated metrics with a domain restriction) | `SimulationTest` |

@@ -118,7 +118,7 @@ final class GuiFormsImpl implements GuiForms {
             }
             Page page = tester.getLastRenderedPage();
             Form<?> form = form(page);
-            Component save = saveButton(form, opened);
+            Component save = saveButton(form, opened, spec.removals.isEmpty());
             tester.getSession().getFeedbackMessages().clear();
             tester.executeAjaxEvent(save, "click");
             boolean completed = awaitSaving(tester, page);
@@ -1104,9 +1104,10 @@ final class GuiFormsImpl implements GuiForms {
     /**
      * The page's Save: the form's default button as the page opened (a panel's search form makes its search button the
      * root form's default: the Assignments tab of 4.4 and later), else the form's default button, else its button
-     * {@code save} (pages without a default button).
+     * {@code save} (pages without a default button). A disabled Save (4.0) is named with why when the form removes
+     * no row ({@code noRowRemoved}).
      */
-    private static Component saveButton(Form<?> form, IFormSubmittingComponent opened) {
+    private static Component saveButton(Form<?> form, IFormSubmittingComponent opened, boolean noRowRemoved) {
         IFormSubmittingComponent button = opened instanceof Component && within((Component) opened, form.getPage())
                 ? opened : form.getDefaultButton();
         Component save = null;
@@ -1129,8 +1130,12 @@ final class GuiFormsImpl implements GuiForms {
                     + " saves with a preview)");
         }
         if (!save.isEnabledInHierarchy()) {
-            // 4.0: shown, disabled for a user who may change nothing of the object
-            throw new AssertionError("The page's Save button is disabled (the object is read-only to the user)");
+            // 4.0: shown, disabled for a user who may change nothing of the object until a row of the Assignments tab
+            // is removed or added (AbstractObjectMainPanel: canModify, else FocusMainPanel.areSavePreviewButtonsEnabled)
+            throw new AssertionError("The page's Save button is disabled (the object is read-only to the user"
+                    + (noRowRemoved ? "; 4.0 enables it for a user without a #modify of the object once a row of"
+                            + " the Assignments or Inducements tab is removed, and this form removes none" : "")
+                    + ")");
         }
         return save;
     }

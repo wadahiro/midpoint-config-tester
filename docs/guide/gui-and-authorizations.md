@@ -326,7 +326,9 @@ assertThat(form.canRead("emailAddress")).isTrue();
     `Error executing changes` with the result of the failed part, the GUI's error page), `INCOMPLETE` (the execution
     still ran after 120 seconds: no result yet; the next test's reset waits for it, then interrupts it) or
     `UNDETERMINED` (the page neither reported a result nor left, and shows no error). A failed `saves()` names the
-    last two (`The form does not save (INCOMPLETE: ...): []`).
+    last two (`The form does not save (INCOMPLETE: ...): []`). A form is immutable (each method recording a change
+    returns a new one): `submit()` of a form whose derived form nothing used fails, naming the dropped changes (see
+    `.unassign` below).
   - `.tabs()` reads the page's tabs as the GUI has them for the user, from the page it renders (once; the claims
     chain on it): `names()` the labels of the tabs shown, in the GUI's order; `hasTab(tab)`, `hasNoTab(tab)`;
     `tab(tab)` one tab (`label()`, `key()`, `identifier()`, `shown()`, `hiddenBecause()`, `subtabs()`); `all()` every
@@ -379,10 +381,23 @@ assertThat(form.canRead("emailAddress")).isTrue();
       role:<oid>(team-1) with target role:<oid>(meta-1)`; `rejectsWithMessageContaining("(meta-1)")` without the
       OIDs, `rejectsWith(...)` the whole message). `submit()` fails (`AssertionError`) when the page shows
       the user no such tab, no row of the target (`its rows: ...`) or no Unassign on it (`#adminUnassign is not
-      allowed on the object: the security enforcer, request phase`). Adding a row (the "+" and its popup) is not
+      allowed on the object: the security enforcer, request phase`). Several rows in one Save are chained, each
+      row's Unassign pressed in turn and Save once: `.unassign(a).unassign(b).unassign(c).submit()` (in a loop
+      `form = form.unassign(role)`). The form is immutable: `set`, `add`, `remove`, `unassign` and `uninduce` (and
+      `archetype`, `parent`, `memberOf` of `newObjectForm`) return a new form and leave the one they were called on
+      as it was. A dropped result (`form.unassign(role)` in a loop, then `form.submit()`) would press Save without
+      the rows: on 4.0 the Save of a user with a `#modify` of the object reports `There were no changes to be saved.`
+      (a warning: `saved()` true, nothing removed), and a user without one finds Save disabled. So `submit()` of a
+      form from which a form was derived that nothing used (no `submit`, `validate`, `tabs`, `assignments` or
+      `inducements` of it or of a form derived from it) fails with `IllegalStateException`: `Submitting the form of
+      the profile of jack, but 3 changes derived from it were dropped: unassign(Role a), unassign(Role b),
+      unassign(Role c). ... This form records no change.` Verified on every line (4.0, 4.4, 4.8, 4.9, 4.10, 4.11) by
+      `SelfProfileFormScenarioTest`: three rows of the profile page removed one per Save and in one Save, as a user
+      with a `#modify` of an item of themself and as one with the End user role and the Unassign only. Adding a row (the "+" and its popup) is not
       driven: assign through the model (`t.actor(user).modify(...)`) or a members panel.
     - Save itself: 4.4 and later show it only to a user with a `#modify` of the object (`The page shows no Save
-      button`, from MID-9380), 4.0 shows it disabled (`The page's Save button is disabled`); a user with only some
+      button`, from MID-9380), 4.0 shows it disabled (`The page's Save button is disabled`) until a row of the
+      Assignments or Inducements tab is removed (the form removing none, the message says so); a user with only some
       `#modify` (an item, the execution phase) sees it, and the model decides the rest.
 
   ```kotlin

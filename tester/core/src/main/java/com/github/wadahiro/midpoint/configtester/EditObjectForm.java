@@ -80,7 +80,8 @@ public final class EditObjectForm extends ObjectForm {
      * (docs/guide/gui-and-authorizations.md).
      */
     public EditObjectForm set(String item, Object value) {
-        return new EditObjectForm(tester, type, oid, name, user, with(items, item, value), removals, selfProfile);
+        return derive(new EditObjectForm(tester, type, oid, name, user, with(items, item, value), removals,
+                selfProfile), "set(" + item + ")");
     }
 
     /**
@@ -89,8 +90,9 @@ public final class EditObjectForm extends ObjectForm {
      * the item: its values removed first, then those added.
      */
     public EditObjectForm add(String item, Object value) {
-        return new EditObjectForm(tester, type, oid, name, user,
-                with(items, item, GuiForms.ValueRows.add(items.get(item), value)), removals, selfProfile);
+        return derive(new EditObjectForm(tester, type, oid, name, user,
+                with(items, item, GuiForms.ValueRows.add(items.get(item), value)), removals, selfProfile),
+                "add(" + item + ")");
     }
 
     /**
@@ -98,8 +100,9 @@ public final class EditObjectForm extends ObjectForm {
      * when the item has no such value).
      */
     public EditObjectForm remove(String item, Object value) {
-        return new EditObjectForm(tester, type, oid, name, user,
-                with(items, item, GuiForms.ValueRows.remove(items.get(item), value)), removals, selfProfile);
+        return derive(new EditObjectForm(tester, type, oid, name, user,
+                with(items, item, GuiForms.ValueRows.remove(items.get(item), value)), removals, selfProfile),
+                "remove(" + item + ")");
     }
 
     /**
@@ -120,6 +123,7 @@ public final class EditObjectForm extends ObjectForm {
     }
 
     private AssignmentRows rows(AssignmentRows.Kind kind) {
+        use();
         boolean inducements = kind == AssignmentRows.Kind.INDUCEMENTS;
         GuiForms.Rows read = gui().rows(new GuiForms.Spec(type, oid, null, null, null, null, user, Map.of(),
                 List.of(), selfProfile), inducements);
@@ -190,9 +194,17 @@ public final class EditObjectForm extends ObjectForm {
             throw new IllegalArgumentException("No " + target);
         }
         List<GuiForms.Removal> more = new ArrayList<>(removals);
-        more.add(new GuiForms.Removal(inducement, object.getOid(), AssignmentRow.describe(target, null, null)
-                .replace(" (default)", ""), relation));
-        return new EditObjectForm(tester, type, oid, name, user, items, more, selfProfile);
+        GuiForms.Removal removal = new GuiForms.Removal(inducement, object.getOid(),
+                AssignmentRow.describe(target, null, null).replace(" (default)", ""), relation);
+        more.add(removal);
+        return derive(new EditObjectForm(tester, type, oid, name, user, items, more, selfProfile),
+                (inducement ? "uninduce(" : "unassign(") + removal.target
+                        + (relation == null ? "" : ", " + relation.getLocalPart()) + ")");
+    }
+
+    @Override
+    List<String> changeMethods() {
+        return List.of("set", "add", "remove", "unassign", "uninduce");
     }
 
     @Override

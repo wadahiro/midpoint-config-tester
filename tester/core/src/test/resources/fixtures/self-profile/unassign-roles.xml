@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Three requestable roles without content (SelfProfileFormScenarioTest): the rows a user removes from their profile
+    page's Assignments tab, one per Save or several in one Save. Plain roles in every line's format.
+-->
+<objects xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3">
+    <role oid="10000000-0000-0000-0000-0000000f0b11">
+        <name>sp-requestable-1</name>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0b12">
+        <name>sp-requestable-2</name>
+        <requestable>true</requestable>
+    </role>
+    <role oid="10000000-0000-0000-0000-0000000f0b13">
+        <name>sp-requestable-3</name>
+        <requestable>true</requestable>
+    </role>
+</objects>

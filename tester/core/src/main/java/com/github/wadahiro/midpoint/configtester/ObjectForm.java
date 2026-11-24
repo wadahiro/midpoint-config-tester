@@ -33,8 +33,13 @@ import com.github.wadahiro.midpoint.tester.internal.GuiForms;
  * tester logs a user in; the page's URL is decided first as midPoint's security filter decides it (a user who may not
  * open the page fails the form); the page shows the items as the GUI shows them to the user (the items they may not
  * see or change have no field). Messages are in the JVM's locale. midPoint's GUI comes with the tester
- * (docs/guide/gui-and-authorizations.md). Immutable: {@code set} returns a new form, each {@code validate} and
- * {@code submit} opens the page anew.
+ * (docs/guide/gui-and-authorizations.md). Immutable: {@code set} (and every method recording a change:
+ * {@code add}, {@code remove}, {@code unassign}, {@code uninduce}, {@code archetype}, {@code parent},
+ * {@code memberOf}) returns a new form and leaves this one as it was; each {@code validate} and {@code submit} opens
+ * the page anew. A change whose form is dropped is not lost silently: {@link #submit} of a form from which a form was
+ * derived that nothing used (no {@code submit}, {@code validate}, {@code tabs}, {@code assignments} or
+ * {@code inducements} of it or of a form derived from it) fails ({@code IllegalStateException}) naming the dropped
+ * changes, rather than pressing Save without them.
  */
 public abstract class ObjectForm {
 
@@ -42,6 +47,14 @@ public abstract class ObjectForm {
     final Class<? extends ObjectType> type;
     final String user;
     final Map<String, Object> items;
+    /** The form this one was derived from by a recorded change, or null. */
+    private ObjectForm parent;
+    /** The change that derived this form from {@link #parent} ({@code unassign(RoleType team-1)}), or null. */
+    private String change;
+    /** The forms derived from this one, in order. */
+    private final List<ObjectForm> derived = new ArrayList<>();
+    /** Whether this form or a form derived from it was used: submitted, validated, its tabs or rows read. */
+    private boolean used;
 
     ObjectForm(MidPointConfigTester tester, Class<? extends ObjectType> type, String user, Map<String, Object> items) {
         this.tester = tester;
@@ -51,6 +64,51 @@ public abstract class ObjectForm {
     }
 
     abstract GuiForms.Spec spec();
+
+    /** {@code form}, derived from this one by {@code change}: tracked for {@link #submit}'s check of dropped changes. */
+    <F extends ObjectForm> F derive(F form, String change) {
+        ObjectForm child = form;
+        child.parent = this;
+        child.change = change;
+        derived.add(child);
+        return form;
+    }
+
+    /** This form and every form it was derived from used. */
+    void use() {
+        for (ObjectForm form = this; form != null && !form.used; form = form.parent) {
+            form.used = true;
+        }
+    }
+
+    /**
+     * Fails when a form derived from this one was never used: its change dropped (the result of {@code unassign},
+     * {@code set}... not kept), which a Save of this form would not make.
+     */
+    private void checkNoDroppedChange() {
+        List<String> dropped = new ArrayList<>();
+        for (ObjectForm form : derived) {
+            if (!form.used) {
+                dropped.add(form.change);
+            }
+        }
+        if (dropped.isEmpty()) {
+            return;
+        }
+        List<String> recorded = new ArrayList<>();
+        for (ObjectForm form = this; form.parent != null; form = form.parent) {
+            recorded.add(0, form.change);
+        }
+        throw new IllegalStateException("Submitting the form of " + page() + ", but " + dropped.size()
+                + (dropped.size() == 1 ? " change derived from it was" : " changes derived from it were")
+                + " dropped: " + String.join(", ", dropped) + ". Each " + String.join("/", changeMethods())
+                + " returns a new form and leaves this one as it was: chain the calls"
+                + " (form.unassign(a).unassign(b).submit()) or keep the result (form = form.unassign(a)). This form"
+                + " records " + (recorded.isEmpty() ? "no change" : String.join(", ", recorded)) + ".");
+    }
+
+    /** The methods of the form that record a change. */
+    abstract List<String> changeMethods();
 
     /** The page as failures name it: {@code Org site-1}, {@code a new Org}. */
     abstract String page();
@@ -88,11 +146,18 @@ public abstract class ObjectForm {
             throw new IllegalArgumentException("validate types one value into a field; set(\"" + item
                     + "\", values) types several into a multi-valued item's rows");
         }
+        use();
         return new Check(item, value, gui().type(spec(), item, value));
     }
 
-    /** Save pressed, the items typed in: {@code submit().saves()}, {@code submit().rejects("identifier")}. */
+    /**
+     * Save pressed, the items typed in: {@code submit().saves()}, {@code submit().rejects("identifier")}. Fails
+     * ({@code IllegalStateException}) when a change was recorded on a form derived from this one that nothing used:
+     * the change was dropped (see the class).
+     */
     public Submit submit() {
+        checkNoDroppedChange();
+        use();
         return new Submit(gui().save(spec()));
     }
 
@@ -102,6 +167,7 @@ public abstract class ObjectForm {
      * {@code tabs().names()}.
      */
     public Tabs tabs() {
+        use();
         List<Tab> tabs = new ArrayList<>();
         for (GuiForms.TabInfo info : gui().tabs(spec())) {
             tabs.add(new Tab(info));

@@ -146,7 +146,9 @@ class AssignmentRowsScenarioTest {
                 .hasMessage(com.github.wadahiro.midpoint.tester.Lines.atLeast(t.midpoint(), "4.4")
                         ? "The page shows no Save button (the object is read-only to the user, or the page saves with"
                                 + " a preview)"
-                        : "The page's Save button is disabled (the object is read-only to the user)");
+                        : "The page's Save button is disabled (the object is read-only to the user; 4.0 enables it"
+                                + " for a user without a #modify of the object once a row of the Assignments or"
+                                + " Inducements tab is removed, and this form removes none)");
     }
 
     @Test

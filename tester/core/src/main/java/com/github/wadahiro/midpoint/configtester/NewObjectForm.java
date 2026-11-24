@@ -1,5 +1,6 @@
 package com.github.wadahiro.midpoint.configtester;
 
+import java.util.List;
 import java.util.Map;
 import javax.xml.namespace.QName;
 
@@ -53,7 +54,8 @@ public final class NewObjectForm extends ObjectForm {
 
     /** The archetype of the new object (name or OID): its object template gives the page its items and validations. */
     public NewObjectForm archetype(String archetype) {
-        return new NewObjectForm(tester, type, archetype, member, memberType, relation, user, items);
+        return derive(new NewObjectForm(tester, type, archetype, member, memberType, relation, user, items),
+                "archetype(" + archetype + ")");
     }
 
     /**
@@ -61,7 +63,8 @@ public final class NewObjectForm extends ObjectForm {
      * it: its assignment (no relation set) and parentOrgRef.
      */
     public NewObjectForm parent(String org) {
-        return new NewObjectForm(tester, type, archetype, org, OrgType.class, null, user, items);
+        return derive(new NewObjectForm(tester, type, archetype, org, OrgType.class, null, user, items),
+                "parent(" + org + ")");
     }
 
     /**
@@ -72,17 +75,20 @@ public final class NewObjectForm extends ObjectForm {
      * {@code manager}). {@link Actor#createMemberButton} clicks it from the members panel.
      */
     public NewObjectForm memberOf(String roleOrOrg, QName relation) {
-        return new NewObjectForm(tester, type, archetype, roleOrOrg, null, relation, user, items);
+        return derive(new NewObjectForm(tester, type, archetype, roleOrOrg, null, relation, user, items),
+                "memberOf(" + roleOrOrg + ")");
     }
 
     public NewObjectForm memberOf(AbstractRole<?> role, QName relation) {
-        return new NewObjectForm(tester, type, archetype, role.oid(), role.roleType(), relation, user, items);
+        return derive(new NewObjectForm(tester, type, archetype, role.oid(), role.roleType(), relation, user,
+                items), "memberOf(" + role.oid() + ")");
     }
 
     /** {@link #memberOf(String, QName)} by the generated name ({@code Orgs.SITE_1}, a role or a service). */
     public NewObjectForm memberOf(ObjectRef role, QName relation) {
-        return new NewObjectForm(tester, type, archetype, role.oid() != null ? role.oid() : role.on(tester.line()),
-                AbstractRole.roleType(role), relation, user, items);
+        return derive(new NewObjectForm(tester, type, archetype,
+                role.oid() != null ? role.oid() : role.on(tester.line()), AbstractRole.roleType(role), relation,
+                user, items), "memberOf(" + role.name() + ")");
     }
 
     /** As a member with no relation set: for an org, {@link #parent(String)}. */
@@ -102,8 +108,13 @@ public final class NewObjectForm extends ObjectForm {
      * (docs/guide/gui-and-authorizations.md).
      */
     public NewObjectForm set(String item, Object value) {
-        return new NewObjectForm(tester, type, archetype, member, memberType, relation, user,
-                with(items, item, value));
+        return derive(new NewObjectForm(tester, type, archetype, member, memberType, relation, user,
+                with(items, item, value)), "set(" + item + ")");
+    }
+
+    @Override
+    List<String> changeMethods() {
+        return List.of("set", "archetype", "parent", "memberOf");
     }
 
     @Override

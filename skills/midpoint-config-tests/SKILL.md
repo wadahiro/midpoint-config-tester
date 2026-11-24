@@ -160,7 +160,11 @@ unassignment (`#unassign`, an inducement's with `orderConstraints` order 1):
 `t.actor(u).editForm(Roles.TEAM_1).uninduce(Roles.META_1).submit().saves()` / `.rejectsWith(message)` (exact) /
 `.rejectsWithMessageContaining("(meta-1)")` (a part: the model's refusals embed OIDs; also
 `.failsWithMessageContaining(text)` on `validate`),
-`.unassign(Orgs.SITE_1)` on the Assignments tab. Which roles the request-access page shows a requester (computed
+`.unassign(Orgs.SITE_1)` on the Assignments tab. Several rows in one Save are chained (`.unassign(a).unassign(b)
+.unassign(c).submit()`, or `form = form.unassign(r)` in a loop): a form is immutable, each `set` / `add` / `remove` /
+`unassign` / `uninduce` returns a new one, and `submit()` of a form whose derived form was dropped fails
+(`IllegalStateException`: `... changes derived from it were dropped: unassign(Role a), ...`) rather than saving
+without them. Which roles the request-access page shows a requester (computed
 as the line's GUI computes it: 4.0 / 4.4 `roleManagement`, 4.8+ the GUI profile's `accessRequest`; each entry
 ANDed with what they may assign to the target, searched as them):
 `t.actor(u).requestAccess().offersRole(Roles.VPN).showsNoRole(Roles.ADMIN_TOOLS)`, `.requestAccess(Users.JACK)

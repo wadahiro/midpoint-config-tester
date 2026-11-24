@@ -12,6 +12,7 @@ import com.evolveum.midpoint.xml.ns._public.common.common_3.UserType;
 import com.github.wadahiro.midpoint.configtester.EditObjectForm;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTest;
 import com.github.wadahiro.midpoint.configtester.MidPointConfigTester;
+import com.github.wadahiro.midpoint.configtester.names.ObjectRef;
 import com.github.wadahiro.midpoint.configtester.sample.access.Roles;
 import com.github.wadahiro.midpoint.configtester.sample.access.Users;
 
@@ -130,6 +131,134 @@ class SelfProfileFormScenarioTest {
         t.actor(Users.JACK).selfProfileForm().unassign(Roles.AUDITOR).submit().saves();
 
         t.user(Users.JACK).hasNoAssignment(Roles.AUDITOR);
+    }
+
+    /** The three requestable roles of fixtures/self-profile/unassign-roles.xml, assigned to jack. */
+    private static ObjectRef[] threeRoles(MidPointConfigTester t) {
+        t.midpoint().importObject(new File(Fixtures.dir("self-profile"), "unassign-roles.xml"));
+        ObjectRef[] roles = {
+            ObjectRef.of("RoleType", "sp-requestable-1", "10000000-0000-0000-0000-0000000f0b11"),
+            ObjectRef.of("RoleType", "sp-requestable-2", "10000000-0000-0000-0000-0000000f0b12"),
+            ObjectRef.of("RoleType", "sp-requestable-3", "10000000-0000-0000-0000-0000000f0b13")};
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).assign(role.name());
+        }
+        return roles;
+    }
+
+    /** Three rows removed one at a time, each with a Save of its own (a #modify of an item of oneself too). */
+    @Test
+    void aUserRemovesThreeRolesOneSaveEach(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-editor");
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        for (ObjectRef role : roles) {
+            t.actor(Users.JACK).selfProfileForm().unassign(role).submit().saves();
+            t.user(Users.JACK).hasNoAssignment(role.name());
+        }
+    }
+
+    /** Three rows removed in one Save: every row's Unassign pressed, then Save once. */
+    @Test
+    void aUserRemovesThreeRolesInOneSave(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-editor");
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        t.actor(Users.JACK).selfProfileForm().unassign(roles[0]).unassign(roles[1]).unassign(roles[2]).submit()
+                .saves();
+
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).hasNoAssignment(role.name());
+        }
+    }
+
+    /**
+     * Without a #modify of any item of oneself (the End user role and the Unassign only): one row per Save, as
+     * {@link #aUserRemovesThreeRolesOneSaveEach}.
+     */
+    @Test
+    void aUserWithoutModifyRemovesThreeRolesOneSaveEach(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        for (ObjectRef role : roles) {
+            t.actor(Users.JACK).selfProfileForm().unassign(role).submit().saves();
+            t.user(Users.JACK).hasNoAssignment(role.name());
+        }
+    }
+
+    /** Without a #modify of any item of oneself: three rows in one Save, as {@link #aUserRemovesThreeRolesInOneSave}. */
+    @Test
+    void aUserWithoutModifyRemovesThreeRolesInOneSave(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        t.actor(Users.JACK).selfProfileForm().unassign(roles[0]).unassign(roles[1]).unassign(roles[2]).submit()
+                .saves();
+
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).hasNoAssignment(role.name());
+        }
+    }
+
+    /**
+     * The form is immutable: {@code unassign} returns a new form. Its result dropped (a loop calling it on the same
+     * form), the Save would change nothing (4.0: saved, "There were no changes to be saved"; without a #modify of
+     * oneself, Save disabled): {@code submit} fails naming the dropped changes instead.
+     */
+    @Test
+    void aDroppedUnassignFailsTheSubmit(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-editor");
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        EditObjectForm form = t.actor(Users.JACK).selfProfileForm();
+        for (ObjectRef role : roles) {
+            form.unassign(role);
+        }
+        assertThatThrownBy(form::submit).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("3 changes derived from it were dropped: unassign(Role sp-requestable-1),"
+                        + " unassign(Role sp-requestable-2), unassign(Role sp-requestable-3)")
+                .hasMessageContaining("returns a new form");
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).hasAssignment(role.name());
+        }
+
+        // the results kept: one Save removes the three rows
+        EditObjectForm kept = t.actor(Users.JACK).selfProfileForm();
+        for (ObjectRef role : roles) {
+            kept = kept.unassign(role);
+        }
+        kept.submit().saves();
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).hasNoAssignment(role.name());
+        }
+    }
+
+    /** As {@link #aDroppedUnassignFailsTheSubmit}, for a user without a #modify of any item of oneself. */
+    @Test
+    void aDroppedUnassignFailsTheSubmitWithoutModify(MidPointConfigTester t) {
+        importRoles(t);
+        t.user(Users.JACK).assign("sp-self-unassign");
+        ObjectRef[] roles = threeRoles(t);
+
+        EditObjectForm form = t.actor(Users.JACK).selfProfileForm().unassign(roles[0]);
+        form.unassign(roles[1]);
+        form.unassign(roles[2]);
+        assertThatThrownBy(form::submit).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("2 changes derived from it were dropped: unassign(Role sp-requestable-2),"
+                        + " unassign(Role sp-requestable-3)")
+                .hasMessageContaining("This form records unassign(Role sp-requestable-1).");
+        for (ObjectRef role : roles) {
+            t.user(Users.JACK).hasAssignment(role.name());
+        }
     }
 
     /** Without {@code #unassign} the row shows no Unassign, and pressing it is not possible. */
