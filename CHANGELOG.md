@@ -1,3 +1,10 @@
+# [0.24.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.4...v0.24.0) (2026-11-25)
+
+
+### Features
+
+* **db:** pgmem.log prints pgmem's server log to stderr ([1bc3b3a](https://github.com/wadahiro/midpoint-config-tester/commit/1bc3b3a03e93323fc1d97e6b694e2b4103c3cbf4))
+
 ## [0.23.4](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.3...v0.23.4) (2026-11-25)
 
 
