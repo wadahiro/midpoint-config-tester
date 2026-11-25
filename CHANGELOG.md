@@ -1,3 +1,10 @@
+## [0.23.4](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.3...v0.23.4) (2026-11-25)
+
+
+### Bug Fixes
+
+* **gui:** wait for the tasks a form's save started before it returns ([bfc0535](https://github.com/wadahiro/midpoint-config-tester/commit/bfc0535846aba57754a4f11464624dfb3086c4db))
+
 ## [0.23.3](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.2...v0.23.3) (2026-11-24)
 
 
