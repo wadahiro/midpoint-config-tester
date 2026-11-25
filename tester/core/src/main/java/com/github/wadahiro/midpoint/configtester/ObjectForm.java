@@ -158,7 +158,18 @@ public abstract class ObjectForm {
     public Submit submit() {
         checkNoDroppedChange();
         use();
-        return new Submit(gui().save(spec()));
+        GuiForms.Saved saved = gui().save(spec());
+        waitForExecution();
+        return new Submit(saved);
+    }
+
+    /**
+     * The save may have started tasks that execute the changes (a change that goes through a case, approved or not,
+     * is executed by a task after the page reports): like a driver call, the submit returns when they have finished,
+     * so that what the form changed is all there to read. Nothing running or due: it returns at once.
+     */
+    private void waitForExecution() {
+        tester.deployment().api().waitForTasks();
     }
 
     /**
