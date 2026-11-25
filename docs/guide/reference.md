@@ -91,6 +91,7 @@
 | `tester.timing.baseline` | none | a `timing.json` to compare with instead of the previous run's (a report kept from a reference run) |
 | `tester.log` | `target/tester.log` | the log file, when the project has no logback configuration of its own |
 | `pgmem.binary` (or `PGMEM_BINARY`) | from `pgmem-native` | the pgmem binary |
+| `pgmem.log` (or `PGMEM_LOG`) | `false` | print pgmem's server log to stderr (the reason a process of the in-memory PostgreSQL fails to start, such as `pgmem: restart: postmaster exited with status 32512`) |
 | `static.dir`, `static.schemaDir` | none | static checks of your configuration (static module) |
 
 | Output | Written by |

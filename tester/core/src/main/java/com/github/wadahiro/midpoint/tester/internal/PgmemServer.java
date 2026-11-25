@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,7 +59,12 @@ public final class PgmemServer implements AutoCloseable {
     public static PgmemServer start(String database, Path workDir) {
         try {
             Path binary = binary(workDir);
-            Process process = new ProcessBuilder(binary.toString(), "-database", database, "-user", "postgres")
+            List<String> command = new ArrayList<>(List.of(binary.toString(), "-database", database, "-user", "postgres"));
+            if (Boolean.getBoolean("pgmem.log") || "true".equalsIgnoreCase(System.getenv("PGMEM_LOG"))) {
+                // pgmem's server log (why a process of the in-memory PostgreSQL failed to start) goes to stderr
+                command.add("-log");
+            }
+            Process process = new ProcessBuilder(command)
                     .redirectError(ProcessBuilder.Redirect.INHERIT)
                     .start();
             PgmemServer server = new PgmemServer(process, database);
