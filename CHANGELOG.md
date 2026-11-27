@@ -1,3 +1,10 @@
+# [0.25.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.24.0...v0.25.0) (2026-11-27)
+
+
+### Features
+
+* **kotest:** tester.only runs the tests whose name starts with one of the listed IDs ([8936f88](https://github.com/wadahiro/midpoint-config-tester/commit/8936f888ab1415d0b115df5f8e9deabb0b72f3ab))
+
 # [0.24.0](https://github.com/wadahiro/midpoint-config-tester/compare/v0.23.4...v0.24.0) (2026-11-25)
 
 
