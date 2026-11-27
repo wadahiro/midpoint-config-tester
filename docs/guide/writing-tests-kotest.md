@@ -55,6 +55,12 @@ class CampaignSpec : MidPointConfigSpec({
   to run one spec or test from the gutter; Maven's `-Dtest=` selects specs by class name. `precondition`, `steps` and
   `verifyAll { }` are functions of the Kotest layer, imported from `com.github.wadahiro.midpoint.configtester.kotest`
   as `MidPointConfigSpec` is.
+- Run some tests of a spec: name the tests by an ID first (`"CASE-012: the reminder is sent" { }`) and list the IDs
+  in `-Dtester.only=CASE-012,CASE-015` (or `TESTER_ONLY`). A test runs when its name, or a container's around it,
+  starts with one of them followed by no letter or digit (`CASE-01` does not select `CASE-012`); an ID ending with
+  `*` is a plain prefix (`CASE-01*` selects `CASE-010` to `CASE-019`). The others are reported as skipped. The containers' bodies and the preconditions still run, since the selected tests start from
+  them, and so do all the tests of a `steps` container, which continue each other. Kotest's own
+  `-Dkotest.filter.tests` matches the whole path, containers included, so a pattern for one test skips its container.
 
 Rows of a source feed are tests: Kotest's `withData` in a container makes one test per row, each from the container's
 prefix. Examples with `John Doe, Sales, 2020-04-01` never meet what production feeds hold; give a

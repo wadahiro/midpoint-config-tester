@@ -86,6 +86,7 @@
 | `tester.forks` | `1` | test JVMs per line module (the parent passes it; without the parent: Surefire `forkCount` plus `tester.forks` and `tester.fork`) |
 | `tester.network.allow` | none | hosts the JVM may still reach, comma-separated, besides the manifest's (see [No other machine](environment.md#no-other-machine)) |
 | `scenario.whyOnFailure` | `true` | `false`: a failed assertion does not list the mappings behind the value |
+| `tester.only` (or `TESTER_ONLY`) | none | Kotest specs: run only the tests whose name, or a container's, starts with one of these IDs, comma-separated; `CASE-01*` is a plain prefix (see [Writing tests with Kotest](writing-tests-kotest.md)) |
 | `tester.taskTimeout` | `60` | seconds a driver call waits for background tasks |
 | `tester.timing` | `false` | `true` writes the time of the tester's phases to `<workDir>/tester/timing.md` and `timing.json`, compared with the previous run (see [Cache of the loaded configuration and parallel test JVMs](writing-tests-junit.md#cache-of-the-loaded-configuration-and-parallel-test-jvms)) |
 | `tester.timing.baseline` | none | a `timing.json` to compare with instead of the previous run's (a report kept from a reference run) |

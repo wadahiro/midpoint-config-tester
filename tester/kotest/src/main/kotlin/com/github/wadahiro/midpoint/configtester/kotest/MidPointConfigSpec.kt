@@ -55,6 +55,9 @@ import io.kotest.engine.test.TestResult
  *     "recomputing keeps it" { t.user("jdoe").recompute().none() }
  * }
  * ```
+ *
+ * `tester.only` (or `TESTER_ONLY`) runs only the tests whose name, or a container's around them, starts with one of the
+ * listed IDs ([Only]); the containers' bodies, the preconditions and the tests of `steps` still run.
  */
 abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : FreeSpec() {
 
@@ -98,6 +101,10 @@ abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : Fr
 
     private suspend fun run(testCase: TestCase, execute: suspend (TestCase) -> TestResult): TestResult {
         val parent = testCase.parent
+        if (testCase.type != TestType.Container && testCase.config?.tags?.contains(Precondition) != true
+                && (parent == null || frames[parent]?.steps != true) && !Only.selects(testCase)) {
+            return TestResult.Ignored("not in ${Only.PROPERTY}")
+        }
         if (parent == null) {
             val loaded = deployment ?: throw IllegalStateException("No deployment loaded for ${this::class.java.name}")
             val tester = MidPointConfigTestLifecycle.begin(loaded)
@@ -216,6 +223,40 @@ abstract class MidPointConfigSpec(body: MidPointConfigSpec.() -> Unit = {}) : Fr
     /** A container whose tests run in order on one state, each continuing the last; stops at the first failure. */
     fun steps(name: String, test: suspend FreeSpecContainerScope.() -> Unit) =
         name.config(failfast = true, tags = setOf(Steps)) - test
+}
+
+/**
+ * `tester.only` (or the environment variable `TESTER_ONLY`): IDs, comma-separated, such as `CASE-012,CASE-015`. A test
+ * runs when its name or the name of a container around it starts with one of them, followed by no letter or digit
+ * (`CASE-01` does not select `CASE-012`). An ID ending with `*` is a plain prefix: `CASE-01*` selects `CASE-010` to
+ * `CASE-019` (and `CASE-01` itself). Unset or blank: every test runs.
+ */
+internal object Only {
+    const val PROPERTY = "tester.only"
+
+    private fun ids(): List<String> =
+        (System.getProperty(PROPERTY) ?: System.getenv("TESTER_ONLY") ?: "")
+            .split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
+    fun selects(testCase: TestCase): Boolean {
+        val ids = ids()
+        if (ids.isEmpty()) {
+            return true
+        }
+        var test: TestCase? = testCase
+        while (test != null) {
+            val name = test.name.name
+            if (ids.any { matches(name, it) }) {
+                return true
+            }
+            test = test.parent
+        }
+        return false
+    }
+
+    private fun matches(name: String, id: String): Boolean =
+        if (id.endsWith("*")) name.startsWith(id.dropLast(1))
+        else name.startsWith(id) && name.getOrNull(id.length)?.isLetterOrDigit() != true
 }
 
 /**
